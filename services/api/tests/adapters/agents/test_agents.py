@@ -239,6 +239,20 @@ class TestPrompts:
             "revisor",
         ]
 
+    @pytest.mark.parametrize(
+        ("rol", "rule"),
+        [
+            (
+                "analista",
+                "No incluyas detalles de implementación (tecnologías, bases de datos, pantallas) "
+                "salvo que el requerimiento los pida.",
+            ),
+            ("qa", "Usa datos de prueba ficticios; nunca datos personales reales."),
+        ],
+    )
+    def test_v1_agent_prompts_carry_their_quality_rules(self, rol: str, rule: str) -> None:
+        assert rule in load_prompt(PROMPTS, "v1", rol)  # type: ignore[arg-type]
+
     def test_rejects_versions_outside_the_vn_pattern(self) -> None:
         with pytest.raises(ValueError, match="invalid prompt version"):
             load_prompt(PROMPTS, "../v1", "qa")
