@@ -1,0 +1,65 @@
+[project]
+name = "criteria"
+version = "0.1.0"
+description = "CriterIA API: multi-agent generation of user stories, acceptance criteria and test cases."
+authors = [{ name = "Gustavo de Ávila Herrera" }]
+license = "LicenseRef-Proprietary"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+    "fastapi>=0.162.0",
+    "pydantic-settings>=2.16.2",
+    "sentry-sdk>=2.73.0",
+    "uvicorn[standard]>=0.54.0",
+]
+
+[project.scripts]
+criteria-api = "criteria.main:run"
+
+[build-system]
+requires = ["uv_build>=0.13.5,<0.14.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "mypy>=2.4.1",
+    "pip-audit>=2.10.1",
+    "pytest>=9.2.0",
+    "pytest-asyncio>=1.4.1.post1",
+    "pytest-cov>=7.1.0",
+    "ruff>=0.17.3",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "UP", "N", "S", "SIM", "RUF", "ASYNC", "PT", "C4", "PL"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "PLR2004"]
+
+[tool.mypy]
+strict = true
+python_version = "3.13"
+mypy_path = "src"
+packages = ["criteria", "tests"]
+plugins = ["pydantic.mypy"]
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
+warn_required_dynamic_aliases = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+addopts = "--strict-markers --cov=criteria --cov-report=term-missing --cov-fail-under=90"
+markers = ["integration: tests that need a real Postgres (from F3)"]
+
+[tool.coverage.run]
+branch = true
+source = ["criteria"]
