@@ -22,11 +22,15 @@ RUN groupadd --system --gid 10001 app \
     && useradd --system --uid 10001 --gid app --no-create-home --shell /usr/sbin/nologin app
 WORKDIR /app
 COPY --from=builder --chown=app:app /app/.venv /app/.venv
+COPY --chown=app:app prompts ./prompts
+COPY --chown=app:app config ./config
 ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     HOST=0.0.0.0 \
-    PORT=8080
+    PORT=8080 \
+    PROMPTS_DIR=/app/prompts \
+    MODELS_FILE=/app/config/models.toml
 USER app
 EXPOSE 8080
 # Cloud Run ignores HEALTHCHECK; it serves local runs and other orchestrators.
