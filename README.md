@@ -26,14 +26,14 @@ Flujo: Analista → pausa para que la persona apruebe o edite → QA → Revisor
 
 ## Estado
 
-Fase F1 (fundaciones): estructura del monorepo, calidad, CI y documentación. La web muestra una página de inicio provisional y la API expone `GET /healthz`. Los agentes, la base de datos y la autenticación llegan en las fases siguientes.
+Fase F2 (núcleo de agentes): los cuatro agentes, el grafo con la pausa humana y las rondas del Revisor corren de punta a punta desde la CLI, con proveedores intercambiables y modo solo local con Ollama. La web todavía muestra una página de inicio provisional, y la API expone solo `GET /healthz`. La base de datos, los endpoints de corrida y la autenticación llegan en F3 y F4.
 
 ## Stack
 
 | Parte | Tecnología |
 | --- | --- |
 | Web (`apps/web`) | Next.js 16 con App Router, React 19, TypeScript estricto, zod, CSS Modules, Sentry |
-| API (`services/api`) | Python 3.13, FastAPI, pydantic-settings, Sentry; Pydantic AI y LangGraph desde F2 |
+| API (`services/api`) | Python 3.13, Pydantic AI, LangGraph, FastAPI, pydantic-settings, Sentry |
 | Datos | Neon Postgres (desde F3) |
 | Nube | GCP Cloud Run (API) y Vercel (web) |
 | Calidad | ESLint, Prettier, Vitest, Playwright con axe · Ruff, mypy, pytest, pip-audit |
@@ -55,6 +55,9 @@ Detalle en [docs/architecture.md](docs/architecture.md) y decisiones en [docs/ad
 │   └── src/             app, pages, widgets, features, entities, shared
 ├── services/api/        API en Python (hexagonal)
 │   ├── src/criteria/    domain, application, ports, adapters, config
+│   ├── prompts/v1/      prompts de sistema de los cuatro agentes
+│   ├── config/          modelos permitidos y precios
+│   ├── examples/        requerimientos de ejemplo para la CLI
 │   ├── tests/
 │   └── Dockerfile
 ├── docs/                arquitectura, ADRs, despliegue y evaluación
@@ -89,18 +92,46 @@ pnpm dev                     # http://localhost:3000
 
 Si falta una variable obligatoria, la API y la web se niegan a arrancar y el mensaje dice cuál falta.
 
-### Modo solo local con Ollama
+### Correr el grafo de agentes desde la terminal
 
-> Disponible a partir de F2: en F1 la variable ya está declarada, pero todavía no hay agentes que la usen.
-
-Con `PROVIDER=ollama`, todo el flujo corre en tu máquina sin ninguna clave de API:
+La CLI corre el flujo completo (Analista → tu aprobación → QA → Revisor → Evaluador) e imprime cada evento. Desde `services/api`, con un `.env` que tenga al menos `APP_ENV`:
 
 ```bash
-ollama serve
-ollama pull <modelo>          # el modelo local se elige en F2
+uv run criteria run --provider ollama --model qwen3:8b --file examples/biblioteca.txt
+```
+
+| Opción | Qué hace |
+| --- | --- |
+| `--provider`, `--model` | Proveedor y modelo de generación; por defecto, `PROVIDER` y `GENERATION_MODEL` del `.env` |
+| `--judge-provider`, `--judge-model` | Proveedor y modelo del Evaluador; por defecto, los de generación |
+| `--text "…"` o `--file ruta` | El requerimiento (de 20 a 2,000 caracteres) |
+| `--auto-aprobar` | Aprueba las historias sin preguntar; sin esta opción, la CLI las muestra y pide aprobar, editar (abre `$EDITOR` con el JSON) o cancelar |
+| `--max-rondas N` | Rondas de corrección del Revisor, de 0 a 5; por defecto, `MAX_REVIEW_ROUNDS` |
+| `--json` | Un evento JSON por línea en la salida estándar; las preguntas van a la salida de errores |
+| `--temperatura`, `--max-tokens` | Parámetros del modelo |
+| `--base-url` | URL `https` para `--provider openai_compatible`; la clave se toma de `CRITERIA_USER_API_KEY` en la sesión, nunca de un argumento |
+
+Hay tres requerimientos de ejemplo en `services/api/examples/`: `biblioteca.txt`, `citas-medicas.txt` y `nomina.txt`. La CLI sale con 0 si la corrida terminó, 1 si un agente falló, 2 por un error de uso o configuración y 130 si cancelaste.
+
+### Modo solo local con Ollama
+
+Con `PROVIDER=ollama` todo el flujo corre sin ninguna clave de API. Los modelos permitidos están en `services/api/config/models.toml`: `qwen3:8b` (con el modo de razonamiento apagado) y `llama3.1:8b`.
+
+```bash
+ollama pull qwen3:8b
 # en services/api/.env
+APP_ENV=development
 PROVIDER=ollama
+GENERATION_MODEL=qwen3:8b
 OLLAMA_BASE_URL=http://localhost:11434
+```
+
+Ollama puede estar en otra máquina de tu red local: basta con poner su dirección en `OLLAMA_BASE_URL`, por ejemplo `http://192.168.1.50:11434`. Esa URL la define quien opera el servidor, así que puede ser privada; la protección SSRF aplica solo a las URLs que envía el usuario. Si `OLLAMA_BASE_URL` no está definida, el proveedor `ollama` no se ofrece. Ollama no tiene autenticación: nunca expongas su puerto fuera de tu red local.
+
+Las pruebas contra un Ollama real están excluidas por defecto y del CI:
+
+```bash
+OLLAMA_BASE_URL=http://localhost:11434 uv run pytest -m ollama --no-cov
 ```
 
 ### Imagen de la API
@@ -126,6 +157,7 @@ API (`services/api`, con `make`):
 | `make audit` | pip-audit sobre `uv.lock` |
 | `make check` | todo lo anterior |
 | `make run` | levanta la API |
+| `uv run criteria run …` | corre el grafo de agentes en la terminal (ver arriba) |
 
 Web (`apps/web`, con `pnpm`):
 
@@ -149,6 +181,14 @@ Las listas completas, con la fase en que se usa cada variable, están en [servic
 | `HOST`, `PORT` | API | No | Interfaz y puerto (por defecto `127.0.0.1:8080`; la imagen usa `0.0.0.0`) |
 | `LOG_LEVEL` | API | No | Nivel de log de uvicorn |
 | `SENTRY_DSN`, `SENTRY_TRACES_SAMPLE_RATE` | API | No | Sentry se activa solo con DSN |
+| `PROVIDER`, `GENERATION_MODEL` | API | No | Proveedor y modelo de generación por defecto de la CLI |
+| `JUDGE_PROVIDER`, `JUDGE_MODEL` | API | No | Proveedor y modelo del Evaluador; vacíos, usan los de generación |
+| `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GROQ_API_KEY` | API | No | Claves del servidor; cada proveedor se ofrece solo si tiene la suya |
+| `OLLAMA_BASE_URL` | API | No | URL de Ollama; sin ella, el proveedor `ollama` no se ofrece |
+| `PROVIDER_TIMEOUT_SECONDS`, `PROVIDER_MAX_RESPONSE_BYTES` | API | No | Tiempo límite y tamaño máximo de respuesta del proveedor |
+| `PROMPT_VERSION`, `MAX_REVIEW_ROUNDS` | API | No | Versión de prompts (`v1`) y rondas de corrección (2) |
+| `PROMPTS_DIR`, `MODELS_FILE` | API | No | Rutas de los prompts y del catálogo; la imagen Docker las fija |
+| `CRITERIA_USER_API_KEY` | CLI | No | Clave propia para `openai_compatible`; se exporta en la sesión, no va en `.env` |
 | `NEXT_PUBLIC_APP_ENV` | Web | Sí | Entorno de la web |
 | `NEXT_PUBLIC_API_URL` | Web | Sí | URL de la API; también entra en `connect-src` de la CSP. En producción debe ser `https` |
 | `NEXT_PUBLIC_SENTRY_DSN` | Web | No | Sentry se activa solo con DSN |
@@ -156,6 +196,8 @@ Las listas completas, con la fase en que se usa cada variable, están en [servic
 ## Documentación
 
 - [Arquitectura](docs/architecture.md)
+- [Agentes y grafo](docs/agents.md)
+- [Eventos de una corrida](docs/events.md)
 - [Decisiones de arquitectura (ADRs)](docs/adr/README.md)
 - [Despliegue](docs/deploy.md)
 - [Evaluación de modelos](docs/evaluation.md)

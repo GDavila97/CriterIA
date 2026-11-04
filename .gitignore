@@ -57,6 +57,8 @@ Thumbs.db
 CLAUDE.md
 CLAUDE.local.md
 AGENTS.md
+# Project documentation, not an AI tool file; matched above on case-insensitive filesystems.
+!docs/agents.md
 GEMINI.md
 .claude/
 .cursor/

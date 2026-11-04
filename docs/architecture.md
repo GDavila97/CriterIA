@@ -57,25 +57,48 @@ Se eligió un modelo relacional porque las métricas de evaluación se comparan 
 [ADR 0002](adr/0002-hexagonal-api.md). Las dependencias apuntan al dominio y la composición ocurre en un único módulo de arranque.
 
 ```
-services/api/src/criteria/
-  domain/        esquemas Pydantic (Requerimiento, HistoriaUsuario, CriterioAceptacion,
-                 CasoPrueba, Observacion, Puntaje), rúbrica y eventos; sin dependencias externas
-  application/   grafo y casos de uso (ejecutar corrida, reanudar tras aprobación, evaluar lote)
-  ports/         interfaces: LLMProvider, RunRepository, EvalRepository, UsageLimiter, Clock
-  adapters/      proveedores (pydantic-ai), Postgres, FastAPI (rutas, SSE, auth) y CLI
-  config.py      validación de variables al arrancar (pydantic-settings)
-  observability.py  Sentry, activo solo con DSN y con filtro de cabeceras sensibles
-  main.py        módulo de arranque: compone la app y la sirve con uvicorn
+services/api/
+  src/criteria/
+    domain/        artifacts (Requerimiento, HistoriaUsuario, CriterioAceptacion, CasoPrueba,
+                   Observacion, VeredictoRevisor, Puntaje), reglas puras, eventos, respuesta
+                   humana y ProviderSelection; solo Pydantic
+    application/   grafo de LangGraph (graph.py) y servicio de corridas (runs.py): iniciar,
+                   reanudar tras la aprobación y descartar
+    ports/         AgentRunner por rol con sus entradas, EventSink, Checkpointer, Clock
+    adapters/
+      llm/         registro de proveedores, catálogo de modelos y precios, protección SSRF
+      agents/      agentes de Pydantic AI expuestos como AgentRunner, bloques de datos, prompts
+      memory/      checkpointer y sink de eventos en memoria
+      cli/         comando `criteria run` y salida legible o JSON por línea
+      system_clock.py
+    bootstrap.py   módulo de arranque: arma registro, agentes y servicio para la CLI y la API
+    config.py      validación de variables al arrancar (pydantic-settings)
+    observability.py  Sentry, activo solo con DSN y con filtro de cabeceras sensibles
+    main.py        app FastAPI (en F2, solo `GET /healthz`)
+  prompts/v1/      prompts de sistema versionados, uno por agente
+  config/models.toml  modelos permitidos por proveedor y precios
+  examples/        requerimientos de ejemplo para la CLI
 ```
 
 | Capa | Puede depender de | No puede depender de |
 | --- | --- | --- |
 | `domain` | biblioteca estándar y Pydantic | todo lo demás |
-| `application` | `domain`, `ports` | `adapters`, frameworks de transporte |
-| `ports` | `domain` | `adapters` |
+| `application` | `domain`, `ports`, LangGraph | `adapters`, frameworks de transporte |
+| `ports` | `domain`; `Checkpointer` expone el saver de LangGraph ([ADR 0005](adr/0005-langgraph-orchestration.md)) | `adapters` |
 | `adapters` | `domain`, `application`, `ports`, bibliotecas externas | — |
 
-Estado en F1: las cuatro capas existen vacías. `main.py` expone solo `GET /healthz`, que devuelve `{"status": "ok", "version": "<versión del paquete>"}`; en F3 las rutas pasan a `adapters/` y `main.py` queda solo como composición. En producción no se publican `/docs` ni `/openapi.json`.
+Puertos:
+
+| Puerto | Responsabilidad | Adaptadores |
+| --- | --- | --- |
+| `AgentRunner[Entrada, Salida]` | Ejecuta un agente y devuelve la salida validada con su uso (tokens, latencia, costo, reintentos); si falla, lanza `AgentRunError` con un código y un mensaje seguros | `PydanticAgentRunner` |
+| `EventSink` | Recibe los eventos de una corrida en orden y les asigna `seq` creciente y `ts` | `ListEventSink` (pruebas), `PrintingEventSink` (CLI); SSE en F3 |
+| `Checkpointer` | Guarda el estado del grafo entre la pausa humana y la reanudación, y lo borra al terminar | `MemoryCheckpointer`; Postgres en F3 |
+| `Clock` | Hora con zona y reloj monotónico, para que las pruebas controlen `ts` y latencia | `SystemClock`; `FakeClock` en pruebas |
+
+Detalle de agentes, grafo, reintentos y rondas en [agents.md](agents.md), y de los eventos en [events.md](events.md).
+
+Estado en F2: el núcleo de agentes corre de punta a punta desde la CLI. `main.py` sigue exponiendo solo `GET /healthz`; en F3 las rutas pasan a `adapters/` y usan el mismo `bootstrap.py`. En producción no se publican `/docs` ni `/openapi.json`.
 
 ## Web: Feature-Sliced Design
 
@@ -120,6 +143,9 @@ Eventos SSE: todos llevan `run_id`, `seq` (entero creciente), `ts` y `agent`. El
 - Sentry en ambas partes, activo solo con DSN, con `send_default_pii` / `sendDefaultPii` en falso y un filtro que elimina las cabeceras `authorization`, `cookie` y `x-provider-key` y las cookies de la petición.
 - CSP estricta con nonce, sin `'unsafe-inline'` ni `'unsafe-eval'` en producción, más cabeceras fijas en `next.config.ts` ([ADR 0014](adr/0014-nonce-based-csp.md)).
 - Imagen de la API multi-etapa, con usuario no root y `PORT` tomado del entorno, como lo inyecta Cloud Run.
+- Las URLs base que envía el usuario (`openai_compatible`) pasan por un transporte propio sobre `httpx2`/`httpcore2`, el cliente HTTP del SDK de OpenAI. Ese transporte exige `https`, no sigue redirecciones y limita el tiempo y el tamaño de la respuesta. Además resuelve el DNS, rechaza direcciones no públicas y se conecta a la IP que validó. La URL de Ollama sale de la configuración del servidor y queda fuera de esa regla.
+- La clave propia es un `SecretStr` que solo vive en la selección de la corrida. No entra en el estado del grafo, en los checkpoints, en los eventos ni en los logs, y los errores de validación de una selección nunca contienen los valores enviados.
+- El requerimiento y los artefactos llegan a los modelos como JSON dentro de etiquetas, con `<`, `>` y `&` escapados, para que ningún texto pueda cerrar la etiqueta ni pasar por instrucción.
 
 ## Principios
 
@@ -134,10 +160,13 @@ Eventos SSE: todos llevan `run_id`, `seq` (entero creciente), `ts` y `agent`. El
 | Patrón | Dónde | Por qué |
 | --- | --- | --- |
 | Puertos y adaptadores | API | Proveedores, persistencia y transporte intercambiables y probables sin red |
-| Composition root | `services/api/src/criteria/main.py` | Un solo lugar arma las dependencias |
+| Composition root | `services/api/src/criteria/bootstrap.py` | Un solo lugar arma las dependencias para la CLI y la API |
 | Fábrica de aplicación | `create_app(settings)` | Pruebas con configuración aislada |
 | Capas y slices (FSD) | Web | Las vistas crecen sin mezclar lógica de corrida y presentación |
-| Funciones puras para políticas | `buildContentSecurityPolicy`, `scrub_sensitive_data` | Reglas de seguridad probadas unitariamente |
+| Funciones puras para políticas | `buildContentSecurityPolicy`, `scrub_sensitive_data`, `marcar_origen`, `cambios_historias` | Reglas de seguridad y de dominio probadas unitariamente |
+| Plantilla (template method) | `EventSink.emit` y `deliver` | La numeración de `seq` vive en un solo lugar; cada adaptador solo entrega |
+| Uniones discriminadas | `Evento` por `type`, `Artefactos` por `tipo` | Un solo esquema de eventos para la CLI, SSE y los tipos TypeScript |
+| Modelos simulados | `FunctionModel` de Pydantic AI en las pruebas | El grafo completo se prueba sin red ni modelos reales |
 
 ## Stack
 
@@ -146,9 +175,9 @@ Eventos SSE: todos llevan `run_id`, `seq` (entero creciente), `ts` y `agent`. El
 | Web | Next.js 16 (App Router, Turbopack), React 19, TypeScript 6 estricto, zod 4, CSS Modules, `@sentry/nextjs` |
 | Calidad web | ESLint 9 (`eslint-config-next`, `eslint-plugin-boundaries`), Prettier, Vitest con Testing Library, Playwright con `@axe-core/playwright` |
 | Runtime web | Node.js 26 LTS, pnpm 12 |
-| API | Python 3.13, FastAPI, pydantic-settings, uvicorn, `sentry-sdk` |
+| API | Python 3.13, FastAPI, pydantic-settings, uvicorn, `sentry-sdk`, Pydantic AI 2, LangGraph 1, httpx2 |
 | Calidad API | Ruff (lint y formato), mypy estricto, pytest con pytest-asyncio y cobertura, pip-audit |
 | Entorno API | uv con `.venv` local y `uv.lock` versionado ([ADR 0010](adr/0010-python-environment-uv.md)) |
-| A partir de F2 y F3 | Pydantic AI, LangGraph, Neon Postgres, Alembic, Better Auth |
+| A partir de F3 | Neon Postgres, Alembic, Better Auth |
 | Nube | GCP Cloud Run para la API y Vercel para la web, con despliegue manual ([ADR 0009](adr/0009-cloud-run-and-vercel.md)) |
 | CI | GitHub Actions en cada push a `main`; Dependabot semanal agrupado |
