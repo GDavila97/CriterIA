@@ -1,0 +1,96 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+.yarn/*
+!.yarn/releases
+
+# Builds and caches
+.next/
+out/
+dist/
+build/
+.turbo/
+.vercel/
+.cache/
+*.tsbuildinfo
+next-env.d.ts
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Testing
+coverage/
+playwright-report/
+test-results/
+blob-report/
+
+# Env and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# OS and editors
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# AI tooling and working docs
+CLAUDE.md
+CLAUDE.local.md
+AGENTS.md
+GEMINI.md
+.claude/
+.cursor/
+.windsurf/
+.aider*
+.github/copilot-instructions.md
+.planning/
+
+# Model weights
+*.gguf
+*.onnx
+*.safetensors
+*.bin
+models/
+
+# Heavy media sources
+*.psd
+*.ai
+*.fig
+*.sketch
+raw-media/
+
+# Media is only versioned under docs/media/ and as app assets in apps/web/public/
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.webp
+*.avif
+*.mp4
+*.mov
+*.mkv
+*.webm
+*.mp3
+*.wav
+!docs/media/**
+!apps/web/public/**
