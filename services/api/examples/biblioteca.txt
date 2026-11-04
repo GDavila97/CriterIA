@@ -1,0 +1,1 @@
+La biblioteca municipal quiere que sus socios puedan buscar libros en el catálogo, reservar un ejemplar prestado y recibir un aviso por correo cuando esté disponible para recoger. Cada socio puede tener como máximo tres reservas activas y una reserva vence si no se recoge en dos días hábiles. El personal debe poder ver las reservas pendientes del día.

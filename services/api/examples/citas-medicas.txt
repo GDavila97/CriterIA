@@ -1,0 +1,1 @@
+Una clínica pequeña necesita que los pacientes agenden citas en línea con un médico según su especialidad y los horarios libres de la semana. El paciente puede cancelar o cambiar su cita hasta 24 horas antes. La recepción debe confirmar las citas del día siguiente y el médico debe ver su agenda diaria. No se permiten dos citas del mismo paciente a la misma hora.

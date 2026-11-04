@@ -196,7 +196,8 @@ class TestRetries:
 
     @pytest.mark.parametrize("rol", ["revisor", "evaluador"])
     async def test_reviewer_or_evaluator_failure_ends_the_run(self, rol: str) -> None:
-        harness = Harness(happy_team(**{rol: [TimeoutError()]}))
+        steps: list[Step] = [TimeoutError()]
+        harness = Harness(happy_team(**{rol: steps}))
 
         done = await harness.run()
 

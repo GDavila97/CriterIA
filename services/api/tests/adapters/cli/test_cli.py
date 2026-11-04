@@ -1,0 +1,307 @@
+import io
+import json
+from collections.abc import Callable
+from pathlib import Path
+
+import pytest
+
+from criteria.adapters.agents.factory import AgentFactory
+from criteria.adapters.cli.main import (
+    EXIT_CANCELLED,
+    EXIT_OK,
+    EXIT_RUN_FAILED,
+    EXIT_USAGE,
+    USER_KEY_ENV,
+    Terminal,
+    main,
+)
+from criteria.adapters.cli.output import format_event
+from criteria.adapters.llm.catalog import ModelCatalog
+from criteria.adapters.llm.registry import ProviderRegistry
+from criteria.adapters.memory.checkpointer import MemoryCheckpointer
+from criteria.application.runs import RunService
+from criteria.bootstrap import Container, build_container
+from criteria.config import SERVICE_ROOT, Settings
+from criteria.domain.events import RespaldoActivado, evento_adapter
+from criteria.domain.run_config import ProviderSelection
+from criteria.ports.agents import AgentSet
+from tests import factories as f
+from tests.agent_models import ScriptedTeam, team
+from tests.fakes import FakeClock
+
+EXAMPLES = SERVICE_ROOT / "examples"
+
+
+def happy() -> ScriptedTeam:
+    return team(
+        analista=[f.historias(1)],
+        qa=[f.entrega_qa(1)],
+        revisor=[f.veredicto()],
+        evaluador=[f.evaluacion(5)],
+    )
+
+
+class FakeContainer(Container):
+    def __init__(self, settings: Settings, scripted: ScriptedTeam) -> None:
+        self.checkpointer = MemoryCheckpointer()
+        super().__init__(
+            settings=settings,
+            registry=ProviderRegistry(settings, ModelCatalog.load(settings.models_file)),
+            clock=FakeClock(),
+            service=RunService(self.checkpointer),
+        )
+        self.team = scripted
+        self.selections: list[tuple[ProviderSelection, ProviderSelection]] = []
+
+    def agents(self, generacion: ProviderSelection, juez: ProviderSelection) -> AgentSet:
+        self.selections.append((generacion, juez))
+        binding = self.team.binding()
+        return AgentFactory(self.settings.prompts_dir, "v1", self.clock).build(binding, binding)
+
+
+class Console:
+    def __init__(self, answers: list[str], edit: Callable[[Path], None] | None = None) -> None:
+        self.out = io.StringIO()
+        self.err = io.StringIO()
+        self.answers = answers
+        self.terminal = Terminal(
+            read=lambda _prompt: self.answers.pop(0) if self.answers else "",
+            out=self.out,
+            err=self.err,
+            edit=edit or (lambda _path: None),
+        )
+
+
+@pytest.fixture(autouse=True)
+def local_ollama(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("APP_ENV", "test")
+    monkeypatch.setenv("OLLAMA_BASE_URL", "http://192.168.1.50:11434")
+
+
+def run_cli(
+    argv: list[str], scripted: ScriptedTeam | None = None, console: Console | None = None
+) -> tuple[int, Console, FakeContainer | None]:
+    console = console or Console([])
+    holder: list[FakeContainer] = []
+
+    def factory(settings: Settings) -> Container:
+        holder.append(FakeContainer(settings, scripted or happy()))
+        return holder[0]
+
+    code = main(argv, container_factory=factory, terminal=console.terminal)
+    return code, console, holder[0] if holder else None
+
+
+OLLAMA = ["run", "--provider", "ollama", "--model", "qwen3:8b"]
+
+
+class TestRun:
+    def test_auto_approve_prints_readable_events_and_artifacts(self) -> None:
+        code, console, _ = run_cli([*OLLAMA, "--text", f.REQUERIMIENTO, "--auto-aprobar"])
+
+        output = console.out.getvalue()
+        assert code == EXIT_OK
+        assert output.startswith("[01] sistema   · corrida ")
+        for fragment in (
+            "HU-1 [alta] Como socio",
+            "CP-01 (HU-1, qa)",
+            "Dado un socio",
+            "claridad: 5/5",
+        ):
+            assert fragment in output
+        assert "fin · completada" in output
+
+    def test_json_mode_prints_one_valid_event_per_line(self) -> None:
+        code, console, _ = run_cli([*OLLAMA, "--text", f.REQUERIMIENTO, "--auto-aprobar", "--json"])
+
+        events = [
+            evento_adapter.validate_json(line) for line in console.out.getvalue().splitlines()
+        ]
+        assert code == EXIT_OK
+        assert [e.seq for e in events] == list(range(1, len(events) + 1))
+        assert events[-1].type == "corrida_fin"
+
+    def test_reads_the_requirement_from_a_file(self) -> None:
+        code, _, container = run_cli(
+            [*OLLAMA, "--file", str(EXAMPLES / "biblioteca.txt"), "--auto-aprobar"]
+        )
+
+        assert code == EXIT_OK
+        assert container is not None
+        assert "biblioteca municipal" in container.team.prompts["analista"][0]
+
+    def test_failed_runs_exit_with_status_one(self) -> None:
+        failing = team(analista=[{"historias": []}])
+
+        code, console, _ = run_cli([*OLLAMA, "--text", f.REQUERIMIENTO, "--auto-aprobar"], failing)
+
+        assert code == EXIT_RUN_FAILED
+        assert "error salida_invalida" in console.out.getvalue()
+
+    def test_defaults_come_from_the_environment(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("PROVIDER", "ollama")
+        monkeypatch.setenv("GENERATION_MODEL", "llama3.1:8b")
+        monkeypatch.setenv("JUDGE_MODEL", "qwen3:8b")
+
+        code, _, container = run_cli(["run", "--text", f.REQUERIMIENTO, "--auto-aprobar"])
+
+        assert code == EXIT_OK
+        assert container is not None
+        generacion, juez = container.selections[0]
+        assert (generacion.etiqueta, juez.etiqueta) == ("ollama:llama3.1:8b", "ollama:qwen3:8b")
+
+
+class TestApproval:
+    def test_interactive_approval(self) -> None:
+        console = Console(["a"])
+
+        code, console, _ = run_cli([*OLLAMA, "--text", f.REQUERIMIENTO], console=console)
+
+        assert code == EXIT_OK
+        assert "HU-1 [alta]" in console.err.getvalue()
+        assert "humano_responde" not in console.out.getvalue()
+        assert "aprobado · agregadas -" in console.out.getvalue()
+
+    def test_edit_in_the_editor_sends_the_edited_stories_to_qa(self) -> None:
+        def edit(path: Path) -> None:
+            data = json.loads(path.read_text(encoding="utf-8"))
+            data["historias"][0]["quiero"] = "reservar desde el teléfono"
+            path.write_text(json.dumps(data), encoding="utf-8")
+
+        code, console, container = run_cli(
+            [*OLLAMA, "--text", f.REQUERIMIENTO], console=Console(["e"], edit)
+        )
+
+        assert code == EXIT_OK
+        assert "editado · agregadas - · modificadas ['HU-1']" in console.out.getvalue()
+        assert container is not None
+        assert "reservar desde el teléfono" in container.team.prompts["qa"][0]
+
+    def test_invalid_edits_are_reported_and_asked_again(self) -> None:
+        def break_file(path: Path) -> None:
+            path.write_text('{"historias": []}', encoding="utf-8")
+
+        code, console, _ = run_cli(
+            [*OLLAMA, "--text", f.REQUERIMIENTO], console=Console(["e", "x", "a"], break_file)
+        )
+
+        assert code == EXIT_OK
+        assert "Las historias editadas no son válidas" in console.err.getvalue()
+
+    def test_cancel_discards_the_paused_run(self) -> None:
+        code, console, container = run_cli(
+            [*OLLAMA, "--text", f.REQUERIMIENTO], console=Console(["c"])
+        )
+
+        assert code == EXIT_CANCELLED
+        assert "Corrida cancelada." in console.err.getvalue()
+        assert container is not None
+        assert container.checkpointer.saver().storage == {}  # type: ignore[attr-defined]
+
+
+class TestUsageErrors:
+    @pytest.mark.parametrize(
+        ("argv", "message"),
+        [
+            ([*OLLAMA, "--text", "muy corto"], "entre 20 y 2,000"),
+            (["run", "--text", f.REQUERIMIENTO], "Indica --provider y --model"),
+            (
+                [
+                    "run",
+                    "--provider",
+                    "openai",
+                    "--model",
+                    "gpt-5.4-mini",
+                    "--text",
+                    f.REQUERIMIENTO,
+                ],
+                "not configured",
+            ),
+            ([*OLLAMA[:4], "mistral:7b", "--text", f.REQUERIMIENTO], "not allowed"),
+            ([*OLLAMA, "--text", f.REQUERIMIENTO, "--max-rondas", "9"], "entre 0 y 5"),
+            ([*OLLAMA, "--file", "/no/existe.txt"], "No such file"),
+        ],
+    )
+    def test_usage_errors_exit_with_status_two(self, argv: list[str], message: str) -> None:
+        code, console, _ = run_cli(argv)
+
+        assert code == EXIT_USAGE
+        assert message in console.err.getvalue()
+
+    def test_missing_configuration_is_reported(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.delenv("APP_ENV")
+
+        code, console, _ = run_cli([*OLLAMA, "--text", f.REQUERIMIENTO])
+
+        assert code == EXIT_USAGE
+        assert "APP_ENV" in console.err.getvalue()
+
+
+COMPATIBLE = (
+    "run",
+    "--provider",
+    "openai_compatible",
+    "--model",
+    "any-model",
+    "--text",
+    f.REQUERIMIENTO,
+    "--auto-aprobar",
+)
+
+
+class TestUserKey:
+    def test_user_endpoint_needs_the_key_from_the_environment(self) -> None:
+        code, console, _ = run_cli([*COMPATIBLE, "--base-url", "https://llm.example.com/v1"])
+
+        assert code == EXIT_USAGE
+        assert "needs its own base_url and api_key" in console.err.getvalue()
+
+    def test_rejected_user_endpoint_never_prints_the_key(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        key = "sk-user-3333-terminal"
+        monkeypatch.setenv(USER_KEY_ENV, key)
+
+        code, console, _ = run_cli([*COMPATIBLE, "--base-url", "https://192.168.1.50/v1"])
+
+        assert code == EXIT_USAGE
+        assert "not public" in console.err.getvalue()
+        assert key not in console.err.getvalue() + console.out.getvalue()
+
+    def test_valid_user_endpoint_reaches_the_run(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv(USER_KEY_ENV, "sk-user-4444")
+
+        code, _, container = run_cli([*COMPATIBLE, "--base-url", "https://llm.example.com/v1"])
+
+        assert code == EXIT_OK
+        assert container is not None
+        assert container.selections[0][0].usa_clave_propia
+
+
+def test_formats_fallback_events() -> None:
+    event = RespaldoActivado.model_validate(
+        {
+            "run_id": "0b6f0c1e-3c55-4d7c-9a77-3f1ac2a3f0f1",
+            "seq": 7,
+            "ts": "2026-11-05T12:00:00Z",
+            "agent": "sistema",
+            "proveedor_anterior": "openai",
+            "proveedor_nuevo": "groq",
+            "motivo": "Tope diario alcanzado",
+        }
+    )
+
+    assert format_event(event) == "[07] sistema   · respaldo openai → groq"
+
+
+def test_real_container_builds_agents_from_the_catalog(monkeypatch: pytest.MonkeyPatch) -> None:
+    settings = Settings.model_validate(
+        {"app_env": "test", "ollama_base_url": "http://localhost:11434"}
+    )
+    container = build_container(settings)
+    selection = ProviderSelection(proveedor="ollama", modelo="qwen3:8b")
+
+    agents = container.agents(selection, selection)
+
+    assert agents.analista.modelo == agents.evaluador.modelo == "ollama:qwen3:8b"
+    assert agents.version_prompts == "v1"

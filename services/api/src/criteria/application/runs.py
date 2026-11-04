@@ -78,6 +78,9 @@ class RunService:
         command: Command[Any] = Command(resume=respuesta.model_dump(mode="json"))
         return await self._advance(events.run_id, command, agents, events)
 
+    async def descartar(self, run_id: UUID) -> None:
+        await self._checkpointer.discard(run_id)
+
     async def _advance(
         self, run_id: UUID, payload: Any, agents: AgentSet, events: EventSink
     ) -> RunOutcome:
