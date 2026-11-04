@@ -120,7 +120,8 @@ jobs:
       - name: Smoke test the container
         run: |
           docker run -d --name api -e APP_ENV=test -e PORT=9000 -p 9000:9000 criteria-api:ci
-          curl --fail --silent --show-error --retry 10 --retry-connrefused --retry-delay 1 http://127.0.0.1:9000/healthz
+          # Docker's port proxy accepts connections before uvicorn listens and answers them empty.
+          curl --fail --silent --show-error --retry 10 --retry-all-errors --retry-delay 1 http://127.0.0.1:9000/healthz
           test "$(docker exec api id -u)" != "0"
 
   secrets:
