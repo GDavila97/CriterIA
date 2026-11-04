@@ -66,7 +66,7 @@ Detalle en [docs/architecture.md](docs/architecture.md) y decisiones en [docs/ad
 ### Requisitos
 
 - Node.js 26 LTS (fijado en `apps/web/.nvmrc`) y pnpm 12 (lo selecciona Corepack o pnpm a partir de `packageManager`).
-- [uv](https://docs.astral.sh/uv/) 0.13 o posterior; uv instala Python 3.13 según `services/api/.python-version`.
+- [uv](https://docs.astral.sh/uv/) 0.13.5 exactamente: `services/api/pyproject.toml` lo exige en `[tool.uv] required-version` y uv se niega a correr con otra versión. uv instala Python 3.13 según `services/api/.python-version`.
 - Docker, opcional, para construir la imagen de la API.
 
 ### API
