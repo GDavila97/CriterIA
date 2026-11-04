@@ -159,13 +159,15 @@ class TestCatalog:
         with pytest.raises(ValidationError, match="both prices"):
             CatalogEntry(provider="openai", name="m", input_usd_per_million=1.0)
 
-    def test_shipped_catalog_loads_and_has_no_invented_prices(self) -> None:
+    def test_shipped_catalog_carries_the_verified_prices(self) -> None:
         catalog = ModelCatalog.load(SERVICE_ROOT / "config" / "models.toml")
 
         assert catalog.allowed_models("ollama") == ["qwen3:8b", "llama3.1:8b"]
-        for entry in catalog.models:
-            if entry.provider != "ollama":
-                assert entry.input_usd_per_million is None
+        assert catalog.cost_usd("openai", "gpt-5.4-mini", 1_000_000, 1_000_000) == 5.25
+        assert catalog.cost_usd("anthropic", "claude-haiku-5-5", 1_000_000, 1_000_000) == 0.6
+        for free in ("groq", "ollama"):
+            for name in catalog.allowed_models(free):
+                assert catalog.cost_usd(free, name, 1_000_000, 1_000_000) == 0.0
 
     def test_load_reads_toml(self, tmp_path: Path) -> None:
         path = tmp_path / "models.toml"

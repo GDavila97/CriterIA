@@ -33,12 +33,13 @@ from criteria.domain.events import (
     EnEsperaHumano,
     EventoBase,
     HumanoResponde,
+    ProveedorId,
     RevisorObserva,
 )
 from criteria.domain.run_config import parse_selection
 from criteria.ports.agents import AgentSet
 from tests import factories as f
-from tests.agent_models import ScriptedTeam, Step, team
+from tests.agent_models import ScriptedTeam, Step, make_binding, team
 from tests.fakes import FakeClock
 
 PROMPTS = SERVICE_ROOT / "prompts"
@@ -167,6 +168,52 @@ class TestHappyPath:
         await harness.run()
 
         assert harness.checkpointer.saver().storage == {}  # type: ignore[attr-defined]
+
+
+class TestCost:
+    async def test_run_cost_uses_the_catalog_prices_of_each_model(self) -> None:
+        catalog = ModelCatalog.load(SERVICE_ROOT / "config" / "models.toml")
+        scripted = happy_team()
+
+        def priced(provider: ProveedorId, name: str) -> ModelBinding:
+            base = make_binding(scripted, f"{provider}:{name}")
+            return ModelBinding(
+                model=base.model,
+                label=base.label,
+                settings=base.settings,
+                cost_usd=lambda i, o: catalog.cost_usd(provider, name, i, o),
+            )
+
+        agents = AgentFactory(PROMPTS, "v1", FakeClock()).build(
+            priced("openai", "gpt-5.4-mini"), priced("anthropic", "claude-haiku-5-5")
+        )
+        events = ListEventSink(uuid4(), FakeClock())
+        service = RunService(MemoryCheckpointer())
+        await service.iniciar(
+            requerimiento=Requerimiento(texto=f.REQUERIMIENTO),
+            agents=agents,
+            events=events,
+            proveedor="openai",
+            max_rondas=2,
+        )
+        await service.reanudar(respuesta=APPROVE, agents=agents, events=events)
+
+        deliveries = [e for e in events.events if isinstance(e, AgenteEntrega)]
+        expected = 0.0
+        for delivery in deliveries:
+            input_price, output_price = (
+                (0.10, 0.50) if delivery.agent == "evaluador" else (0.75, 4.50)
+            )
+            uso = delivery.uso
+            expected_call = (
+                uso.tokens_entrada * input_price + uso.tokens_salida * output_price
+            ) / 1e6
+            assert uso.costo_usd == pytest.approx(expected_call, abs=1e-6)
+            expected += expected_call
+        fin = next(e for e in events.events if isinstance(e, CorridaFin))
+        assert fin.totales.costo_usd is not None
+        assert fin.totales.costo_usd == pytest.approx(expected, abs=1e-6)
+        assert fin.totales.costo_usd > 0
 
 
 class TestRetries:

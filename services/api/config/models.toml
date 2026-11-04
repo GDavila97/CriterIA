@@ -1,22 +1,32 @@
 # Models each provider may run, with prices in USD per million tokens.
-# Prices are filled in by hand from each provider's current price list. A model without both
-# prices reports its cost as null. openai_compatible accepts any model name the user brings.
+# Prices are copied by hand from each provider's price list (verified 2026-11-04). A model without
+# both prices reports its cost as null. openai_compatible accepts any model name the user brings.
 
 [[models]]
 provider = "openai"
 name = "gpt-5.4-mini"
+input_usd_per_million = 0.75
+output_usd_per_million = 4.50
 
+# Rate for prompts up to 100,000 tokens; CriterIA prompts stay far below that.
 [[models]]
 provider = "anthropic"
 name = "claude-haiku-5-5"
+input_usd_per_million = 0.10
+output_usd_per_million = 0.50
 
+# Groq runs on the free plan.
 [[models]]
 provider = "groq"
 name = "openai/gpt-oss-20b"
+input_usd_per_million = 0.0
+output_usd_per_million = 0.0
 
 [[models]]
 provider = "groq"
 name = "llama-3.3-70b-versatile"
+input_usd_per_million = 0.0
+output_usd_per_million = 0.0
 
 # Local models have no API charge.
 [[models]]

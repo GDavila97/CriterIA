@@ -56,4 +56,5 @@ class ModelCatalog(BaseModel):
         cost = (
             tokens_in * entry.input_usd_per_million + tokens_out * entry.output_usd_per_million
         ) / 1_000_000
-        return round(cost, 6)
+        # Nanodollar precision per call; the run total is rounded once, so errors do not add up.
+        return round(cost, 9)
