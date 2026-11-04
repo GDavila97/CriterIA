@@ -7,6 +7,12 @@ updates:
     groups:
       web:
         patterns: ['*']
+    # Majors blocked until typescript-eslint supports TypeScript 7 and the Next.js ESLint plugins support ESLint 10.
+    ignore:
+      - dependency-name: eslint
+        update-types: ['version-update:semver-major']
+      - dependency-name: typescript
+        update-types: ['version-update:semver-major']
 
   - package-ecosystem: uv
     directory: /services/api
