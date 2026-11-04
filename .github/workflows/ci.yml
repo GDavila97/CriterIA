@@ -12,6 +12,24 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  workflows:
+    name: Workflow lint
+    runs-on: ubuntu-24.04
+    env:
+      ACTIONLINT_VERSION: 1.7.12
+      ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install actionlint
+        run: |
+          archive="actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          curl --fail --silent --show-error --location --output "$RUNNER_TEMP/$archive" \
+            "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/${archive}"
+          echo "${ACTIONLINT_SHA256}  $RUNNER_TEMP/$archive" | sha256sum --check --strict
+          tar -xzf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP" actionlint
+      - name: Actionlint
+        run: '"$RUNNER_TEMP/actionlint" -color'
+
   api:
     name: API
     runs-on: ubuntu-24.04
@@ -37,7 +55,8 @@ jobs:
       DATABASE_URL: postgresql://criteria:criteria@localhost:5432/criteria_test
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10
+      # setup-uv publishes only full version tags since v8, so there is no moving major tag.
+      - uses: astral-sh/setup-uv@v10.3.3
         with:
           version-file: services/api/pyproject.toml
           enable-cache: true
