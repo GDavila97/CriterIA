@@ -74,7 +74,7 @@ def _resumen(event: EventoBase) -> tuple[str, list[str]]:  # noqa: PLR0911
             return (
                 f"corrida {event.run_id} · {event.proveedor}"
                 f" · generación {event.modelos.generacion} · juez {event.modelos.juez}"
-                f" · prompts {event.version_prompts}"
+                f" · prompts {event.version_prompts} · juez {event.version_juez}"
                 f" · rondas {event.max_rondas}",
                 [],
             )

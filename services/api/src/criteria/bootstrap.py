@@ -32,7 +32,10 @@ class Container:
         )
 
     def agents(self, generacion: ProviderSelection, juez: ProviderSelection) -> AgentSet:
-        factory = AgentFactory(self.settings.prompts_dir, self.settings.prompt_version, self.clock)
+        settings = self.settings
+        factory = AgentFactory(
+            settings.prompts_dir, settings.prompt_version, settings.judge_version, self.clock
+        )
         return factory.build(self.binding(generacion), self.binding(juez))
 
 

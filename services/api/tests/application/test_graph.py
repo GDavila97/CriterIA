@@ -47,7 +47,7 @@ APPROVE = RespuestaHumana(decision="aprobado")
 
 
 def agent_set(binding: ModelBinding) -> AgentSet:
-    return AgentFactory(PROMPTS, "v1", FakeClock()).build(binding, binding)
+    return AgentFactory(PROMPTS, "v1", "v1", FakeClock()).build(binding, binding)
 
 
 class Harness:
@@ -145,7 +145,7 @@ class TestHappyPath:
         start = harness.of(CorridaInicia)[0]
         assert start.proveedor == "ollama"
         assert start.modelos.generacion == start.modelos.juez == "test:team"
-        assert start.version_prompts == "v1"
+        assert (start.version_prompts, start.version_juez) == ("v1", "v1")
         assert start.max_rondas == 1
         assert not start.experimental
 
@@ -184,7 +184,7 @@ class TestCost:
                 cost_usd=lambda i, o: catalog.cost_usd(provider, name, i, o),
             )
 
-        agents = AgentFactory(PROMPTS, "v1", FakeClock()).build(
+        agents = AgentFactory(PROMPTS, "v1", "v1", FakeClock()).build(
             priced("openai", "gpt-5.4-mini"), priced("anthropic", "claude-haiku-5-5")
         )
         events = ListEventSink(uuid4(), FakeClock())

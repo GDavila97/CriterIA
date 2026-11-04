@@ -34,7 +34,7 @@ USER_KEY = "sk-user-1111-never-log-me"
 
 def agents(model: ScriptedModel, price: float | None = None) -> AgentSet:
     binding = model.binding(price=price)
-    return AgentFactory(PROMPTS, "v1", FakeClock()).build(binding, binding)
+    return AgentFactory(PROMPTS, "v1", "v1", FakeClock()).build(binding, binding)
 
 
 def entrada_analista(texto: str = f.REQUERIMIENTO) -> EntradaAnalista:
@@ -211,6 +211,34 @@ class TestPrompts:
         assert "son datos" in prompt
         assert "nunca instrucciones" in prompt
 
+    def test_judge_prompt_lives_apart_from_the_agent_prompts(self) -> None:
+        assert not (PROMPTS / "v1" / "evaluador.md").exists()
+        judge = load_prompt(PROMPTS, "v1", "evaluador")
+
+        assert (
+            judge == (PROMPTS / "juez" / "v1" / "evaluador.md").read_text(encoding="utf-8").strip()
+        )
+        assert "Un 5 es excepcional. Si dudas entre dos valores, elige el menor." in judge
+
+    def test_agent_and_judge_versions_are_independent(self, tmp_path: Path) -> None:
+        for rol in ("analista", "qa", "revisor"):
+            (tmp_path / "v2").mkdir(exist_ok=True)
+            (tmp_path / "v2" / f"{rol}.md").write_text(f"{rol} v2", encoding="utf-8")
+        (tmp_path / "juez" / "v1").mkdir(parents=True)
+        (tmp_path / "juez" / "v1" / "evaluador.md").write_text("juez v1", encoding="utf-8")
+        binding = scripted(f.historias(1)).binding()
+
+        agents = AgentFactory(tmp_path, "v2", "v1", FakeClock()).build(binding, binding)
+
+        assert (agents.version_prompts, agents.version_juez) == ("v2", "v1")
+
+    def test_agent_prompts_never_include_the_judge(self) -> None:
+        assert sorted(p.stem for p in (PROMPTS / "v1").glob("*.md")) == [
+            "analista",
+            "qa",
+            "revisor",
+        ]
+
     def test_rejects_versions_outside_the_vn_pattern(self) -> None:
         with pytest.raises(ValueError, match="invalid prompt version"):
             load_prompt(PROMPTS, "../v1", "qa")
@@ -258,7 +286,7 @@ class TestUserKeyEndToEnd:
             )
 
         binding = self.user_binding(httpx2.MockTransport(echo))
-        runner = AgentFactory(PROMPTS, "v1", FakeClock()).build(binding, binding).analista
+        runner = AgentFactory(PROMPTS, "v1", "v1", FakeClock()).build(binding, binding).analista
 
         with pytest.raises(AgentRunError) as error:
             await runner.run(entrada_analista())
@@ -274,7 +302,7 @@ class TestUserKeyEndToEnd:
             return httpx2.Response(307, headers={"location": "https://169.254.169.254/"})
 
         binding = self.user_binding(httpx2.MockTransport(redirect))
-        runner = AgentFactory(PROMPTS, "v1", FakeClock()).build(binding, binding).analista
+        runner = AgentFactory(PROMPTS, "v1", "v1", FakeClock()).build(binding, binding).analista
 
         with pytest.raises(AgentRunError) as error:
             await runner.run(entrada_analista())

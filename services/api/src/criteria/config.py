@@ -42,6 +42,7 @@ class Settings(BaseSettings):
     provider_max_response_bytes: int = Field(default=1_048_576, ge=1024, le=16_777_216)
 
     prompt_version: Annotated[str, StringConstraints(pattern=r"^v\d+$")] = "v1"
+    judge_version: Annotated[str, StringConstraints(pattern=r"^v\d+$")] = "v1"
     max_review_rounds: int = Field(default=2, ge=0, le=5)
     prompts_dir: Path = SERVICE_ROOT / "prompts"
     models_file: Path = SERVICE_ROOT / "config" / "models.toml"

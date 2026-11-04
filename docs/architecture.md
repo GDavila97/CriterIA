@@ -75,7 +75,8 @@ services/api/
     config.py      validación de variables al arrancar (pydantic-settings)
     observability.py  Sentry, activo solo con DSN y con filtro de cabeceras sensibles
     main.py        app FastAPI (en F2, solo `GET /healthz`)
-  prompts/v1/      prompts de sistema versionados, uno por agente
+  prompts/v1/      prompts de sistema de Analista, QA y Revisor
+  prompts/juez/v1/ prompt del Evaluador, con versión propia y congelado (ADR 0015)
   config/models.toml  modelos permitidos por proveedor y precios
   examples/        requerimientos de ejemplo para la CLI
 ```

@@ -1,6 +1,6 @@
 # 0004. Agentes con Pydantic AI
 
-**Estado:** aceptada.
+**Estado:** aceptada; ajustada por la [0015](0015-frozen-judge-prompt.md) (prompt del juez con versión propia).
 
 **Contexto:** las salidas de los agentes deben ser estructuradas y validadas, el proveedor debe cambiarse por configuración (incluido Ollama) y las pruebas no deben llamar a modelos reales.
 

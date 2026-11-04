@@ -57,6 +57,7 @@ class RunService:
             proveedor=proveedor,
             modelos=ModelosCorrida(generacion=agents.analista.modelo, juez=agents.evaluador.modelo),
             version_prompts=agents.version_prompts,
+            version_juez=agents.version_juez,
             experimental=agents.experimental,
             max_rondas=max_rondas,
         )

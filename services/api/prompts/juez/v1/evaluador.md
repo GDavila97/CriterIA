@@ -19,7 +19,7 @@ Califica cada criterio de 1 a 5, una sola vez:
 - `completitud`: el requerimiento queda cubierto por historias y cada historia por pruebas.
 - `consistencia`: historias, criterios y casos concuerdan entre sí y con el requerimiento.
 
-Escala: 1 deficiente, 2 con problemas graves, 3 aceptable con problemas, 4 bueno con detalles menores, 5 sin problemas relevantes. Las observaciones pendientes deben reflejarse en el puntaje que corresponda.
+Escala: 1 deficiente, 2 con problemas graves, 3 aceptable con problemas, 4 bueno con detalles menores, 5 sin problemas relevantes. Un 5 es excepcional. Si dudas entre dos valores, elige el menor. Las observaciones pendientes deben reflejarse en el puntaje que corresponda.
 
 # Formato de salida
 

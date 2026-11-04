@@ -56,7 +56,9 @@ class FakeContainer(Container):
     def agents(self, generacion: ProviderSelection, juez: ProviderSelection) -> AgentSet:
         self.selections.append((generacion, juez))
         binding = self.team.binding()
-        return AgentFactory(self.settings.prompts_dir, "v1", self.clock).build(binding, binding)
+        return AgentFactory(self.settings.prompts_dir, "v1", "v1", self.clock).build(
+            binding, binding
+        )
 
 
 class Console:
@@ -102,6 +104,7 @@ class TestRun:
         output = console.out.getvalue()
         assert code == EXIT_OK
         assert output.startswith("[01] sistema   · corrida ")
+        assert "· prompts v1 · juez v1 ·" in output
         for fragment in (
             "HU-1 [alta] Como socio",
             "CP-01 (HU-1, qa)",
@@ -304,4 +307,4 @@ def test_real_container_builds_agents_from_the_catalog(monkeypatch: pytest.Monke
     agents = container.agents(selection, selection)
 
     assert agents.analista.modelo == agents.evaluador.modelo == "ollama:qwen3:8b"
-    assert agents.version_prompts == "v1"
+    assert (agents.version_prompts, agents.version_juez) == ("v1", "v1")

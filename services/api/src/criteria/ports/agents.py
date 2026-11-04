@@ -71,4 +71,5 @@ class AgentSet:
     revisor: AgentRunner[EntradaRevisor, VeredictoRevisor]
     evaluador: AgentRunner[EntradaEvaluador, Evaluacion]
     version_prompts: str
+    version_juez: str
     experimental: bool = field(default=False)

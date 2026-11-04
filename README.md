@@ -55,7 +55,7 @@ Detalle en [docs/architecture.md](docs/architecture.md) y decisiones en [docs/ad
 │   └── src/             app, pages, widgets, features, entities, shared
 ├── services/api/        API en Python (hexagonal)
 │   ├── src/criteria/    domain, application, ports, adapters, config
-│   ├── prompts/v1/      prompts de sistema de los cuatro agentes
+│   ├── prompts/         prompts de sistema: v1/ para los agentes y juez/v1/ para el Evaluador
 │   ├── config/          modelos permitidos y precios
 │   ├── examples/        requerimientos de ejemplo para la CLI
 │   ├── tests/
@@ -186,7 +186,8 @@ Las listas completas, con la fase en que se usa cada variable, están en [servic
 | `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GROQ_API_KEY` | API | No | Claves del servidor; cada proveedor se ofrece solo si tiene la suya |
 | `OLLAMA_BASE_URL` | API | No | URL de Ollama; sin ella, el proveedor `ollama` no se ofrece |
 | `PROVIDER_TIMEOUT_SECONDS`, `PROVIDER_MAX_RESPONSE_BYTES` | API | No | Tiempo límite y tamaño máximo de respuesta del proveedor |
-| `PROMPT_VERSION`, `MAX_REVIEW_ROUNDS` | API | No | Versión de prompts (`v1`) y rondas de corrección (2) |
+| `PROMPT_VERSION`, `JUDGE_VERSION` | API | No | Versión de los prompts de los agentes y, por separado, la del juez (`v1`); el juez no cambia al comparar versiones de los agentes |
+| `MAX_REVIEW_ROUNDS` | API | No | Rondas de corrección del Revisor (2) |
 | `PROMPTS_DIR`, `MODELS_FILE` | API | No | Rutas de los prompts y del catálogo; la imagen Docker las fija |
 | `CRITERIA_USER_API_KEY` | CLI | No | Clave propia para `openai_compatible`; se exporta en la sesión, no va en `.env` |
 | `NEXT_PUBLIC_APP_ENV` | Web | Sí | Entorno de la web |

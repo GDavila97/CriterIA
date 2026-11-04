@@ -83,9 +83,10 @@ def _check_revisor(
 
 
 class AgentFactory:
-    def __init__(self, prompts_dir: Path, version: str, clock: Clock) -> None:
+    def __init__(self, prompts_dir: Path, version: str, judge_version: str, clock: Clock) -> None:
         self._prompts_dir = prompts_dir
         self._version = version
+        self._judge_version = judge_version
         self._clock = clock
 
     def build(
@@ -96,23 +97,28 @@ class AgentFactory:
         qa.output_validator(_check_qa)
         revisor = self._agent("revisor", EntradaRevisor, VeredictoRevisor)
         revisor.output_validator(_check_revisor)
-        evaluador = self._agent("evaluador", EntradaEvaluador, Evaluacion)
+        evaluador = self._agent("evaluador", EntradaEvaluador, Evaluacion, self._judge_version)
         return AgentSet(
             analista=self._runner("analista", analista, generacion, render_analista),
             qa=self._runner("qa", qa, generacion, render_qa),
             revisor=self._runner("revisor", revisor, generacion, render_revisor),
             evaluador=self._runner("evaluador", evaluador, juez, render_evaluador),
             version_prompts=self._version,
+            version_juez=self._judge_version,
             experimental=experimental,
         )
 
     def _agent[Entrada, Salida](
-        self, rol: RolAgente, deps: type[Entrada], output: type[Salida]
+        self,
+        rol: RolAgente,
+        deps: type[Entrada],
+        output: type[Salida],
+        version: str | None = None,
     ) -> Agent[Entrada, Salida]:
         return Agent(
             output_type=output,
             deps_type=deps,
-            instructions=load_prompt(self._prompts_dir, self._version, rol),
+            instructions=load_prompt(self._prompts_dir, version or self._version, rol),
             retries={"output": OUTPUT_RETRIES, "tools": 0},
             name=rol,
             defer_model_check=True,
