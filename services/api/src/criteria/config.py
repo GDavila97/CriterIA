@@ -1,7 +1,13 @@
-from typing import Literal
+from pathlib import Path
+from typing import Annotated, Literal
 
-from pydantic import Field, HttpUrl, ValidationError
+from pydantic import Field, HttpUrl, SecretStr, StringConstraints, ValidationError
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from criteria.domain.events import ProveedorId
+
+# Source-tree location; the Docker image overrides both paths through the environment.
+SERVICE_ROOT = Path(__file__).resolve().parents[2]
 
 
 class ConfigError(RuntimeError):
@@ -12,6 +18,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
+        env_ignore_empty=True,
         extra="ignore",
         frozen=True,
     )
@@ -22,6 +29,22 @@ class Settings(BaseSettings):
     log_level: Literal["debug", "info", "warning", "error"] = "info"
     sentry_dsn: HttpUrl | None = None
     sentry_traces_sample_rate: float = Field(default=0.0, ge=0.0, le=1.0)
+
+    provider: ProveedorId | None = None
+    generation_model: str | None = None
+    judge_provider: ProveedorId | None = None
+    judge_model: str | None = None
+    openai_api_key: SecretStr | None = None
+    anthropic_api_key: SecretStr | None = None
+    groq_api_key: SecretStr | None = None
+    ollama_base_url: HttpUrl | None = None
+    provider_timeout_seconds: float = Field(default=60.0, gt=0, le=600)
+    provider_max_response_bytes: int = Field(default=1_048_576, ge=1024, le=16_777_216)
+
+    prompt_version: Annotated[str, StringConstraints(pattern=r"^v\d+$")] = "v1"
+    max_review_rounds: int = Field(default=2, ge=0, le=5)
+    prompts_dir: Path = SERVICE_ROOT / "prompts"
+    models_file: Path = SERVICE_ROOT / "config" / "models.toml"
 
 
 def load_settings() -> Settings:

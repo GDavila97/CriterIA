@@ -230,8 +230,8 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "fastapi" },
-    { name = "httpcore" },
-    { name = "httpx" },
+    { name = "httpcore2" },
+    { name = "httpx2" },
     { name = "langgraph" },
     { name = "pydantic-ai-slim", extra = ["anthropic", "groq", "openai"] },
     { name = "pydantic-settings" },
@@ -241,6 +241,7 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "httpx" },
     { name = "mypy" },
     { name = "pip-audit" },
     { name = "pytest" },
@@ -252,8 +253,8 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "fastapi", specifier = ">=0.162.0" },
-    { name = "httpcore", specifier = ">=1.0.9" },
-    { name = "httpx", specifier = ">=0.28.1" },
+    { name = "httpcore2", specifier = ">=2.16.0" },
+    { name = "httpx2", specifier = ">=2.16.0" },
     { name = "langgraph", specifier = ">=1.2.19" },
     { name = "pydantic-ai-slim", extras = ["anthropic", "groq", "openai"], specifier = ">=2.66.0" },
     { name = "pydantic-settings", specifier = ">=2.16.2" },
@@ -263,6 +264,7 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "httpx", specifier = ">=0.28.1" },
     { name = "mypy", specifier = ">=2.4.1" },
     { name = "pip-audit", specifier = ">=2.10.1" },
     { name = "pytest", specifier = ">=9.2.0" },

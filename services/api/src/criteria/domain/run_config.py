@@ -1,3 +1,4 @@
+from collections.abc import Mapping
 from typing import Annotated, Self
 
 from pydantic import (
@@ -7,6 +8,7 @@ from pydantic import (
     HttpUrl,
     SecretStr,
     StringConstraints,
+    ValidationError,
     model_validator,
 )
 
@@ -31,8 +33,8 @@ class ProviderSelection(BaseModel):
         if self.proveedor == "openai_compatible":
             if self.base_url is None or self.api_key is None:
                 raise ValueError("openai_compatible needs its own base_url and api_key")
-        elif self.base_url is not None:
-            raise ValueError("only openai_compatible accepts a custom base_url")
+        elif self.base_url is not None or self.api_key is not None:
+            raise ValueError("only openai_compatible accepts a user base_url and api_key")
         return self
 
     @property
@@ -42,3 +44,20 @@ class ProviderSelection(BaseModel):
     @property
     def usa_clave_propia(self) -> bool:
         return self.api_key is not None
+
+
+class SelectionError(ValueError):
+    pass
+
+
+def parse_selection(data: Mapping[str, object]) -> ProviderSelection:
+    """Entry point for user-supplied selections; the error never holds the submitted values."""
+    try:
+        return ProviderSelection.model_validate(data)
+    except ValidationError as error:
+        problems = "; ".join(
+            f"{'.'.join(str(part) for part in issue['loc']) or 'selection'}: {issue['msg']}"
+            for issue in error.errors(include_input=False, include_context=False, include_url=False)
+        )
+    # Raised outside the except block so the original ValidationError is not kept as __context__.
+    raise SelectionError(problems)

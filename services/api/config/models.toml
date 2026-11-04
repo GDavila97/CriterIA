@@ -1,0 +1,33 @@
+# Models each provider may run, with prices in USD per million tokens.
+# Prices are filled in by hand from each provider's current price list. A model without both
+# prices reports its cost as null. openai_compatible accepts any model name the user brings.
+
+[[models]]
+provider = "openai"
+name = "gpt-5.4-mini"
+
+[[models]]
+provider = "anthropic"
+name = "claude-haiku-5-5"
+
+[[models]]
+provider = "groq"
+name = "openai/gpt-oss-20b"
+
+[[models]]
+provider = "groq"
+name = "llama-3.3-70b-versatile"
+
+# Local models have no API charge.
+[[models]]
+provider = "ollama"
+name = "qwen3:8b"
+thinking = false
+input_usd_per_million = 0.0
+output_usd_per_million = 0.0
+
+[[models]]
+provider = "ollama"
+name = "llama3.1:8b"
+input_usd_per_million = 0.0
+output_usd_per_million = 0.0
