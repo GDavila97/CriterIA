@@ -32,7 +32,7 @@ dev = [
 
 [tool.uv]
 # Keep in sync with the ghcr.io/astral-sh/uv image tag in the Dockerfile.
-required-version = "==0.13.5"
+required-version = "==0.13.7"
 
 [tool.ruff]
 line-length = 100

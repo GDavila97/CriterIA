@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # Must match [tool.uv] required-version in pyproject.toml; uv sync refuses to run otherwise.
-FROM ghcr.io/astral-sh/uv:0.13.5 AS uv
+FROM ghcr.io/astral-sh/uv:0.13.7 AS uv
 
 FROM python:3.13-slim-trixie AS builder
 COPY --from=uv /uv /usr/local/bin/uv
