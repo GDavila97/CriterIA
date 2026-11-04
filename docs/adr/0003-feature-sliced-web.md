@@ -1,6 +1,6 @@
 # 0003. Web con Feature-Sliced Design
 
-**Estado:** aceptada.
+**Estado:** aceptada; ajustada por la [0013](0013-nextjs-routes-outside-src.md) (rutas de Next.js fuera de `src/`).
 
 **Contexto:** la web tiene dos presentaciones del mismo estado (vista clásica y oficina), auth, historial y tablero.
 
