@@ -8,8 +8,9 @@
 
 - `apps/web/proxy.ts` genera un nonce por petición y envía la CSP en la petición (para que Next.js la lea) y en la respuesta. La política se construye con una función pura (`src/shared/lib/security/csp.ts`) con pruebas unitarias.
 - Directivas: `default-src 'self'`; `script-src 'self' 'nonce-…' 'strict-dynamic'`; `style-src 'self' 'nonce-…'`; `img-src 'self' blob: data:`; `font-src 'self'`; `connect-src 'self'` más el origen de la API y el de ingesta de Sentry, tomados de las variables de entorno validadas; `object-src 'none'`; `base-uri 'self'`; `form-action 'self'`; `frame-ancestors 'none'`; `upgrade-insecure-requests` solo con `NEXT_PUBLIC_APP_ENV=production`.
-- `'unsafe-eval'` se agrega solo con `next dev`, porque React lo usa en desarrollo para reconstruir pilas de error del servidor. En producción no hay `'unsafe-inline'` ni `'unsafe-eval'`.
-- Los estilos no necesitaron `'unsafe-inline'`: Next.js y `next/font` funcionan con el nonce. Por lo mismo, la UI no usa el atributo `style` en línea; los estilos van en CSS Modules.
+- `'unsafe-eval'` se agrega solo con `next dev`, porque React lo usa en desarrollo para reconstruir pilas de error del servidor. En producción no hay `'unsafe-inline'` ni `'unsafe-eval'` en ninguna directiva.
+- En producción los estilos no necesitan `'unsafe-inline'`: Next.js y `next/font` funcionan con el nonce. La UI no usa el atributo `style` en línea; los estilos van en CSS Modules.
+- Excepción documentada, solo con `next dev`: las herramientas de desarrollo de Next.js inyectan elementos `<style>` sin nonce. Como los navegadores ignoran `'unsafe-inline'` cuando hay un nonce en la misma directiva, en desarrollo `style-src` queda en `'self' 'unsafe-inline'` sin nonce. Esto no llega a ningún build de producción, y las pruebas e2e corren contra `next start`.
 - Zod 4 comprueba si puede usar `new Function()` para compilar validadores; en el navegador eso dispara una violación de `script-src`. Se activa `z.config({ jitless: true })` en el esquema de entorno.
 - El layout raíz llama a `connection()` para que todas las páginas se rendericen por petición.
 - Las cabeceras fijas (`X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`, `X-Frame-Options`, `Cross-Origin-Opener-Policy`, `Strict-Transport-Security`) se declaran en `next.config.ts`.

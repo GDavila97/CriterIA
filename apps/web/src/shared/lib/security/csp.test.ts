@@ -23,10 +23,12 @@ describe('buildContentSecurityPolicy', () => {
     expect(policy).not.toContain('unsafe-eval');
   });
 
-  it('adds unsafe-eval to scripts only in development', () => {
+  it('relaxes scripts with eval and styles with inline only in development', () => {
     const policy = buildContentSecurityPolicy({ ...base, isDevelopment: true });
 
     expect(directive(policy, 'script-src')).toContain("'unsafe-eval'");
+    expect(directive(policy, 'script-src')).not.toContain('unsafe-inline');
+    expect(directive(policy, 'style-src')).toBe("style-src 'self' 'unsafe-inline'");
   });
 
   it('limits connections to self, the API origin and the Sentry ingest origin', () => {

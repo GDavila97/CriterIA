@@ -21,11 +21,13 @@ export function buildContentSecurityPolicy(options: CspOptions): string {
   if (options.isDevelopment) {
     scriptSources.push("'unsafe-eval'");
   }
+  // The dev overlay injects styles without a nonce, and browsers ignore 'unsafe-inline' next to one.
+  const styleSources = options.isDevelopment ? "'self' 'unsafe-inline'" : `'self' ${nonce}`;
 
   const directives = [
     "default-src 'self'",
     `script-src ${scriptSources.join(' ')}`,
-    `style-src 'self' ${nonce}`,
+    `style-src ${styleSources}`,
     "img-src 'self' blob: data:",
     "font-src 'self'",
     `connect-src ${connectSources.join(' ')}`,
