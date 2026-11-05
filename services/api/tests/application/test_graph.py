@@ -6,6 +6,7 @@ from uuid import uuid4
 import httpx2
 import pytest
 from pydantic import ValidationError
+from pydantic_ai import ModelHTTPError
 
 from criteria.adapters.agents.factory import AgentFactory
 from criteria.adapters.agents.runner import ModelBinding
@@ -411,6 +412,37 @@ class TestReviewRounds:
             "CP-02": "qa",
             "CP-03": "revisor",
         }
+
+
+class TestUserKeyStaysOutForEveryProvider:
+    @pytest.mark.parametrize("provider", ["openai", "anthropic", "groq", "openai_compatible"])
+    async def test_provider_errors_echoing_the_key_never_reach_events_or_checkpoints(
+        self, provider: str
+    ) -> None:
+        key = f"sk-{provider}-5555-secret"
+        data: dict[str, object] = {"proveedor": provider, "modelo": "m-1", "api_key": key}
+        if provider == "openai_compatible":
+            data["base_url"] = "https://llm.example.com/v1"
+        selection = parse_selection(data)
+        echo = ModelHTTPError(401, selection.etiqueta, body={"error": f"bad key {key}"})
+        scripted = happy_team(analista=[echo])
+        checkpointer = MemoryCheckpointer()
+        events = ListEventSink(uuid4(), FakeClock())
+
+        done = await RunService(checkpointer).iniciar(
+            requerimiento=Requerimiento(texto=f.REQUERIMIENTO),
+            agents=agent_set(make_binding(scripted, selection.etiqueta)),
+            events=events,
+            proveedor=selection.proveedor,
+            max_rondas=2,
+        )
+
+        assert isinstance(done, Terminada)
+        assert done.estado == "error"
+        dumped = json.dumps([e.model_dump(mode="json") for e in events.events])
+        assert key not in dumped
+        assert key not in repr(selection)
+        assert key not in repr(checkpointer.saver().storage)  # type: ignore[attr-defined]
 
 
 class TestUserKeyStaysOut:

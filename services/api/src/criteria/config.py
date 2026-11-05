@@ -1,8 +1,8 @@
 from pathlib import Path
 from typing import Annotated, Literal
 
-from pydantic import Field, HttpUrl, SecretStr, StringConstraints, ValidationError
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import Field, HttpUrl, SecretStr, StringConstraints, ValidationError, field_validator
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 from criteria.domain.events import ProveedorId
 
@@ -34,6 +34,8 @@ class Settings(BaseSettings):
     generation_model: str | None = None
     judge_provider: ProveedorId | None = None
     judge_model: str | None = None
+    # Providers that may run on the operator's own credentials; production allows only groq.
+    server_key_providers: Annotated[list[ProveedorId], NoDecode] = Field(default_factory=list)
     openai_api_key: SecretStr | None = None
     anthropic_api_key: SecretStr | None = None
     groq_api_key: SecretStr | None = None
@@ -46,6 +48,20 @@ class Settings(BaseSettings):
     max_review_rounds: int = Field(default=2, ge=0, le=5)
     prompts_dir: Path = SERVICE_ROOT / "prompts"
     models_file: Path = SERVICE_ROOT / "config" / "models.toml"
+
+    @field_validator("server_key_providers", mode="before")
+    @classmethod
+    def _split_providers(cls, value: object) -> object:
+        if isinstance(value, str):
+            return [item.strip() for item in value.split(",") if item.strip()]
+        return value
+
+    @field_validator("server_key_providers")
+    @classmethod
+    def _no_server_key_for_user_endpoints(cls, value: list[ProveedorId]) -> list[ProveedorId]:
+        if "openai_compatible" in value:
+            raise ValueError("openai_compatible always needs the user's own key")
+        return list(dict.fromkeys(value))
 
 
 def load_settings() -> Settings:

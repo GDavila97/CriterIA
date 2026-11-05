@@ -15,14 +15,19 @@ from uuid import uuid4
 from pydantic import ValidationError
 
 from criteria.adapters.cli.output import PrintingEventSink, format_historia
-from criteria.adapters.llm.registry import ProviderNotAllowedError
+from criteria.adapters.llm.registry import KeyRequiredError, ProviderNotAllowedError
 from criteria.adapters.llm.ssrf import EndpointNotAllowedError
 from criteria.application.runs import EsperandoAprobacion, RunOutcome
 from criteria.bootstrap import Container, build_container
 from criteria.config import ConfigError, Settings, load_settings
 from criteria.domain.approval import RespuestaHumana
 from criteria.domain.artifacts import Historias, Requerimiento
-from criteria.domain.run_config import ProviderSelection, SelectionError, parse_selection
+from criteria.domain.run_config import (
+    USER_KEY_PROVIDERS,
+    ProviderSelection,
+    SelectionError,
+    parse_selection,
+)
 
 USER_KEY_ENV = "CRITERIA_USER_API_KEY"
 EXIT_OK, EXIT_RUN_FAILED, EXIT_USAGE, EXIT_CANCELLED = 0, 1, 2, 130
@@ -71,6 +76,11 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument(
         "--base-url", help=f"URL https para openai_compatible; clave en {USER_KEY_ENV}."
     )
+    run.add_argument(
+        "--clave-propia",
+        action="store_true",
+        help=f"Usa la clave de {USER_KEY_ENV} para el proveedor de generación.",
+    )
     run.add_argument("--temperatura", type=float, default=0.2)
     run.add_argument("--max-tokens", type=int, default=4096)
     source = run.add_mutually_exclusive_group(required=True)
@@ -109,6 +119,7 @@ def _selection(
     }
     if provider == "openai_compatible":
         data["base_url"] = args.base_url
+    if provider == "openai_compatible" or (args.clave_propia and provider in USER_KEY_PROVIDERS):
         data["api_key"] = os.environ.get(USER_KEY_ENV)
     try:
         return parse_selection(data)
@@ -126,7 +137,9 @@ def selections(
     judge_model = args.judge_model or settings.judge_model or model
     if (judge_provider, judge_model) == (provider, model):
         return generacion, generacion
-    return generacion, _selection(judge_provider, judge_model, args)
+    # The user key belongs to the generation provider; the judge runs on server access.
+    judge_args = argparse.Namespace(**{**vars(args), "clave_propia": False})
+    return generacion, _selection(judge_provider, judge_model, judge_args)
 
 
 def max_rounds(args: argparse.Namespace, settings: Settings) -> int:
@@ -174,6 +187,8 @@ async def execute(args: argparse.Namespace, container: Container, terminal: Term
         container.registry.validate(generacion)
         container.registry.validate(juez)
         agents = container.agents(generacion, juez)
+    except KeyRequiredError as error:
+        raise UsageError(f"{error.codigo}: {error}") from None
     except (ProviderNotAllowedError, EndpointNotAllowedError) as error:
         raise UsageError(str(error)) from None
     events = PrintingEventSink(uuid4(), container.clock, terminal.out, as_json=args.json)

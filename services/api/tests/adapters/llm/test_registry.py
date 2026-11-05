@@ -9,7 +9,11 @@ from pydantic_ai.models.ollama import OllamaModel
 from pydantic_ai.models.openai import OpenAIChatModel
 
 from criteria.adapters.llm.catalog import CatalogEntry, ModelCatalog
-from criteria.adapters.llm.registry import ProviderNotAllowedError, ProviderRegistry
+from criteria.adapters.llm.registry import (
+    KeyRequiredError,
+    ProviderNotAllowedError,
+    ProviderRegistry,
+)
 from criteria.adapters.llm.ssrf import EndpointNotAllowedError
 from criteria.config import SERVICE_ROOT, Settings
 from criteria.domain.run_config import ProviderSelection, SelectionError, parse_selection
@@ -57,33 +61,103 @@ def compatible(base_url: str = "https://llm.example.com/v1") -> ProviderSelectio
     )
 
 
+ALL_SERVER = "openai,anthropic,groq,ollama"
+PAID = ["openai", "anthropic", "groq"]
+MODEL_FOR = {"openai": "gpt-test-mini", "anthropic": "claude-test", "groq": "groq-test"}
+
+
+def user_selection(provider: str) -> ProviderSelection:
+    if provider == "openai_compatible":
+        return compatible()
+    return parse_selection(
+        {"proveedor": provider, "modelo": MODEL_FOR[provider], "api_key": USER_KEY}
+    )
+
+
 class TestAvailability:
-    def test_only_configured_providers_are_listed(self) -> None:
-        assert registry().available() == ["openai_compatible"]
-        assert registry(openai_api_key="k", groq_api_key="g").available() == [
-            "openai",
+    def test_server_access_needs_both_the_allow_list_and_a_configured_credential(self) -> None:
+        assert registry().available() == []
+        assert registry(openai_api_key="k", groq_api_key="g").available() == []
+        assert registry(
+            server_key_providers="openai,groq", openai_api_key="k", groq_api_key="g"
+        ).available() == ["openai", "groq"]
+        assert registry(
+            server_key_providers="openai,anthropic", openai_api_key="k"
+        ).available() == ["openai"]
+
+    def test_user_keys_add_their_providers(self) -> None:
+        reg = registry(server_key_providers="groq", groq_api_key="g")
+
+        assert reg.available(user_keys=["anthropic", "openai_compatible", "ollama"]) == [
+            "anthropic",
             "groq",
             "openai_compatible",
         ]
 
-    def test_ollama_is_listed_only_with_a_base_url(self) -> None:
-        assert "ollama" not in registry().available()
-        assert "ollama" in registry(ollama_base_url="http://localhost:11434").available()
+    def test_ollama_is_listed_only_with_a_base_url_and_when_allowed(self) -> None:
+        assert "ollama" not in registry(server_key_providers="ollama").available()
+        assert "ollama" not in registry(ollama_base_url="http://localhost:11434").available()
+        assert (
+            "ollama"
+            in registry(
+                server_key_providers="ollama", ollama_base_url="http://localhost:11434"
+            ).available()
+        )
 
-    def test_unconfigured_provider_is_rejected(self) -> None:
-        with pytest.raises(ProviderNotAllowedError, match="not configured"):
-            registry().validate(ProviderSelection(proveedor="ollama", modelo="qwen3:8b"))
+    @pytest.mark.parametrize("provider", PAID)
+    def test_runs_without_a_user_key_need_server_access(self, provider: str) -> None:
+        selection = ProviderSelection.model_validate(
+            {"proveedor": provider, "modelo": MODEL_FOR[provider]}
+        )
+        configured = registry(openai_api_key="k", anthropic_api_key="a", groq_api_key="g")
+
+        with pytest.raises(KeyRequiredError, match="needs the user's own API key") as error:
+            configured.validate(selection)
+
+        assert error.value.codigo == "clave_requerida"
+
+    def test_production_allows_only_groq_on_the_server_key(self) -> None:
+        reg = registry(
+            server_key_providers="groq", openai_api_key="k", anthropic_api_key="a", groq_api_key="g"
+        )
+
+        reg.validate(ProviderSelection(proveedor="groq", modelo="groq-test"))
+        for provider in ("openai", "anthropic"):
+            with pytest.raises(KeyRequiredError):
+                reg.validate(
+                    ProviderSelection.model_validate(
+                        {"proveedor": provider, "modelo": MODEL_FOR[provider]}
+                    )
+                )
+
+    @pytest.mark.parametrize("provider", [*PAID, "openai_compatible"])
+    def test_a_user_key_works_without_server_access(self, provider: str) -> None:
+        registry().validate(user_selection(provider))
 
     def test_models_outside_the_catalog_are_rejected(self) -> None:
         with pytest.raises(ProviderNotAllowedError, match="not allowed"):
-            registry(openai_api_key="k").validate(
+            registry(server_key_providers="openai", openai_api_key="k").validate(
                 ProviderSelection(proveedor="openai", modelo="gpt-unknown")
             )
+
+    def test_server_keys_never_cover_user_endpoints(self) -> None:
+        with pytest.raises(ValidationError, match="always needs the user's own key"):
+            settings(server_key_providers="groq,openai_compatible")
+
+    def test_allow_list_is_read_from_a_comma_separated_variable(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("SERVER_KEY_PROVIDERS", " anthropic, openai,groq,ollama,groq ")
+
+        loaded = Settings(app_env="test")
+
+        assert loaded.server_key_providers == ["anthropic", "openai", "groq", "ollama"]
 
 
 class TestModels:
     def test_builds_each_server_provider(self) -> None:
         reg = registry(
+            server_key_providers=ALL_SERVER,
             openai_api_key="k",
             anthropic_api_key="a",
             groq_api_key="g",
@@ -105,8 +179,21 @@ class TestModels:
             reg.model(ProviderSelection(proveedor="ollama", modelo="qwen3:8b")), OllamaModel
         )
 
+    @pytest.mark.parametrize("provider", PAID)
+    def test_user_key_replaces_the_server_key(self, provider: str) -> None:
+        reg = registry(
+            server_key_providers=ALL_SERVER,
+            openai_api_key="server-k",
+            anthropic_api_key="server-a",
+            groq_api_key="server-g",
+        )
+
+        model = reg.model(user_selection(provider))
+
+        assert model.client.api_key == USER_KEY  # type: ignore[attr-defined]
+
     def test_ollama_from_server_config_may_use_a_private_address(self) -> None:
-        reg = registry(ollama_base_url="http://192.168.1.50:11434")
+        reg = registry(server_key_providers="ollama", ollama_base_url="http://192.168.1.50:11434")
 
         model = reg.model(ProviderSelection(proveedor="ollama", modelo="qwen3:8b"))
 
@@ -129,7 +216,11 @@ class TestModels:
         assert model.base_url == "https://llm.example.com/v1/"
 
     def test_model_settings_carry_run_parameters_and_catalog_thinking(self) -> None:
-        reg = registry(ollama_base_url="http://localhost:11434", provider_timeout_seconds=30)
+        reg = registry(
+            server_key_providers="ollama",
+            ollama_base_url="http://localhost:11434",
+            provider_timeout_seconds=30,
+        )
 
         model_settings = reg.model_settings(
             ProviderSelection(proveedor="ollama", modelo="qwen3:8b", temperatura=0, max_tokens=512)
@@ -147,12 +238,12 @@ class TestCatalog:
     def test_cost_uses_prices_per_million_tokens(self) -> None:
         selection = ProviderSelection(proveedor="openai", modelo="gpt-priced")
 
-        assert registry(openai_api_key="k").cost_usd(selection, 1_000, 500) == pytest.approx(0.0015)
+        assert registry().cost_usd(selection, 1_000, 500) == pytest.approx(0.0015)
 
     def test_cost_is_null_without_prices(self) -> None:
         selection = ProviderSelection(proveedor="openai", modelo="gpt-test-mini")
 
-        assert registry(openai_api_key="k").cost_usd(selection, 1_000, 500) is None
+        assert registry().cost_usd(selection, 1_000, 500) is None
         assert registry().cost_usd(compatible(), 1_000, 500) is None
 
     def test_prices_must_come_in_pairs(self) -> None:
@@ -176,9 +267,13 @@ class TestCatalog:
         assert ModelCatalog.load(path).allows("groq", "m")
 
 
+USER_KEY_PROVIDERS = [*PAID, "openai_compatible"]
+
+
 class TestUserKey:
-    def test_user_key_never_shows_in_repr_str_or_dumps(self) -> None:
-        selection = compatible()
+    @pytest.mark.parametrize("provider", USER_KEY_PROVIDERS)
+    def test_user_key_never_shows_in_repr_str_or_dumps(self, provider: str) -> None:
+        selection = user_selection(provider)
 
         for text in (repr(selection), str(selection), selection.model_dump_json()):
             assert USER_KEY not in text
@@ -186,29 +281,43 @@ class TestUserKey:
         assert selection.api_key is not None
         assert selection.api_key.get_secret_value() == USER_KEY
 
-    def test_user_input_errors_never_hold_the_key(self) -> None:
+    @pytest.mark.parametrize("provider", USER_KEY_PROVIDERS)
+    def test_user_input_errors_never_hold_the_key(self, provider: str) -> None:
         with pytest.raises(SelectionError) as error:
-            parse_selection({"proveedor": "openai", "modelo": "m", "api_key": USER_KEY})
+            parse_selection(
+                {"proveedor": provider, "modelo": "m", "api_key": USER_KEY, "temperatura": 9}
+            )
 
-        assert "only openai_compatible" in str(error.value)
+        assert "temperatura" in str(error.value)
         for text in (str(error.value), repr(error.value), repr(error.value.args)):
             assert USER_KEY not in text
         assert error.value.__context__ is None
         assert error.value.__cause__ is None
 
-    def test_user_key_is_only_for_openai_compatible(self) -> None:
-        with pytest.raises(SelectionError, match="only openai_compatible"):
-            parse_selection({"proveedor": "groq", "modelo": "m", "api_key": USER_KEY})
+    def test_ollama_takes_no_key_and_only_user_endpoints_take_a_base_url(self) -> None:
+        with pytest.raises(SelectionError, match="ollama does not take an API key"):
+            parse_selection({"proveedor": "ollama", "modelo": "m", "api_key": USER_KEY})
+        with pytest.raises(SelectionError, match="only openai_compatible accepts a user base_url"):
+            parse_selection(
+                {
+                    "proveedor": "groq",
+                    "modelo": "m",
+                    "api_key": USER_KEY,
+                    "base_url": "https://x.io",
+                }
+            )
         with pytest.raises(SelectionError, match="needs its own"):
             parse_selection(
                 {"proveedor": "openai_compatible", "modelo": "m", "base_url": "https://x.io"}
             )
 
+    @pytest.mark.parametrize("provider", USER_KEY_PROVIDERS)
     def test_building_a_user_model_logs_nothing_about_the_key(
-        self, caplog: pytest.LogCaptureFixture
+        self, provider: str, caplog: pytest.LogCaptureFixture
     ) -> None:
         caplog.set_level(logging.DEBUG)
 
-        registry().model(compatible())
+        model = registry().model(user_selection(provider))
 
         assert USER_KEY not in caplog.text
+        assert USER_KEY not in repr(model)

@@ -1,4 +1,4 @@
-from collections.abc import Callable
+from collections.abc import Callable, Collection
 
 import httpx2
 from openai import AsyncOpenAI
@@ -18,7 +18,7 @@ from criteria.adapters.llm.catalog import ModelCatalog
 from criteria.adapters.llm.ssrf import guarded_client, validate_endpoint_url
 from criteria.config import Settings
 from criteria.domain.events import ProveedorId
-from criteria.domain.run_config import ProviderSelection
+from criteria.domain.run_config import USER_KEY_PROVIDERS, ProviderSelection
 
 PROVIDER_ORDER: tuple[ProveedorId, ...] = (
     "openai",
@@ -33,8 +33,17 @@ class ProviderNotAllowedError(ValueError):
     pass
 
 
+class KeyRequiredError(ProviderNotAllowedError):
+    codigo = "clave_requerida"
+
+
 def _secret(value: SecretStr | None) -> str | None:
     return value.get_secret_value() if value is not None else None
+
+
+def _key(selection: ProviderSelection, server_key: SecretStr | None) -> str | None:
+    # validate() already ensured that a run without a user key is allowed the server key.
+    return _secret(selection.api_key) or _secret(server_key)
 
 
 class ProviderRegistry:
@@ -48,19 +57,29 @@ class ProviderRegistry:
         self._catalog = catalog
         self._user_endpoint_client = user_endpoint_client or self._default_user_endpoint_client
 
-    def available(self) -> list[ProveedorId]:
+    def server_access(self, provider: ProveedorId) -> bool:
+        """Whether runs without a user key may use the operator's credentials for this provider."""
+        settings = self._settings
         configured: dict[ProveedorId, bool] = {
-            "openai": self._settings.openai_api_key is not None,
-            "anthropic": self._settings.anthropic_api_key is not None,
-            "groq": self._settings.groq_api_key is not None,
-            "ollama": self._settings.ollama_base_url is not None,
-            "openai_compatible": True,
+            "openai": settings.openai_api_key is not None,
+            "anthropic": settings.anthropic_api_key is not None,
+            "groq": settings.groq_api_key is not None,
+            "ollama": settings.ollama_base_url is not None,
+            "openai_compatible": False,
         }
-        return [provider for provider in PROVIDER_ORDER if configured[provider]]
+        return provider in settings.server_key_providers and configured[provider]
+
+    def available(self, user_keys: Collection[ProveedorId] = ()) -> list[ProveedorId]:
+        return [
+            provider
+            for provider in PROVIDER_ORDER
+            if self.server_access(provider)
+            or (provider in user_keys and provider in USER_KEY_PROVIDERS)
+        ]
 
     def validate(self, selection: ProviderSelection) -> None:
-        if selection.proveedor not in self.available():
-            raise ProviderNotAllowedError(f"provider {selection.proveedor} is not configured")
+        if not selection.usa_clave_propia and not self.server_access(selection.proveedor):
+            raise KeyRequiredError(f"{selection.proveedor} needs the user's own API key")
         if not self._catalog.allows(selection.proveedor, selection.modelo):
             raise ProviderNotAllowedError(f"model {selection.etiqueta} is not allowed")
         if selection.base_url is not None:
@@ -73,17 +92,17 @@ class ProviderRegistry:
             case "openai":
                 return OpenAIChatModel(
                     selection.modelo,
-                    provider=OpenAIProvider(api_key=_secret(settings.openai_api_key)),
+                    provider=OpenAIProvider(api_key=_key(selection, settings.openai_api_key)),
                 )
             case "anthropic":
                 return AnthropicModel(
                     selection.modelo,
-                    provider=AnthropicProvider(api_key=_secret(settings.anthropic_api_key)),
+                    provider=AnthropicProvider(api_key=_key(selection, settings.anthropic_api_key)),
                 )
             case "groq":
                 return GroqModel(
                     selection.modelo,
-                    provider=GroqProvider(api_key=_secret(settings.groq_api_key)),
+                    provider=GroqProvider(api_key=_key(selection, settings.groq_api_key)),
                 )
             case "ollama":
                 base_url = str(settings.ollama_base_url).rstrip("/")

@@ -4,6 +4,8 @@ CriterIA es un asistente multiagente que convierte un requerimiento escrito en l
 
 Todo lo que genera es una propuesta: una persona aprueba o edita las historias antes de que se escriban las pruebas, y cada artefacto indica qué agente lo produjo.
 
+El uso gratuito por defecto corre sobre Groq con la clave del servidor. Para usar modelos de pago (OpenAI, Anthropic, Groq con tu cuenta o un endpoint compatible con OpenAI), cada persona usa su propia clave de API. La herramienta nunca cambia de proveedor por su cuenta ([ADR 0016](docs/adr/0016-claves-por-usuario.md)).
+
 **App desplegada:** pendiente (F6).
 
 **Captura:** pendiente. Se agregará en `docs/media/` cuando la vista clásica esté lista (F7).
@@ -110,6 +112,7 @@ uv run criteria run --provider ollama --model qwen3:8b --file examples/bibliotec
 | `--json` | Un evento JSON por línea en la salida estándar; las preguntas van a la salida de errores |
 | `--temperatura`, `--max-tokens` | Parámetros del modelo |
 | `--base-url` | URL `https` para `--provider openai_compatible`; la clave se toma de `CRITERIA_USER_API_KEY` en la sesión, nunca de un argumento |
+| `--clave-propia` | Usa `CRITERIA_USER_API_KEY` como clave del proveedor de generación (`openai`, `anthropic` o `groq`) en lugar de la del servidor |
 
 Hay tres requerimientos de ejemplo en `services/api/examples/`: `biblioteca.txt`, `citas-medicas.txt` y `nomina.txt`. La CLI sale con 0 si la corrida terminó, 1 si un agente falló, 2 por un error de uso o configuración y 130 si cancelaste.
 
@@ -121,6 +124,7 @@ Con `PROVIDER=ollama` todo el flujo corre sin ninguna clave de API. Los modelos 
 ollama pull qwen3:8b
 # en services/api/.env
 APP_ENV=development
+SERVER_KEY_PROVIDERS=ollama
 PROVIDER=ollama
 GENERATION_MODEL=qwen3:8b
 OLLAMA_BASE_URL=http://localhost:11434
@@ -183,13 +187,14 @@ Las listas completas, con la fase en que se usa cada variable, están en [servic
 | `SENTRY_DSN`, `SENTRY_TRACES_SAMPLE_RATE` | API | No | Sentry se activa solo con DSN |
 | `PROVIDER`, `GENERATION_MODEL` | API | No | Proveedor y modelo de generación por defecto de la CLI |
 | `JUDGE_PROVIDER`, `JUDGE_MODEL` | API | No | Proveedor y modelo del Evaluador; vacíos, usan los de generación |
-| `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GROQ_API_KEY` | API | No | Claves del servidor; cada proveedor se ofrece solo si tiene la suya |
-| `OLLAMA_BASE_URL` | API | No | URL de Ollama; sin ella, el proveedor `ollama` no se ofrece |
+| `SERVER_KEY_PROVIDERS` | API | No | Proveedores que pueden usar la clave del servidor, separados por comas; en producción, solo `groq`. Sin ella, toda corrida necesita la clave del usuario (`clave_requerida`) |
+| `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GROQ_API_KEY` | API | No | Claves del servidor. En producción solo existe la de Groq; las de OpenAI y Anthropic solo viven en un `.env` local para la evaluación |
+| `OLLAMA_BASE_URL` | API | No | URL de Ollama; el proveedor `ollama` solo se ofrece con ella y con `ollama` en `SERVER_KEY_PROVIDERS` |
 | `PROVIDER_TIMEOUT_SECONDS`, `PROVIDER_MAX_RESPONSE_BYTES` | API | No | Tiempo límite y tamaño máximo de respuesta del proveedor |
 | `PROMPT_VERSION`, `JUDGE_VERSION` | API | No | Versión de los prompts de los agentes y, por separado, la del juez (`v1`); el juez no cambia al comparar versiones de los agentes |
 | `MAX_REVIEW_ROUNDS` | API | No | Rondas de corrección del Revisor (2) |
 | `PROMPTS_DIR`, `MODELS_FILE` | API | No | Rutas de los prompts y del catálogo; la imagen Docker las fija |
-| `CRITERIA_USER_API_KEY` | CLI | No | Clave propia para `openai_compatible`; se exporta en la sesión, no va en `.env` |
+| `CRITERIA_USER_API_KEY` | CLI | No | Clave propia para `openai_compatible` o, con `--clave-propia`, para el proveedor de generación; se exporta en la sesión, no va en `.env` |
 | `NEXT_PUBLIC_APP_ENV` | Web | Sí | Entorno de la web |
 | `NEXT_PUBLIC_API_URL` | Web | Sí | URL de la API; también entra en `connect-src` de la CSP. En producción debe ser `https` |
 | `NEXT_PUBLIC_SENTRY_DSN` | Web | No | Sentry se activa solo con DSN |

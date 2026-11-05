@@ -14,6 +14,10 @@ from pydantic import (
 
 from criteria.domain.events import ProveedorId
 
+USER_KEY_PROVIDERS: frozenset[ProveedorId] = frozenset(
+    {"openai", "anthropic", "groq", "openai_compatible"}
+)
+
 NombreModelo = Annotated[str, StringConstraints(pattern=r"^[A-Za-z0-9][A-Za-z0-9._:/-]{0,99}$")]
 
 
@@ -33,8 +37,10 @@ class ProviderSelection(BaseModel):
         if self.proveedor == "openai_compatible":
             if self.base_url is None or self.api_key is None:
                 raise ValueError("openai_compatible needs its own base_url and api_key")
-        elif self.base_url is not None or self.api_key is not None:
-            raise ValueError("only openai_compatible accepts a user base_url and api_key")
+        elif self.base_url is not None:
+            raise ValueError("only openai_compatible accepts a user base_url")
+        if self.api_key is not None and self.proveedor not in USER_KEY_PROVIDERS:
+            raise ValueError(f"{self.proveedor} does not take an API key")
         return self
 
     @property

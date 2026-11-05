@@ -79,9 +79,12 @@ flowchart TD
 
 El registro (`adapters/llm/registry.py`) construye el modelo de Pydantic AI según la selección de la corrida (`ProviderSelection`: proveedor, modelo, temperatura, máximo de tokens y, solo para `openai_compatible`, URL base y clave propia).
 
-- **Disponibilidad.** Un proveedor se ofrece solo si está configurado: clave del servidor para `openai`, `anthropic` y `groq`, y `OLLAMA_BASE_URL` para `ollama`. `openai_compatible` siempre está disponible porque usa la clave del usuario.
+- **Quién paga ([ADR 0016](adr/0016-claves-por-usuario.md)).**
+  - Cada usuario usa su propia clave para `openai`, `anthropic`, `groq` y `openai_compatible`; `ollama` no lleva clave.
+  - La clave del servidor solo se usa con los proveedores listados en `SERVER_KEY_PROVIDERS` que además tengan su credencial configurada: la clave, o `OLLAMA_BASE_URL` en el caso de Ollama. En producción la lista es solo `groq`, en su plan gratuito, que es la opción por defecto.
+  - Una corrida sin clave del usuario para un proveedor fuera de esa lista se rechaza con el código `clave_requerida` antes de llamar a ningún modelo. `openai_compatible` nunca usa clave del servidor.
 - **Modelos permitidos y precios.** Viven en `services/api/config/models.toml`, en USD por millón de tokens de entrada y de salida. Un modelo sin precio reporta costo `null`, y `corrida_fin` reporta costo `null` si cualquier llamada no lo tiene. `openai_compatible` acepta cualquier nombre de modelo con formato válido.
-- **Clave propia.** Es un `SecretStr` que solo vive en la selección de la corrida. No aparece en `repr`, en errores de validación (`parse_selection` arma el mensaje sin los valores enviados), en logs, en eventos ni en checkpoints.
+- **Clave propia.** Vale para los cuatro proveedores de pago. Es un `SecretStr` que solo vive en la selección de la corrida. No aparece en `repr`, en errores de validación (`parse_selection` arma el mensaje sin los valores enviados), en logs, en eventos ni en checkpoints.
 - **URL base del usuario** (`openai_compatible`):
   - Exige `https` y una URL sin credenciales.
   - No sigue redirecciones y aplica tiempo límite y tamaño máximo de respuesta.

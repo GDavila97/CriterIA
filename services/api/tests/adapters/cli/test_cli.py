@@ -77,6 +77,7 @@ class Console:
 @pytest.fixture(autouse=True)
 def local_ollama(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("APP_ENV", "test")
+    monkeypatch.setenv("SERVER_KEY_PROVIDERS", "ollama")
     monkeypatch.setenv("OLLAMA_BASE_URL", "http://192.168.1.50:11434")
 
 
@@ -218,7 +219,7 @@ class TestUsageErrors:
                     "--text",
                     f.REQUERIMIENTO,
                 ],
-                "not configured",
+                "clave_requerida",
             ),
             ([*OLLAMA[:4], "mistral:7b", "--text", f.REQUERIMIENTO], "not allowed"),
             ([*OLLAMA, "--text", f.REQUERIMIENTO, "--max-rondas", "9"], "entre 0 y 5"),
@@ -271,6 +272,31 @@ class TestUserKey:
         assert "not public" in console.err.getvalue()
         assert key not in console.err.getvalue() + console.out.getvalue()
 
+    def test_own_key_unlocks_a_paid_provider_without_server_access(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv(USER_KEY_ENV, "sk-user-6666")
+        argv = [
+            "run",
+            "--provider",
+            "groq",
+            "--model",
+            "openai/gpt-oss-20b",
+            "--text",
+            f.REQUERIMIENTO,
+        ]
+
+        without_key, console, _ = run_cli([*argv, "--auto-aprobar"])
+        code, _, container = run_cli([*argv, "--auto-aprobar", "--clave-propia"])
+
+        assert without_key == EXIT_USAGE
+        assert "clave_requerida" in console.err.getvalue()
+        assert code == EXIT_OK
+        assert container is not None
+        generacion, juez = container.selections[0]
+        assert generacion.usa_clave_propia
+        assert juez is generacion
+
     def test_valid_user_endpoint_reaches_the_run(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv(USER_KEY_ENV, "sk-user-4444")
 
@@ -299,7 +325,11 @@ def test_formats_fallback_events() -> None:
 
 def test_real_container_builds_agents_from_the_catalog(monkeypatch: pytest.MonkeyPatch) -> None:
     settings = Settings.model_validate(
-        {"app_env": "test", "ollama_base_url": "http://localhost:11434"}
+        {
+            "app_env": "test",
+            "server_key_providers": "ollama",
+            "ollama_base_url": "http://localhost:11434",
+        }
     )
     container = build_container(settings)
     selection = ProviderSelection(proveedor="ollama", modelo="qwen3:8b")
