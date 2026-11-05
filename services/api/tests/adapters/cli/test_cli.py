@@ -26,7 +26,7 @@ from criteria.domain.events import RespaldoActivado, evento_adapter
 from criteria.domain.run_config import ProviderSelection
 from criteria.ports.agents import AgentSet
 from tests import factories as f
-from tests.agent_models import ScriptedTeam, team
+from tests.agent_models import ScriptedTeam, make_binding, team
 from tests.fakes import FakeClock
 
 EXAMPLES = SERVICE_ROOT / "examples"
@@ -55,10 +55,11 @@ class FakeContainer(Container):
 
     def agents(self, generacion: ProviderSelection, juez: ProviderSelection) -> AgentSet:
         self.selections.append((generacion, juez))
-        binding = self.team.binding()
-        return AgentFactory(self.settings.prompts_dir, "v1", "v1", self.clock).build(
-            binding, binding
+        gen, judge = (
+            make_binding(self.team, sel.etiqueta, provider=sel.proveedor)
+            for sel in (generacion, juez)
         )
+        return AgentFactory(self.settings.prompts_dir, "v1", "v1", self.clock).build(gen, judge)
 
 
 class Console:
@@ -180,6 +181,47 @@ class TestTiers:
 
         assert code == EXIT_USAGE
         assert "ollama has no model for the economico tier" in console.err.getvalue()
+
+
+class TestJudgeChoice:
+    def test_picks_another_provider_with_server_access_for_the_judge(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("SERVER_KEY_PROVIDERS", "ollama,anthropic")
+        monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-operator")
+
+        code, console, container = run_cli([*OLLAMA, "--text", f.REQUERIMIENTO, "--auto-aprobar"])
+
+        assert code == EXIT_OK
+        assert container is not None
+        generacion, juez = container.selections[0]
+        assert (generacion.etiqueta, juez.etiqueta) == (
+            "ollama:qwen3:8b",
+            "anthropic:claude-haiku-5-5",
+        )
+        assert not juez.usa_clave_propia
+        assert "(mismo proveedor)" not in console.out.getvalue()
+
+    def test_uses_the_same_provider_when_no_other_is_available(self) -> None:
+        code, console, container = run_cli([*OLLAMA, "--text", f.REQUERIMIENTO, "--auto-aprobar"])
+
+        assert code == EXIT_OK
+        assert container is not None
+        generacion, juez = container.selections[0]
+        assert juez is generacion
+        assert "juez ollama:qwen3:8b (mismo proveedor)" in console.out.getvalue()
+
+    def test_explicit_judge_configuration_wins(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("SERVER_KEY_PROVIDERS", "ollama,anthropic")
+        monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-operator")
+
+        code, _, container = run_cli(
+            [*OLLAMA, "--judge-model", "llama3.1:8b", "--text", f.REQUERIMIENTO, "--auto-aprobar"]
+        )
+
+        assert code == EXIT_OK
+        assert container is not None
+        assert container.selections[0][1].etiqueta == "ollama:llama3.1:8b"
 
 
 class TestApproval:

@@ -18,7 +18,7 @@ from criteria.adapters.llm.catalog import ModelCatalog, TierNotAvailableError
 from criteria.adapters.llm.ssrf import guarded_client, validate_endpoint_url
 from criteria.config import Settings
 from criteria.domain.events import ProveedorId
-from criteria.domain.run_config import USER_KEY_PROVIDERS, ProviderSelection
+from criteria.domain.run_config import USER_KEY_PROVIDERS, Nivel, ProviderSelection
 
 PROVIDER_ORDER: tuple[ProveedorId, ...] = (
     "openai",
@@ -82,6 +82,13 @@ class ProviderRegistry:
             if self.server_access(provider)
             or (provider in user_keys and provider in USER_KEY_PROVIDERS)
         ]
+
+    def has_tier(self, provider: ProveedorId, nivel: Nivel) -> bool:
+        try:
+            self._catalog.resolve(provider, nivel)
+        except TierNotAvailableError:
+            return False
+        return True
 
     def resolve(self, selection: ProviderSelection) -> ProviderSelection:
         if selection.modelo is not None or selection.nivel is None:

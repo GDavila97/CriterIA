@@ -82,6 +82,7 @@ class CorridaInicia(EventoBase):
     modelos: ModelosCorrida
     version_prompts: Annotated[str, StringConstraints(pattern=r"^v\d+$")]
     version_juez: Annotated[str, StringConstraints(pattern=r"^v\d+$")]
+    juez_mismo_proveedor: bool
     experimental: bool
     max_rondas: int = Field(ge=0)
 

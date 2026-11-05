@@ -8,7 +8,7 @@ from langgraph.types import Command
 from criteria.application.graph import APPROVAL_NODE, GraphDeps, RunState, build_graph
 from criteria.domain.approval import RespuestaHumana
 from criteria.domain.artifacts import Historias, Puntaje, Requerimiento
-from criteria.domain.events import CorridaInicia, ModelosCorrida, ProveedorId
+from criteria.domain.events import CorridaInicia, ModelosCorrida
 from criteria.ports.agents import AgentSet
 from criteria.ports.checkpoint import Checkpointer
 from criteria.ports.events import EventSink
@@ -48,9 +48,9 @@ class RunService:
         requerimiento: Requerimiento,
         agents: AgentSet,
         events: EventSink,
-        proveedor: ProveedorId,
         max_rondas: int,
     ) -> RunOutcome:
+        proveedor = agents.analista.proveedor
         await events.emit(
             CorridaInicia,
             agent="sistema",
@@ -58,6 +58,7 @@ class RunService:
             modelos=ModelosCorrida(generacion=agents.analista.modelo, juez=agents.evaluador.modelo),
             version_prompts=agents.version_prompts,
             version_juez=agents.version_juez,
+            juez_mismo_proveedor=agents.evaluador.proveedor == proveedor,
             experimental=agents.experimental,
             max_rondas=max_rondas,
         )

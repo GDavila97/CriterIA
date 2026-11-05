@@ -16,7 +16,7 @@ Los eventos son modelos Pydantic (`services/api/src/criteria/domain/events.py`) 
 
 | `type` | `agent` | Campos propios |
 | --- | --- | --- |
-| `corrida_inicia` | `sistema` | `proveedor`, `modelos` (`generacion`, `juez`, como `proveedor:modelo`), `version_prompts` (agentes, `vN`), `version_juez` (Evaluador, `vN`), `experimental`, `max_rondas` |
+| `corrida_inicia` | `sistema` | `proveedor`, `modelos` (`generacion`, `juez`, como `proveedor:modelo`), `version_prompts` (agentes, `vN`), `version_juez` (Evaluador, `vN`), `juez_mismo_proveedor` (el juez es del mismo proveedor que la generación), `experimental`, `max_rondas` |
 | `agente_inicia` | el agente | `ronda` |
 | `agente_progreso` | el agente | `mensaje` (máximo 80 caracteres) |
 | `agente_entrega` | el agente | `ronda`, `artefactos`, `uso` |

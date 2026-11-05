@@ -106,7 +106,7 @@ uv run criteria run --provider ollama --model qwen3:8b --file examples/bibliotec
 | --- | --- |
 | `--provider`, `--model` | Proveedor y modelo de generación; por defecto, `PROVIDER` y `GENERATION_MODEL` del `.env` |
 | `--nivel` | `economico`, `equilibrado` o `maximo`, cuando no se indica `--model` (por defecto, `economico`); antes de empezar, la CLI muestra el costo estimado de la corrida |
-| `--judge-provider`, `--judge-model` | Proveedor y modelo del Evaluador; por defecto, los de generación |
+| `--judge-provider`, `--judge-model` | Proveedor y modelo del Evaluador. Si no se indican (ni `JUDGE_PROVIDER` o `JUDGE_MODEL`), se elige un proveedor distinto con acceso disponible en su nivel económico; si no hay otro, el mismo de generación |
 | `--text "…"` o `--file ruta` | El requerimiento (de 20 a 2,000 caracteres) |
 | `--auto-aprobar` | Aprueba las historias sin preguntar; sin esta opción, la CLI las muestra y pide aprobar, editar (abre `$EDITOR` con el JSON) o cancelar |
 | `--max-rondas N` | Rondas de corrección del Revisor, de 0 a 5; por defecto, `MAX_REVIEW_ROUNDS` |
@@ -187,7 +187,7 @@ Las listas completas, con la fase en que se usa cada variable, están en [servic
 | `LOG_LEVEL` | API | No | Nivel de log de uvicorn |
 | `SENTRY_DSN`, `SENTRY_TRACES_SAMPLE_RATE` | API | No | Sentry se activa solo con DSN |
 | `PROVIDER`, `GENERATION_MODEL` | API | No | Proveedor y modelo de generación por defecto de la CLI |
-| `JUDGE_PROVIDER`, `JUDGE_MODEL` | API | No | Proveedor y modelo del Evaluador; vacíos, usan los de generación |
+| `JUDGE_PROVIDER`, `JUDGE_MODEL` | API | No | Proveedor y modelo del Evaluador; vacíos, la CLI elige un proveedor distinto si hay uno disponible |
 | `SERVER_KEY_PROVIDERS` | API | No | Proveedores que pueden usar la clave del servidor, separados por comas; en producción, solo `groq`. Sin ella, toda corrida necesita la clave del usuario (`clave_requerida`) |
 | `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GROQ_API_KEY` | API | No | Claves del servidor. En producción solo existe la de Groq; las de OpenAI y Anthropic solo viven en un `.env` local para la evaluación |
 | `OLLAMA_BASE_URL` | API | No | URL de Ollama; el proveedor `ollama` solo se ofrece con ella y con `ollama` en `SERVER_KEY_PROVIDERS` |

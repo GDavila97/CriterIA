@@ -7,17 +7,24 @@ from pydantic_ai.models.function import AgentInfo, FunctionModel
 from pydantic_ai.settings import ModelSettings
 
 from criteria.adapters.agents.runner import ModelBinding
+from criteria.domain.events import ProveedorId
 
 Step = dict[str, Any] | BaseException | Callable[[list[ModelMessage]], dict[str, Any]]
 ModelFunction = Callable[[list[ModelMessage], AgentInfo], ModelResponse]
 
 
-def make_binding(function: ModelFunction, label: str, price: float | None = None) -> ModelBinding:
+def make_binding(
+    function: ModelFunction,
+    label: str,
+    price: float | None = None,
+    provider: ProveedorId = "ollama",
+) -> ModelBinding:
     def cost(tokens_in: int, tokens_out: int) -> float | None:
         return None if price is None else round((tokens_in + tokens_out) * price, 6)
 
     return ModelBinding(
         model=FunctionModel(function, model_name=label),
+        provider=provider,
         label=label,
         settings=ModelSettings(temperature=0),
         cost_usd=cost,

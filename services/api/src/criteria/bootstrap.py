@@ -25,6 +25,7 @@ class Container:
         selection = registry.validate(selection)
         return ModelBinding(
             model=registry.model(selection),
+            provider=selection.proveedor,
             label=selection.etiqueta,
             settings=registry.model_settings(selection),
             cost_usd=lambda tokens_in, tokens_out: registry.cost_usd(

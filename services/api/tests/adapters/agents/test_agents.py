@@ -282,6 +282,7 @@ class TestUserKeyEndToEnd:
         )
         return ModelBinding(
             model=registry.model(selection),
+            provider=selection.proveedor,
             label=selection.etiqueta,
             settings=registry.model_settings(selection),
             cost_usd=lambda i, o: registry.cost_usd(selection, i, o),

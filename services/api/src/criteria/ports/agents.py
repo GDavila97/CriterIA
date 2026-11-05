@@ -9,7 +9,7 @@ from criteria.domain.artifacts import (
     Requerimiento,
     VeredictoRevisor,
 )
-from criteria.domain.events import CodigoError, Uso
+from criteria.domain.events import CodigoError, ProveedorId, Uso
 
 
 @dataclass(frozen=True)
@@ -60,6 +60,9 @@ class AgentRunError(Exception):
 class AgentRunner[Entrada, Salida](Protocol):
     @property
     def modelo(self) -> str: ...
+
+    @property
+    def proveedor(self) -> ProveedorId: ...
 
     async def run(self, entrada: Entrada) -> AgentResult[Salida]: ...
 

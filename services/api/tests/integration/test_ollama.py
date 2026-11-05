@@ -39,7 +39,6 @@ async def test_example_runs_end_to_end(model: str, example: str) -> None:
         requerimiento=Requerimiento(texto=texto),
         agents=agents,
         events=events,
-        proveedor="ollama",
         max_rondas=settings.max_review_rounds,
     )
     if isinstance(outcome, EsperandoAprobacion):

@@ -15,13 +15,18 @@ from uuid import uuid4
 from pydantic import ValidationError
 
 from criteria.adapters.cli.output import PrintingEventSink, format_historia
-from criteria.adapters.llm.registry import KeyRequiredError, ProviderNotAllowedError
+from criteria.adapters.llm.registry import (
+    KeyRequiredError,
+    ProviderNotAllowedError,
+    ProviderRegistry,
+)
 from criteria.adapters.llm.ssrf import EndpointNotAllowedError
 from criteria.application.runs import EsperandoAprobacion, RunOutcome
 from criteria.bootstrap import Container, build_container
 from criteria.config import ConfigError, Settings, load_settings
 from criteria.domain.approval import RespuestaHumana
 from criteria.domain.artifacts import Historias, Requerimiento
+from criteria.domain.judge import elegir_juez
 from criteria.domain.run_config import (
     USER_KEY_PROVIDERS,
     ProviderSelection,
@@ -132,18 +137,35 @@ def _selection(
 
 
 def selections(
-    args: argparse.Namespace, settings: Settings
+    args: argparse.Namespace, settings: Settings, registry: ProviderRegistry
 ) -> tuple[ProviderSelection, ProviderSelection]:
     provider = args.provider or settings.provider
     model = args.model or settings.generation_model
     generacion = _selection(provider, model, args)
-    judge_provider = args.judge_provider or settings.judge_provider or provider
-    judge_model = args.judge_model or settings.judge_model or model
+    judge_provider = args.judge_provider or settings.judge_provider
+    judge_model = args.judge_model or settings.judge_model
+    if judge_provider is None and judge_model is None:
+        return generacion, _chosen_judge(generacion, args, registry)
+    judge_provider = judge_provider or provider
+    judge_model = judge_model or model
     if (judge_provider, judge_model) == (provider, model):
         return generacion, generacion
     # The user key belongs to the generation provider; the judge runs on server access.
     judge_args = argparse.Namespace(**{**vars(args), "clave_propia": False})
     return generacion, _selection(judge_provider, judge_model, judge_args)
+
+
+def _chosen_judge(
+    generacion: ProviderSelection, args: argparse.Namespace, registry: ProviderRegistry
+) -> ProviderSelection:
+    user_keys = [generacion.proveedor] if generacion.usa_clave_propia else []
+    # Only providers whose tiers resolve to a model can be picked without naming one.
+    candidates = [p for p in registry.available(user_keys) if registry.has_tier(p, "economico")]
+    eleccion = elegir_juez(candidates, generacion.proveedor)
+    if eleccion.mismo_proveedor:
+        return generacion
+    judge_args = argparse.Namespace(**{**vars(args), "clave_propia": False, "nivel": "economico"})
+    return _selection(eleccion.proveedor, None, judge_args)
 
 
 def max_rounds(args: argparse.Namespace, settings: Settings) -> int:
@@ -185,7 +207,7 @@ def edit_stories(historias: Historias, terminal: Terminal) -> Historias | None:
 async def execute(args: argparse.Namespace, container: Container, terminal: Terminal) -> int:
     settings = container.settings
     requerimiento = read_requirement(args)
-    generacion, juez = selections(args, settings)
+    generacion, juez = selections(args, settings, container.registry)
     rondas = max_rounds(args, settings)
     try:
         generacion = container.registry.validate(generacion)
@@ -207,7 +229,6 @@ async def execute(args: argparse.Namespace, container: Container, terminal: Term
         requerimiento=requerimiento,
         agents=agents,
         events=events,
-        proveedor=generacion.proveedor,
         max_rondas=rondas,
     )
     while isinstance(outcome, EsperandoAprobacion):

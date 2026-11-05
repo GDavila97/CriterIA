@@ -15,7 +15,7 @@ from pydantic_ai.models import Model
 from pydantic_ai.settings import ModelSettings
 
 from criteria.adapters.llm.ssrf import EndpointNotAllowedError, ResponseTooLargeError
-from criteria.domain.events import CodigoError, Uso
+from criteria.domain.events import CodigoError, ProveedorId, Uso
 from criteria.ports.agents import AgentResult, AgentRunError
 from criteria.ports.clock import Clock
 
@@ -73,6 +73,7 @@ def classify_error(error: BaseException) -> CodigoError:
 @dataclass(frozen=True)
 class ModelBinding:
     model: Model
+    provider: ProveedorId
     label: str
     settings: ModelSettings
     cost_usd: Callable[[int, int], float | None]
@@ -97,6 +98,10 @@ class PydanticAgentRunner[Entrada, Salida]:
     @property
     def modelo(self) -> str:
         return self._binding.label
+
+    @property
+    def proveedor(self) -> ProveedorId:
+        return self._binding.provider
 
     async def run(self, entrada: Entrada) -> AgentResult[Salida]:
         started = self._clock.monotonic()

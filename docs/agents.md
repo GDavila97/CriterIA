@@ -13,6 +13,8 @@ CriterIA usa cuatro agentes de Pydantic AI ([ADR 0004](adr/0004-pydantic-ai-agen
 
 El Analista, QA y el Revisor usan el modelo de generación; el Evaluador usa el modelo del juez, que puede ser de otro proveedor.
 
+En las corridas de usuario, la función pura `elegir_juez` (`domain/judge.py`) elige el proveedor del juez entre los que el usuario tiene disponibles. Prefiere uno distinto al de generación, en el orden Anthropic, OpenAI, Groq, compatible con OpenAI y Ollama. Si no hay otro, usa el mismo y `corrida_inicia` lo indica con `juez_mismo_proveedor: true`. La configuración explícita del juez (opciones de la CLI o `JUDGE_PROVIDER` y `JUDGE_MODEL`) siempre gana, y la evaluación oficial del tablero conserva su juez fijo ([ADR 0016](adr/0016-claves-por-usuario.md)).
+
 Los prompts de los agentes (`PROMPT_VERSION`) y el del juez (`JUDGE_VERSION`) tienen versiones separadas, y ambas quedan registradas en `corrida_inicia`. El juez no cambia durante la evaluación: las mejoras v1 contra v2 solo tocan los prompts de los agentes ([ADR 0015](adr/0015-frozen-judge-prompt.md)).
 
 ### Reglas que el esquema no expresa

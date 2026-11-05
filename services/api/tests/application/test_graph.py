@@ -67,7 +67,6 @@ class Harness:
             requerimiento=Requerimiento(texto=f.REQUERIMIENTO),
             agents=self.agents,
             events=self.events,
-            proveedor="ollama",
             max_rondas=self.max_rondas,
         )
 
@@ -147,6 +146,7 @@ class TestHappyPath:
         assert start.proveedor == "ollama"
         assert start.modelos.generacion == start.modelos.juez == "test:team"
         assert (start.version_prompts, start.version_juez) == ("v1", "v1")
+        assert start.juez_mismo_proveedor
         assert start.max_rondas == 1
         assert not start.experimental
 
@@ -177,9 +177,10 @@ class TestCost:
         scripted = happy_team()
 
         def priced(provider: ProveedorId, name: str) -> ModelBinding:
-            base = make_binding(scripted, f"{provider}:{name}")
+            base = make_binding(scripted, f"{provider}:{name}", provider=provider)
             return ModelBinding(
                 model=base.model,
+                provider=provider,
                 label=base.label,
                 settings=base.settings,
                 cost_usd=lambda i, o: catalog.cost_usd(provider, name, i, o),
@@ -194,7 +195,6 @@ class TestCost:
             requerimiento=Requerimiento(texto=f.REQUERIMIENTO),
             agents=agents,
             events=events,
-            proveedor="openai",
             max_rondas=2,
         )
         await service.reanudar(respuesta=APPROVE, agents=agents, events=events)
@@ -211,6 +211,8 @@ class TestCost:
             ) / 1e6
             assert uso.costo_usd == pytest.approx(expected_call, abs=1e-6)
             expected += expected_call
+        start = next(e for e in events.events if isinstance(e, CorridaInicia))
+        assert (start.proveedor, start.juez_mismo_proveedor) == ("openai", False)
         fin = next(e for e in events.events if isinstance(e, CorridaFin))
         assert fin.totales.costo_usd is not None
         assert fin.totales.costo_usd == pytest.approx(expected, abs=1e-6)
@@ -431,9 +433,10 @@ class TestUserKeyStaysOutForEveryProvider:
 
         done = await RunService(checkpointer).iniciar(
             requerimiento=Requerimiento(texto=f.REQUERIMIENTO),
-            agents=agent_set(make_binding(scripted, selection.etiqueta)),
+            agents=agent_set(
+                make_binding(scripted, selection.etiqueta, provider=selection.proveedor)
+            ),
             events=events,
-            proveedor=selection.proveedor,
             max_rondas=2,
         )
 
@@ -469,6 +472,7 @@ class TestUserKeyStaysOut:
         )
         binding = ModelBinding(
             model=registry.model(selection),
+            provider=selection.proveedor,
             label=selection.etiqueta,
             settings=registry.model_settings(selection),
             cost_usd=lambda i, o: registry.cost_usd(selection, i, o),
@@ -480,7 +484,6 @@ class TestUserKeyStaysOut:
             requerimiento=Requerimiento(texto=f.REQUERIMIENTO),
             agents=agent_set(binding),
             events=events,
-            proveedor="openai_compatible",
             max_rondas=2,
         )
 
