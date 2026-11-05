@@ -8,7 +8,7 @@ from pydantic_ai.models.groq import GroqModel
 from pydantic_ai.models.ollama import OllamaModel
 from pydantic_ai.models.openai import OpenAIChatModel
 
-from criteria.adapters.llm.catalog import CatalogEntry, ModelCatalog
+from criteria.adapters.llm.catalog import CatalogEntry, ModelCatalog, TierNotAvailableError
 from criteria.adapters.llm.registry import (
     KeyRequiredError,
     ProviderNotAllowedError,
@@ -16,7 +16,8 @@ from criteria.adapters.llm.registry import (
 )
 from criteria.adapters.llm.ssrf import EndpointNotAllowedError
 from criteria.config import SERVICE_ROOT, Settings
-from criteria.domain.run_config import ProviderSelection, SelectionError, parse_selection
+from criteria.domain.events import ProveedorId
+from criteria.domain.run_config import Nivel, ProviderSelection, SelectionError, parse_selection
 
 USER_KEY = "sk-user-0000-very-secret"
 
@@ -268,6 +269,113 @@ class TestCatalog:
 
 
 USER_KEY_PROVIDERS = [*PAID, "openai_compatible"]
+
+
+SHIPPED = ModelCatalog.load(SERVICE_ROOT / "config" / "models.toml")
+
+
+class TestTiers:
+    @pytest.mark.parametrize(
+        ("provider", "nivel", "model"),
+        [
+            ("openai", "economico", "gpt-5.4-mini"),
+            ("openai", "equilibrado", "gpt-5.5"),
+            ("openai", "maximo", "gpt-5.5-pro"),
+            ("anthropic", "economico", "claude-haiku-5-5"),
+            ("anthropic", "equilibrado", "claude-sonnet-5-5"),
+            ("anthropic", "maximo", "claude-opus-5-5"),
+            ("groq", "economico", "openai/gpt-oss-20b"),
+        ],
+    )
+    def test_shipped_tiers_resolve_to_the_first_listed_model(
+        self, provider: ProveedorId, nivel: Nivel, model: str
+    ) -> None:
+        assert SHIPPED.resolve(provider, nivel) == model
+
+    @pytest.mark.parametrize(("provider", "nivel"), [("groq", "maximo"), ("ollama", "economico")])
+    def test_missing_tiers_are_reported(self, provider: ProveedorId, nivel: Nivel) -> None:
+        with pytest.raises(TierNotAvailableError, match=f"{provider} has no model for the {nivel}"):
+            SHIPPED.resolve(provider, nivel)
+
+    def test_new_tier_models_have_no_price_yet(self) -> None:
+        for name in ("gpt-5.5", "gpt-5.5-pro", "claude-sonnet-5-5", "claude-opus-5-5"):
+            entry = next(m for m in SHIPPED.models if m.name == name)
+            assert entry.input_usd_per_million is None
+
+    def test_selection_needs_a_model_or_a_tier(self) -> None:
+        with pytest.raises(SelectionError, match="a model or a tier"):
+            parse_selection({"proveedor": "groq"})
+        with pytest.raises(ValueError, match="resolve the tier"):
+            _ = ProviderSelection(proveedor="groq", nivel="economico").etiqueta
+
+    def test_registry_resolves_tiers_and_an_explicit_model_wins(self) -> None:
+        reg = ProviderRegistry(settings(server_key_providers="groq", groq_api_key="g"), SHIPPED)
+
+        by_tier = reg.validate(ProviderSelection(proveedor="groq", nivel="economico"))
+        explicit = reg.validate(
+            ProviderSelection(proveedor="groq", nivel="economico", modelo="llama-3.3-70b-versatile")
+        )
+
+        assert by_tier.etiqueta == "groq:openai/gpt-oss-20b"
+        assert explicit.etiqueta == "groq:llama-3.3-70b-versatile"
+        assert reg.model(ProviderSelection(proveedor="groq", nivel="economico")).model_name == (
+            "openai/gpt-oss-20b"
+        )
+
+    def test_unknown_tier_for_a_provider_is_not_allowed(self) -> None:
+        reg = ProviderRegistry(settings(server_key_providers="groq", groq_api_key="g"), SHIPPED)
+
+        with pytest.raises(ProviderNotAllowedError, match="maximo tier"):
+            reg.validate(ProviderSelection(proveedor="groq", nivel="maximo"))
+        with pytest.raises(ProviderNotAllowedError, match="openai_compatible has no model"):
+            reg.cost_usd(
+                parse_selection(
+                    {
+                        "proveedor": "openai_compatible",
+                        "nivel": "economico",
+                        "api_key": USER_KEY,
+                        "base_url": "https://llm.example.com/v1",
+                    }
+                ),
+                1,
+                1,
+            )
+
+
+class TestCostEstimate:
+    def test_estimate_multiplies_the_profile_by_each_models_prices(self) -> None:
+        reg = ProviderRegistry(settings(), SHIPPED)
+        profile = SHIPPED.consumption_profile
+        generation_tokens = [profile[r] for r in ("analista", "qa", "revisor")]
+        expected = (
+            sum(p.input_tokens * 0.75 + p.output_tokens * 4.50 for p in generation_tokens)
+            + profile["evaluador"].input_tokens * 0.10
+            + profile["evaluador"].output_tokens * 0.50
+        ) / 1e6
+
+        estimate = reg.estimate_run_cost(
+            ProviderSelection(proveedor="openai", nivel="economico"),
+            ProviderSelection(proveedor="anthropic", nivel="economico"),
+        )
+
+        assert estimate == pytest.approx(expected, abs=1e-6)
+
+    def test_estimate_is_null_when_a_price_or_profile_is_missing(self) -> None:
+        reg = ProviderRegistry(settings(), SHIPPED)
+        haiku = ProviderSelection(proveedor="anthropic", nivel="economico")
+
+        assert (
+            reg.estimate_run_cost(ProviderSelection(proveedor="anthropic", nivel="maximo"), haiku)
+            is None
+        )
+        empty = ProviderRegistry(settings(), SHIPPED.model_copy(update={"consumption_profile": {}}))
+        assert empty.estimate_run_cost(haiku, haiku) is None
+
+    def test_free_models_estimate_zero(self) -> None:
+        reg = ProviderRegistry(settings(), SHIPPED)
+        groq = ProviderSelection(proveedor="groq", nivel="economico")
+
+        assert reg.estimate_run_cost(groq, groq) == 0.0
 
 
 class TestUserKey:

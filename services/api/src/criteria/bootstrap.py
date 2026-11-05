@@ -22,6 +22,7 @@ class Container:
 
     def binding(self, selection: ProviderSelection) -> ModelBinding:
         registry = self.registry
+        selection = registry.validate(selection)
         return ModelBinding(
             model=registry.model(selection),
             label=selection.etiqueta,

@@ -155,6 +155,33 @@ class TestRun:
         assert (generacion.etiqueta, juez.etiqueta) == ("ollama:llama3.1:8b", "ollama:qwen3:8b")
 
 
+class TestTiers:
+    def test_a_tier_resolves_to_the_catalog_model_and_shows_the_estimate(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv(USER_KEY_ENV, "sk-user-7777")
+        argv = ["run", "--provider", "anthropic", "--nivel", "equilibrado", "--clave-propia"]
+
+        code, console, container = run_cli([*argv, "--text", f.REQUERIMIENTO, "--auto-aprobar"])
+
+        assert code == EXIT_OK
+        assert container is not None
+        assert container.selections[0][0].etiqueta == "anthropic:claude-sonnet-5-5"
+        assert "Costo estimado de la corrida: n/d" in console.err.getvalue()
+
+    def test_priced_models_print_a_dollar_estimate(self) -> None:
+        code, console, _ = run_cli([*OLLAMA, "--text", f.REQUERIMIENTO, "--auto-aprobar"])
+
+        assert code == EXIT_OK
+        assert "Costo estimado de la corrida: US$ 0.000000" in console.err.getvalue()
+
+    def test_providers_without_tiers_need_an_explicit_model(self) -> None:
+        code, console, _ = run_cli(["run", "--provider", "ollama", "--text", f.REQUERIMIENTO])
+
+        assert code == EXIT_USAGE
+        assert "ollama has no model for the economico tier" in console.err.getvalue()
+
+
 class TestApproval:
     def test_interactive_approval(self) -> None:
         console = Console(["a"])
@@ -208,7 +235,7 @@ class TestUsageErrors:
         ("argv", "message"),
         [
             ([*OLLAMA, "--text", "muy corto"], "entre 20 y 2,000"),
-            (["run", "--text", f.REQUERIMIENTO], "Indica --provider y --model"),
+            (["run", "--text", f.REQUERIMIENTO], "Indica --provider"),
             (
                 [
                     "run",

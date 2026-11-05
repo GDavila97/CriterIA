@@ -1,5 +1,5 @@
 from collections.abc import Mapping
-from typing import Annotated, Self
+from typing import Annotated, Literal, Self
 
 from pydantic import (
     BaseModel,
@@ -19,6 +19,7 @@ USER_KEY_PROVIDERS: frozenset[ProveedorId] = frozenset(
 )
 
 NombreModelo = Annotated[str, StringConstraints(pattern=r"^[A-Za-z0-9][A-Za-z0-9._:/-]{0,99}$")]
+Nivel = Literal["economico", "equilibrado", "maximo"]
 
 
 class ProviderSelection(BaseModel):
@@ -26,7 +27,9 @@ class ProviderSelection(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True, hide_input_in_errors=True)
 
     proveedor: ProveedorId
-    modelo: NombreModelo
+    # A tier is resolved to a model by the catalog; an explicit model wins over the tier.
+    modelo: NombreModelo | None = None
+    nivel: Nivel | None = None
     temperatura: float = Field(default=0.2, ge=0.0, le=2.0)
     max_tokens: int = Field(default=4096, ge=256, le=16384)
     api_key: SecretStr | None = Field(default=None, repr=False)
@@ -34,6 +37,8 @@ class ProviderSelection(BaseModel):
 
     @model_validator(mode="after")
     def _custom_endpoint_rules(self) -> Self:
+        if self.modelo is None and self.nivel is None:
+            raise ValueError("a selection needs a model or a tier")
         if self.proveedor == "openai_compatible":
             if self.base_url is None or self.api_key is None:
                 raise ValueError("openai_compatible needs its own base_url and api_key")
@@ -45,6 +50,8 @@ class ProviderSelection(BaseModel):
 
     @property
     def etiqueta(self) -> str:
+        if self.modelo is None:
+            raise ValueError("resolve the tier to a model before labelling the selection")
         return f"{self.proveedor}:{self.modelo}"
 
     @property

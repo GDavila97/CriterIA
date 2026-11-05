@@ -71,6 +71,11 @@ def build_parser() -> argparse.ArgumentParser:
     run = commands.add_parser("run", help="Corre el grafo completo con un requerimiento.")
     run.add_argument("--provider", help="Proveedor de generación (por defecto, PROVIDER).")
     run.add_argument("--model", help="Modelo de generación (por defecto, GENERATION_MODEL).")
+    run.add_argument(
+        "--nivel",
+        choices=["economico", "equilibrado", "maximo"],
+        help="Nivel del modelo cuando no se indica --model (por defecto, economico).",
+    )
     run.add_argument("--judge-provider", help="Proveedor del Evaluador (por defecto, el mismo).")
     run.add_argument("--judge-model", help="Modelo del Evaluador (por defecto, el mismo).")
     run.add_argument(
@@ -107,13 +112,12 @@ def read_requirement(args: argparse.Namespace) -> Requerimiento:
 def _selection(
     provider: str | None, model: str | None, args: argparse.Namespace
 ) -> ProviderSelection:
-    if not provider or not model:
-        raise UsageError(
-            "Indica --provider y --model, o define PROVIDER y GENERATION_MODEL en el entorno."
-        )
+    if not provider:
+        raise UsageError("Indica --provider o define PROVIDER en el entorno.")
     data: dict[str, object] = {
         "proveedor": provider,
         "modelo": model,
+        "nivel": None if model else (args.nivel or "economico"),
         "temperatura": args.temperatura,
         "max_tokens": args.max_tokens,
     }
@@ -184,13 +188,19 @@ async def execute(args: argparse.Namespace, container: Container, terminal: Term
     generacion, juez = selections(args, settings)
     rondas = max_rounds(args, settings)
     try:
-        container.registry.validate(generacion)
-        container.registry.validate(juez)
+        generacion = container.registry.validate(generacion)
+        juez = container.registry.validate(juez)
         agents = container.agents(generacion, juez)
     except KeyRequiredError as error:
         raise UsageError(f"{error.codigo}: {error}") from None
     except (ProviderNotAllowedError, EndpointNotAllowedError) as error:
         raise UsageError(str(error)) from None
+    estimate = container.registry.estimate_run_cost(generacion, juez)
+    print(
+        "Costo estimado de la corrida: "
+        + ("n/d (falta el precio de algún modelo)" if estimate is None else f"US$ {estimate:.6f}"),
+        file=terminal.err,
+    )
     events = PrintingEventSink(uuid4(), container.clock, terminal.out, as_json=args.json)
     service = container.service
     outcome: RunOutcome = await service.iniciar(

@@ -14,7 +14,7 @@ from pydantic_ai.providers.ollama import OllamaProvider
 from pydantic_ai.providers.openai import OpenAIProvider
 from pydantic_ai.settings import ModelSettings
 
-from criteria.adapters.llm.catalog import ModelCatalog
+from criteria.adapters.llm.catalog import ModelCatalog, TierNotAvailableError
 from criteria.adapters.llm.ssrf import guarded_client, validate_endpoint_url
 from criteria.config import Settings
 from criteria.domain.events import ProveedorId
@@ -39,6 +39,12 @@ class KeyRequiredError(ProviderNotAllowedError):
 
 def _secret(value: SecretStr | None) -> str | None:
     return value.get_secret_value() if value is not None else None
+
+
+def _model_name(selection: ProviderSelection) -> str:
+    if selection.modelo is None:
+        raise ProviderNotAllowedError(f"{selection.proveedor} needs a model or a known tier")
+    return selection.modelo
 
 
 def _key(selection: ProviderSelection, server_key: SecretStr | None) -> str | None:
@@ -77,38 +83,57 @@ class ProviderRegistry:
             or (provider in user_keys and provider in USER_KEY_PROVIDERS)
         ]
 
-    def validate(self, selection: ProviderSelection) -> None:
+    def resolve(self, selection: ProviderSelection) -> ProviderSelection:
+        if selection.modelo is not None or selection.nivel is None:
+            return selection
+        try:
+            modelo = self._catalog.resolve(selection.proveedor, selection.nivel)
+        except TierNotAvailableError as error:
+            raise ProviderNotAllowedError(str(error)) from None
+        return selection.model_copy(update={"modelo": modelo})
+
+    def validate(self, selection: ProviderSelection) -> ProviderSelection:
+        """Returns the selection with its tier resolved, or raises before any model is called."""
         if not selection.usa_clave_propia and not self.server_access(selection.proveedor):
             raise KeyRequiredError(f"{selection.proveedor} needs the user's own API key")
-        if not self._catalog.allows(selection.proveedor, selection.modelo):
-            raise ProviderNotAllowedError(f"model {selection.etiqueta} is not allowed")
-        if selection.base_url is not None:
-            validate_endpoint_url(str(selection.base_url))
+        resolved = self.resolve(selection)
+        if not self._catalog.allows(resolved.proveedor, _model_name(resolved)):
+            raise ProviderNotAllowedError(f"model {resolved.etiqueta} is not allowed")
+        if resolved.base_url is not None:
+            validate_endpoint_url(str(resolved.base_url))
+        return resolved
+
+    def estimate_run_cost(
+        self, generacion: ProviderSelection, juez: ProviderSelection
+    ) -> float | None:
+        gen, judge = self.resolve(generacion), self.resolve(juez)
+        return self._catalog.estimate_run_cost(
+            (gen.proveedor, _model_name(gen)), (judge.proveedor, _model_name(judge))
+        )
 
     def model(self, selection: ProviderSelection) -> Model:
-        self.validate(selection)
+        selection = self.validate(selection)
+        name = _model_name(selection)
         settings = self._settings
         match selection.proveedor:
             case "openai":
                 return OpenAIChatModel(
-                    selection.modelo,
+                    name,
                     provider=OpenAIProvider(api_key=_key(selection, settings.openai_api_key)),
                 )
             case "anthropic":
                 return AnthropicModel(
-                    selection.modelo,
+                    name,
                     provider=AnthropicProvider(api_key=_key(selection, settings.anthropic_api_key)),
                 )
             case "groq":
                 return GroqModel(
-                    selection.modelo,
+                    name,
                     provider=GroqProvider(api_key=_key(selection, settings.groq_api_key)),
                 )
             case "ollama":
                 base_url = str(settings.ollama_base_url).rstrip("/")
-                return OllamaModel(
-                    selection.modelo, provider=OllamaProvider(base_url=f"{base_url}/v1")
-                )
+                return OllamaModel(name, provider=OllamaProvider(base_url=f"{base_url}/v1"))
             case "openai_compatible":
                 client = AsyncOpenAI(
                     base_url=str(selection.base_url),
@@ -116,17 +141,16 @@ class ProviderRegistry:
                     http_client=self._user_endpoint_client(),
                     max_retries=0,
                 )
-                return OpenAIChatModel(
-                    selection.modelo, provider=OpenAIProvider(openai_client=client)
-                )
+                return OpenAIChatModel(name, provider=OpenAIProvider(openai_client=client))
 
     def model_settings(self, selection: ProviderSelection) -> ModelSettings:
+        selection = self.resolve(selection)
         model_settings = ModelSettings(
             temperature=selection.temperatura,
             max_tokens=selection.max_tokens,
             timeout=self._settings.provider_timeout_seconds,
         )
-        entry = self._catalog.entry(selection.proveedor, selection.modelo)
+        entry = self._catalog.entry(selection.proveedor, _model_name(selection))
         if entry is not None and entry.thinking is not None:
             model_settings["thinking"] = entry.thinking
         return model_settings
@@ -134,7 +158,10 @@ class ProviderRegistry:
     def cost_usd(
         self, selection: ProviderSelection, tokens_in: int, tokens_out: int
     ) -> float | None:
-        return self._catalog.cost_usd(selection.proveedor, selection.modelo, tokens_in, tokens_out)
+        selection = self.resolve(selection)
+        return self._catalog.cost_usd(
+            selection.proveedor, _model_name(selection), tokens_in, tokens_out
+        )
 
     def _default_user_endpoint_client(self) -> httpx2.AsyncClient:
         return guarded_client(

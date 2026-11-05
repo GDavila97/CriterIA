@@ -105,6 +105,7 @@ uv run criteria run --provider ollama --model qwen3:8b --file examples/bibliotec
 | Opción | Qué hace |
 | --- | --- |
 | `--provider`, `--model` | Proveedor y modelo de generación; por defecto, `PROVIDER` y `GENERATION_MODEL` del `.env` |
+| `--nivel` | `economico`, `equilibrado` o `maximo`, cuando no se indica `--model` (por defecto, `economico`); antes de empezar, la CLI muestra el costo estimado de la corrida |
 | `--judge-provider`, `--judge-model` | Proveedor y modelo del Evaluador; por defecto, los de generación |
 | `--text "…"` o `--file ruta` | El requerimiento (de 20 a 2,000 caracteres) |
 | `--auto-aprobar` | Aprueba las historias sin preguntar; sin esta opción, la CLI las muestra y pide aprobar, editar (abre `$EDITOR` con el JSON) o cancelar |
