@@ -64,9 +64,10 @@ services/api/
                    humana y ProviderSelection; solo Pydantic
     application/   grafo de LangGraph (graph.py) y servicio de corridas (runs.py): iniciar,
                    reanudar tras la aprobación y descartar
-    ports/         AgentRunner por rol con sus entradas, EventSink, Checkpointer, Clock
+    ports/         AgentRunner por rol con sus entradas, EventSink, Checkpointer, Clock, KeyValidator
     adapters/
-      llm/         registro de proveedores, catálogo de modelos y precios, protección SSRF
+      llm/         registro de proveedores, catálogo (niveles, precios, perfil de consumo), protección
+                   SSRF y validación de claves
       agents/      agentes de Pydantic AI expuestos como AgentRunner, bloques de datos, prompts
       memory/      checkpointer y sink de eventos en memoria
       cli/         comando `criteria run` y salida legible o JSON por línea
@@ -96,6 +97,7 @@ Puertos:
 | `EventSink` | Recibe los eventos de una corrida en orden y les asigna `seq` creciente y `ts` | `ListEventSink` (pruebas), `PrintingEventSink` (CLI); SSE en F3 |
 | `Checkpointer` | Guarda el estado del grafo entre la pausa humana y la reanudación, y lo borra al terminar | `MemoryCheckpointer`; Postgres en F3 |
 | `Clock` | Hora con zona y reloj monotónico, para que las pruebas controlen `ts` y latencia | `SystemClock`; `FakeClock` en pruebas |
+| `KeyValidator` | Comprueba una clave con la llamada más barata del proveedor (listar modelos) y devuelve `valida`, `invalida` o `no_verificable` con los últimos 4 caracteres, sin guardar ni registrar la clave | `HttpKeyValidator`; el endpoint que lo usa llega en F3 |
 
 Detalle de agentes, grafo, reintentos y rondas en [agents.md](agents.md), y de los eventos en [events.md](events.md).
 
