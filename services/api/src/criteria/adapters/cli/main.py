@@ -15,6 +15,7 @@ from uuid import uuid4
 from pydantic import ValidationError
 
 from criteria.adapters.cli.output import PrintingEventSink, format_historia
+from criteria.adapters.llm.catalog import CatalogError
 from criteria.adapters.llm.registry import (
     KeyRequiredError,
     ProviderNotAllowedError,
@@ -256,7 +257,7 @@ def main(
     try:
         container = container_factory(load_settings())
         return asyncio.run(execute(args, container, terminal))
-    except (ConfigError, UsageError, OSError) as error:
+    except (ConfigError, CatalogError, UsageError, OSError) as error:
         print(f"criteria: {error}", file=terminal.err)
         return EXIT_USAGE
     except KeyboardInterrupt:

@@ -168,13 +168,26 @@ class TestTiers:
         assert code == EXIT_OK
         assert container is not None
         assert container.selections[0][0].etiqueta == "anthropic:claude-sonnet-5-5"
-        assert "Costo estimado de la corrida: n/d" in console.err.getvalue()
+        assert "Costo estimado de la corrida: US$ 0.0" in console.err.getvalue()
 
     def test_priced_models_print_a_dollar_estimate(self) -> None:
         code, console, _ = run_cli([*OLLAMA, "--text", f.REQUERIMIENTO, "--auto-aprobar"])
 
         assert code == EXIT_OK
         assert "Costo estimado de la corrida: US$ 0.000000" in console.err.getvalue()
+
+    def test_an_invalid_catalog_stops_the_cli_with_a_clear_message(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        catalog = tmp_path / "models.toml"
+        entry = '[[models]]\nprovider = "groq"\nname = "{}"\nnivel = "economico"\n'
+        catalog.write_text(entry.format("a") + entry.format("b"), encoding="utf-8")
+        monkeypatch.setenv("MODELS_FILE", str(catalog))
+
+        code, console, _ = run_cli([*OLLAMA, "--text", f.REQUERIMIENTO])
+
+        assert code == EXIT_USAGE
+        assert "groq has two models for the economico tier" in console.err.getvalue()
 
     def test_providers_without_tiers_need_an_explicit_model(self) -> None:
         code, console, _ = run_cli(["run", "--provider", "ollama", "--text", f.REQUERIMIENTO])

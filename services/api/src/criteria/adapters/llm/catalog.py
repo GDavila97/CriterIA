@@ -2,7 +2,7 @@ import tomllib
 from pathlib import Path
 from typing import Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
 from criteria.domain.events import ProveedorId
 from criteria.domain.run_config import Nivel, NombreModelo
@@ -12,6 +12,10 @@ GENERATION_ROLES: tuple[RolAgente, ...] = ("analista", "qa", "revisor")
 
 
 class TierNotAvailableError(LookupError):
+    pass
+
+
+class CatalogError(RuntimeError):
     pass
 
 
@@ -45,10 +49,30 @@ class ModelCatalog(BaseModel):
     models: list[CatalogEntry]
     consumption_profile: dict[RolAgente, TokenProfile] = Field(default_factory=dict)
 
+    @model_validator(mode="after")
+    def _one_model_per_tier(self) -> Self:
+        seen: dict[tuple[ProveedorId, Nivel], str] = {}
+        for entry in self.models:
+            if entry.nivel is None:
+                continue
+            key = (entry.provider, entry.nivel)
+            if key in seen:
+                raise ValueError(
+                    f"{entry.provider} has two models for the {entry.nivel} tier: "
+                    f"{seen[key]} and {entry.name}"
+                )
+            seen[key] = entry.name
+        return self
+
     @classmethod
     def load(cls, path: Path) -> "ModelCatalog":
         with path.open("rb") as handle:
-            return cls.model_validate(tomllib.load(handle))
+            data = tomllib.load(handle)
+        try:
+            return cls.model_validate(data)
+        except ValidationError as error:
+            problems = "; ".join(issue["msg"] for issue in error.errors())
+        raise CatalogError(f"Invalid model catalog {path.name}: {problems}")
 
     def entry(self, provider: ProveedorId, name: str) -> CatalogEntry | None:
         return next((m for m in self.models if m.provider == provider and m.name == name), None)

@@ -28,7 +28,7 @@ Pendiente: puntaje por criterio, tasa de salidas válidas, rondas de revisión, 
 
 ## Modelos comparados
 
-Pendiente: OpenAI mini, Claude Haiku (marcado por compartir proveedor con el juez), Groq y el modelo local.
+El modelo de generación de OpenAI para la evaluación es `gpt-6-luna` (nivel económico). Pendiente: correr `gpt-6-luna`, Claude Haiku (marcado por compartir proveedor con el juez), Groq y el modelo local.
 
 ## Cómo reproducir
 

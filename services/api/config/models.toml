@@ -1,24 +1,35 @@
 # Models each provider may run, with prices in USD per million tokens.
-# Prices are copied by hand from each provider's price list (verified 2026-11-04). A model without
+# Prices are copied by hand from each provider's price list (verified 2026-11-05). A model without
 # both prices reports its cost as null. openai_compatible accepts any model name the user brings.
-# A tier (nivel) resolves to the first model listed with it for that provider.
+# Each provider has at most one model per tier (nivel); the catalog refuses to load otherwise.
 
+[[models]]
+provider = "openai"
+name = "gpt-6-luna"
+nivel = "economico"
+input_usd_per_million = 0.10
+output_usd_per_million = 0.50
+
+[[models]]
+provider = "openai"
+name = "gpt-6.1-sol"
+nivel = "equilibrado"
+input_usd_per_million = 2.0
+output_usd_per_million = 10.0
+
+[[models]]
+provider = "openai"
+name = "gpt-6-astra"
+nivel = "maximo"
+input_usd_per_million = 10.0
+output_usd_per_million = 50.0
+
+# Kept for explicit selection; no tier resolves to it.
 [[models]]
 provider = "openai"
 name = "gpt-5.4-mini"
-nivel = "economico"
 input_usd_per_million = 0.75
 output_usd_per_million = 4.50
-
-[[models]]
-provider = "openai"
-name = "gpt-5.5"
-nivel = "equilibrado"
-
-[[models]]
-provider = "openai"
-name = "gpt-5.5-pro"
-nivel = "maximo"
 
 # Rate for prompts up to 100,000 tokens; CriterIA prompts stay far below that.
 [[models]]
@@ -32,11 +43,15 @@ output_usd_per_million = 0.50
 provider = "anthropic"
 name = "claude-sonnet-5-5"
 nivel = "equilibrado"
+input_usd_per_million = 2.0
+output_usd_per_million = 10.0
 
 [[models]]
 provider = "anthropic"
 name = "claude-opus-5-5"
 nivel = "maximo"
+input_usd_per_million = 4.0
+output_usd_per_million = 20.0
 
 # Groq runs on the free plan.
 [[models]]
@@ -49,7 +64,6 @@ output_usd_per_million = 0.0
 [[models]]
 provider = "groq"
 name = "llama-3.3-70b-versatile"
-nivel = "economico"
 input_usd_per_million = 0.0
 output_usd_per_million = 0.0
 

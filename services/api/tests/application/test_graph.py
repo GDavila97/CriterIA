@@ -187,7 +187,7 @@ class TestCost:
             )
 
         agents = AgentFactory(PROMPTS, "v1", "v1", FakeClock()).build(
-            priced("openai", "gpt-5.4-mini"), priced("anthropic", "claude-haiku-5-5")
+            priced("openai", "gpt-6-luna"), priced("anthropic", "claude-sonnet-5-5")
         )
         events = ListEventSink(uuid4(), FakeClock())
         service = RunService(MemoryCheckpointer())
@@ -203,7 +203,7 @@ class TestCost:
         expected = 0.0
         for delivery in deliveries:
             input_price, output_price = (
-                (0.10, 0.50) if delivery.agent == "evaluador" else (0.75, 4.50)
+                (2.0, 10.0) if delivery.agent == "evaluador" else (0.10, 0.50)
             )
             uso = delivery.uso
             expected_call = (

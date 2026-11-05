@@ -8,7 +8,12 @@ from pydantic_ai.models.groq import GroqModel
 from pydantic_ai.models.ollama import OllamaModel
 from pydantic_ai.models.openai import OpenAIChatModel
 
-from criteria.adapters.llm.catalog import CatalogEntry, ModelCatalog, TierNotAvailableError
+from criteria.adapters.llm.catalog import (
+    CatalogEntry,
+    CatalogError,
+    ModelCatalog,
+    TierNotAvailableError,
+)
 from criteria.adapters.llm.registry import (
     KeyRequiredError,
     ProviderNotAllowedError,
@@ -278,16 +283,16 @@ class TestTiers:
     @pytest.mark.parametrize(
         ("provider", "nivel", "model"),
         [
-            ("openai", "economico", "gpt-5.4-mini"),
-            ("openai", "equilibrado", "gpt-5.5"),
-            ("openai", "maximo", "gpt-5.5-pro"),
+            ("openai", "economico", "gpt-6-luna"),
+            ("openai", "equilibrado", "gpt-6.1-sol"),
+            ("openai", "maximo", "gpt-6-astra"),
             ("anthropic", "economico", "claude-haiku-5-5"),
             ("anthropic", "equilibrado", "claude-sonnet-5-5"),
             ("anthropic", "maximo", "claude-opus-5-5"),
             ("groq", "economico", "openai/gpt-oss-20b"),
         ],
     )
-    def test_shipped_tiers_resolve_to_the_first_listed_model(
+    def test_shipped_tiers_resolve_to_their_model(
         self, provider: ProveedorId, nivel: Nivel, model: str
     ) -> None:
         assert SHIPPED.resolve(provider, nivel) == model
@@ -297,10 +302,51 @@ class TestTiers:
         with pytest.raises(TierNotAvailableError, match=f"{provider} has no model for the {nivel}"):
             SHIPPED.resolve(provider, nivel)
 
-    def test_new_tier_models_have_no_price_yet(self) -> None:
-        for name in ("gpt-5.5", "gpt-5.5-pro", "claude-sonnet-5-5", "claude-opus-5-5"):
-            entry = next(m for m in SHIPPED.models if m.name == name)
-            assert entry.input_usd_per_million is None
+    @pytest.mark.parametrize(
+        ("provider", "name", "prices"),
+        [
+            ("openai", "gpt-6-luna", (0.10, 0.50)),
+            ("openai", "gpt-6.1-sol", (2.0, 10.0)),
+            ("openai", "gpt-6-astra", (10.0, 50.0)),
+            ("openai", "gpt-5.4-mini", (0.75, 4.50)),
+            ("anthropic", "claude-sonnet-5-5", (2.0, 10.0)),
+            ("anthropic", "claude-opus-5-5", (4.0, 20.0)),
+        ],
+    )
+    def test_shipped_prices(
+        self, provider: ProveedorId, name: str, prices: tuple[float, float]
+    ) -> None:
+        entry = SHIPPED.entry(provider, name)
+
+        assert entry is not None
+        assert (entry.input_usd_per_million, entry.output_usd_per_million) == prices
+
+    def test_untiered_models_stay_selectable_by_name(self) -> None:
+        assert SHIPPED.entry("openai", "gpt-5.4-mini") is not None
+        assert SHIPPED.entry("openai", "gpt-5.4-mini").nivel is None  # type: ignore[union-attr]
+        assert SHIPPED.entry("groq", "llama-3.3-70b-versatile").nivel is None  # type: ignore[union-attr]
+        assert SHIPPED.entry("openai", "gpt-5.5") is None
+        assert SHIPPED.entry("openai", "gpt-5.5-pro") is None
+
+    def test_two_models_for_one_tier_are_rejected(self) -> None:
+        with pytest.raises(
+            ValidationError, match="groq has two models for the economico tier: a and b"
+        ):
+            ModelCatalog(
+                models=[
+                    CatalogEntry(provider="groq", name="a", nivel="economico"),
+                    CatalogEntry(provider="groq", name="b", nivel="economico"),
+                    CatalogEntry(provider="openai", name="c", nivel="economico"),
+                ]
+            )
+
+    def test_a_duplicated_tier_stops_loading_with_a_clear_message(self, tmp_path: Path) -> None:
+        path = tmp_path / "models.toml"
+        entry = '[[models]]\nprovider = "groq"\nname = "{}"\nnivel = "maximo"\n'
+        path.write_text(entry.format("a") + entry.format("b"), encoding="utf-8")
+
+        with pytest.raises(CatalogError, match=r"Invalid model catalog models\.toml: .*two models"):
+            ModelCatalog.load(path)
 
     def test_selection_needs_a_model_or_a_tier(self) -> None:
         with pytest.raises(SelectionError, match="a model or a tier"):
@@ -348,7 +394,7 @@ class TestCostEstimate:
         profile = SHIPPED.consumption_profile
         generation_tokens = [profile[r] for r in ("analista", "qa", "revisor")]
         expected = (
-            sum(p.input_tokens * 0.75 + p.output_tokens * 4.50 for p in generation_tokens)
+            sum(p.input_tokens * 0.10 + p.output_tokens * 0.50 for p in generation_tokens)
             + profile["evaluador"].input_tokens * 0.10
             + profile["evaluador"].output_tokens * 0.50
         ) / 1e6
@@ -361,11 +407,16 @@ class TestCostEstimate:
         assert estimate == pytest.approx(expected, abs=1e-6)
 
     def test_estimate_is_null_when_a_price_or_profile_is_missing(self) -> None:
-        reg = ProviderRegistry(settings(), SHIPPED)
         haiku = ProviderSelection(proveedor="anthropic", nivel="economico")
+        unpriced = ProviderRegistry(
+            settings(),
+            SHIPPED.model_copy(
+                update={"models": [*SHIPPED.models, CatalogEntry(provider="openai", name="nuevo")]}
+            ),
+        )
 
         assert (
-            reg.estimate_run_cost(ProviderSelection(proveedor="anthropic", nivel="maximo"), haiku)
+            unpriced.estimate_run_cost(ProviderSelection(proveedor="openai", modelo="nuevo"), haiku)
             is None
         )
         empty = ProviderRegistry(settings(), SHIPPED.model_copy(update={"consumption_profile": {}}))
