@@ -22,7 +22,7 @@ from criteria.adapters.memory.checkpointer import MemoryCheckpointer
 from criteria.application.runs import RunService
 from criteria.bootstrap import Container, build_container
 from criteria.config import SERVICE_ROOT, Settings
-from criteria.domain.events import RespaldoActivado, evento_adapter
+from criteria.domain.events import AgenteError, evento_adapter
 from criteria.domain.run_config import ProviderSelection
 from criteria.ports.agents import AgentSet
 from tests import factories as f
@@ -376,20 +376,20 @@ class TestUserKey:
         assert container.selections[0][0].usa_clave_propia
 
 
-def test_formats_fallback_events() -> None:
-    event = RespaldoActivado.model_validate(
+def test_account_failures_print_the_free_option() -> None:
+    event = AgenteError.model_validate(
         {
             "run_id": "0b6f0c1e-3c55-4d7c-9a77-3f1ac2a3f0f1",
             "seq": 7,
             "ts": "2026-11-05T12:00:00Z",
-            "agent": "sistema",
-            "proveedor_anterior": "openai",
-            "proveedor_nuevo": "groq",
-            "motivo": "Tope diario alcanzado",
+            "agent": "analista",
+            "codigo": "sin_saldo",
+            "mensaje": "La cuenta del proveedor no tiene saldo o cuota disponible.",
+            "respaldo_sugerido": "groq",
         }
     )
 
-    assert format_event(event) == "[07] sistema   · respaldo openai → groq"
+    assert format_event(event).endswith("Puedes usar el gratuito (groq).")
 
 
 def test_real_container_builds_agents_from_the_catalog(monkeypatch: pytest.MonkeyPatch) -> None:

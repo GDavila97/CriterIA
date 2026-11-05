@@ -5,7 +5,13 @@ from pathlib import Path
 
 import httpx2
 import pytest
-from pydantic_ai import ModelAPIError, ModelHTTPError
+from pydantic_ai import (
+    ModelAPIError,
+    ModelAuthenticationError,
+    ModelHTTPError,
+    ModelQuotaExceededError,
+    ModelRateLimitError,
+)
 
 from criteria.adapters.agents.blocks import data_block
 from criteria.adapters.agents.factory import AgentFactory, render_analista, render_qa
@@ -128,10 +134,17 @@ class TestErrorCodes:
     @pytest.mark.parametrize(
         ("error", "codigo"),
         [
-            (ModelHTTPError(429, "m", body={"error": "quota"}), "cuota_agotada"),
+            (ModelHTTPError(401, "m", body={"error": "invalid key"}), "clave_invalida"),
+            (ModelHTTPError(403, "m"), "clave_invalida"),
+            (ModelAuthenticationError("m", "bad key"), "clave_invalida"),
+            (ModelHTTPError(402, "m"), "sin_saldo"),
+            (ModelQuotaExceededError("m", "insufficient_quota"), "sin_saldo"),
+            (ModelHTTPError(429, "m", body={"error": "slow down"}), "limite_proveedor"),
+            (ModelRateLimitError("m", "slow down"), "limite_proveedor"),
             (ModelHTTPError(503, "m"), "proveedor_no_disponible"),
+            (ModelHTTPError(500, "m"), "proveedor_no_disponible"),
             (ModelAPIError("m", "down"), "proveedor_no_disponible"),
-            (TimeoutError(), "tiempo_agotado"),
+            (TimeoutError(), "proveedor_no_disponible"),
             (EndpointNotAllowedError("blocked"), "destino_no_permitido"),
             (RuntimeError("boom with internal detail"), "error_interno"),
         ],

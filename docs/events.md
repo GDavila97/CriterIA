@@ -23,9 +23,8 @@ Los eventos son modelos Pydantic (`services/api/src/criteria/domain/events.py`) 
 | `en_espera_humano` | `analista` | `solicitud` (`aprobar_historias`), `historias` |
 | `humano_responde` | `analista` | `decision` (`aprobado` o `editado`), `cambios` (`agregadas`, `modificadas`, `eliminadas`: listas de ids) |
 | `revisor_observa` | `revisor` | `ronda`, `observaciones`, `se_corrige` (falso cuando ya no quedan rondas) |
-| `agente_error` | el agente | `codigo`, `mensaje` (seguro, máximo 200 caracteres) |
-| `respaldo_activado` | `sistema` | `proveedor_anterior`, `proveedor_nuevo`, `motivo` (se emite desde F3) |
-| `corrida_fin` | `sistema` | `estado` (`completada` o `error`), `puntajes`, `totales` |
+| `agente_error` | el agente | `codigo`, `mensaje` (seguro, máximo 200 caracteres), `respaldo_sugerido` |
+| `corrida_fin` | `sistema` | `estado` (`completada` o `error`), `puntajes`, `totales`, `respaldo_sugerido` |
 
 ### `artefactos`
 
@@ -52,9 +51,10 @@ Unión discriminada por `tipo`, según el agente que entrega:
 | Código | Cuándo |
 | --- | --- |
 | `salida_invalida` | La salida no cumplió el esquema ni con el reintento |
-| `cuota_agotada` | El proveedor respondió 429 o un error de cuota |
-| `tiempo_agotado` | Se agotó el tiempo límite |
-| `proveedor_no_disponible` | Error de conexión, de autenticación o del servidor del proveedor |
+| `clave_invalida` | El proveedor rechazó la clave (401 o 403) |
+| `sin_saldo` | La cuenta no tiene saldo o cuota (402, o el `insufficient_quota` que OpenAI envía con un 429) |
+| `limite_proveedor` | El proveedor limitó la frecuencia de peticiones (429) |
+| `proveedor_no_disponible` | Error del servidor del proveedor (5xx), de conexión o tiempo agotado |
 | `destino_no_permitido` | La URL del usuario no pasó la protección SSRF o respondió demasiado |
 | `error_interno` | Cualquier otro error |
 
@@ -65,5 +65,9 @@ Flujo feliz: `corrida_inicia` → (`agente_inicia`, `agente_progreso`, `agente_e
 Con observaciones: después de la entrega del Revisor llega `revisor_observa`. Si `se_corrige` es verdadero, siguen el agente destino (y QA, si el destino fue el Analista) y otra revisión con la ronda aumentada.
 
 Con error: `agente_error` del agente que falló y enseguida `corrida_fin` con `estado: "error"` y `puntajes` vacíos.
+
+### Sin cambio de proveedor automático
+
+Una corrida nunca pasa a otro proveedor por su cuenta: hacerlo enviaría los datos del usuario a un tercero que no eligió ([ADR 0016](adr/0016-claves-por-usuario.md)). Cuando el error es `clave_invalida`, `sin_saldo` o `limite_proveedor` y el proveedor que falló no es Groq, `agente_error` y `corrida_fin` llevan `respaldo_sugerido: "groq"`, para que la interfaz ofrezca "Usar el gratuito". En los demás casos el campo es `null`. El proveedor que cuenta es el del agente que falló, así que un fallo del juez sugiere según el proveedor del juez. No existe un evento `respaldo_activado`.
 
 El nombre que se muestra en el globo de la oficina ("{nombre}, necesito tu visto bueno") se arma en el navegador y nunca viaja en los eventos.

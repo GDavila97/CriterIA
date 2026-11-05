@@ -19,12 +19,14 @@ AgenteId = Literal["analista", "qa", "revisor", "evaluador", "sistema"]
 ProveedorId = Literal["openai", "anthropic", "groq", "ollama", "openai_compatible"]
 CodigoError = Literal[
     "salida_invalida",
+    "clave_invalida",
+    "sin_saldo",
+    "limite_proveedor",
     "proveedor_no_disponible",
-    "cuota_agotada",
-    "tiempo_agotado",
     "destino_no_permitido",
     "error_interno",
 ]
+RespaldoSugerido = Literal["groq"]
 MensajeProgreso = Annotated[str, StringConstraints(min_length=1, max_length=80)]
 MensajeSeguro = Annotated[str, StringConstraints(min_length=1, max_length=200)]
 
@@ -127,13 +129,7 @@ class AgenteError(EventoBase):
     type: Literal["agente_error"] = "agente_error"
     codigo: CodigoError
     mensaje: MensajeSeguro
-
-
-class RespaldoActivado(EventoBase):
-    type: Literal["respaldo_activado"] = "respaldo_activado"
-    proveedor_anterior: ProveedorId
-    proveedor_nuevo: ProveedorId
-    motivo: MensajeSeguro
+    respaldo_sugerido: RespaldoSugerido | None = None
 
 
 class Totales(Esquema):
@@ -148,6 +144,7 @@ class CorridaFin(EventoBase):
     estado: Literal["completada", "error"]
     puntajes: list[Puntaje]
     totales: Totales
+    respaldo_sugerido: RespaldoSugerido | None = None
 
 
 Evento = Annotated[
@@ -159,7 +156,6 @@ Evento = Annotated[
     | HumanoResponde
     | RevisorObserva
     | AgenteError
-    | RespaldoActivado
     | CorridaFin,
     Field(discriminator="type"),
 ]

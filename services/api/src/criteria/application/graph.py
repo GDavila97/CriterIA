@@ -28,14 +28,17 @@ from criteria.domain.events import (
     CorridaFin,
     EnEsperaHumano,
     HumanoResponde,
+    RespaldoSugerido,
     RevisorObserva,
     Uso,
     sumar_totales,
 )
+from criteria.domain.fallback import respaldo_sugerido
 from criteria.domain.rules import cambios_historias, destino_correccion, marcar_origen
 from criteria.ports.agents import (
     AgentResult,
     AgentRunError,
+    AgentRunner,
     AgentSet,
     EntradaAnalista,
     EntradaEvaluador,
@@ -69,6 +72,7 @@ class RunState(TypedDict, total=False):
     puntajes: list[dict[str, Any]]
     usos: list[dict[str, Any]]
     estado: Literal["en_curso", "error", "completada"]
+    respaldo_sugerido: RespaldoSugerido | None
     ultimo_seq: int
 
 
@@ -107,8 +111,16 @@ async def _start(deps: GraphDeps, rol: Rol, ronda: int) -> None:
 
 
 async def _fail(deps: GraphDeps, rol: Rol, state: RunState, error: AgentRunError) -> RunState:
-    await deps.events.emit(AgenteError, agent=rol, codigo=error.codigo, mensaje=error.mensaje)
-    return {"estado": "error", "usos": _usos(state, error.uso)}
+    runner: AgentRunner[Any, Any] = getattr(deps.agents, rol)
+    respaldo = respaldo_sugerido(error.codigo, runner.proveedor)
+    await deps.events.emit(
+        AgenteError,
+        agent=rol,
+        codigo=error.codigo,
+        mensaje=error.mensaje,
+        respaldo_sugerido=respaldo,
+    )
+    return {"estado": "error", "usos": _usos(state, error.uso), "respaldo_sugerido": respaldo}
 
 
 async def analista(state: RunState, runtime: Runtime[GraphDeps]) -> RunState:
@@ -261,6 +273,7 @@ async def cierre(state: RunState, runtime: Runtime[GraphDeps]) -> RunState:
         estado=estado,
         puntajes=[Puntaje.model_validate(p) for p in state.get("puntajes", [])],
         totales=sumar_totales([Uso.model_validate(u) for u in state.get("usos", [])]),
+        respaldo_sugerido=state.get("respaldo_sugerido"),
     )
     return {"estado": estado}
 

@@ -254,7 +254,7 @@ class TestRetries:
         assert done.estado == "error"
         assert (harness.of(AgenteError)[0].agent, harness.of(AgenteError)[0].codigo) == (
             rol,
-            "tiempo_agotado",
+            "proveedor_no_disponible",
         )
         assert harness.types()[-1] == "corrida_fin:sistema"
         assert harness.of(CorridaFin)[0].puntajes == []
@@ -267,6 +267,56 @@ class TestRetries:
         assert isinstance(done, Terminada)
         assert done.estado == "error"
         assert not harness.of(EnEsperaHumano)
+
+
+class TestNoAutomaticFallback:
+    @pytest.mark.parametrize(
+        ("provider", "status", "codigo", "respaldo"),
+        [
+            ("anthropic", 401, "clave_invalida", "groq"),
+            ("openai", 402, "sin_saldo", "groq"),
+            ("openai", 429, "limite_proveedor", "groq"),
+            ("groq", 429, "limite_proveedor", None),
+            ("openai", 503, "proveedor_no_disponible", None),
+        ],
+    )
+    async def test_account_failures_end_the_run_and_only_suggest_the_free_provider(
+        self, provider: ProveedorId, status: int, codigo: str, respaldo: str | None
+    ) -> None:
+        scripted = happy_team(analista=[ModelHTTPError(status, "m")])
+        events = ListEventSink(uuid4(), FakeClock())
+
+        done = await RunService(MemoryCheckpointer()).iniciar(
+            requerimiento=Requerimiento(texto=f.REQUERIMIENTO),
+            agents=agent_set(make_binding(scripted, f"{provider}:m", provider=provider)),
+            events=events,
+            max_rondas=2,
+        )
+
+        assert isinstance(done, Terminada)
+        assert done.estado == "error"
+        error = next(e for e in events.events if isinstance(e, AgenteError))
+        fin = next(e for e in events.events if isinstance(e, CorridaFin))
+        assert (error.codigo, error.respaldo_sugerido, fin.respaldo_sugerido) == (
+            codigo,
+            respaldo,
+            respaldo,
+        )
+        assert scripted.calls == {"analista": 1}
+
+    async def test_judge_failures_suggest_by_the_judges_provider(self) -> None:
+        scripted = happy_team(evaluador=[ModelHTTPError(401, "m")])
+        harness = Harness(scripted)
+        harness.agents = AgentFactory(PROMPTS, "v1", "v1", FakeClock()).build(
+            make_binding(scripted, "groq:g", provider="groq"),
+            make_binding(scripted, "anthropic:a", provider="anthropic"),
+        )
+
+        await harness.run()
+
+        error = harness.of(AgenteError)[0]
+        assert (error.agent, error.respaldo_sugerido) == ("evaluador", "groq")
+        assert harness.of(CorridaFin)[0].respaldo_sugerido == "groq"
 
 
 class TestHumanPause:

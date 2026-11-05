@@ -65,7 +65,7 @@ flowchart TD
 
 - Cada agente tiene **un reintento** de salida (`retries={"output": 1}`). Si la salida no cumple el esquema o una regla de coherencia, Pydantic AI le devuelve el error de validación al modelo y le pide otra salida.
 - Si la segunda salida también falla, el nodo emite `agente_error` con código `salida_invalida` y un mensaje fijo. La corrida pasa a `cierre`, que emite `corrida_fin` con `estado: "error"`.
-- Las fallas del proveedor se traducen a códigos seguros: `cuota_agotada` (429 o límite de cuota), `tiempo_agotado`, `proveedor_no_disponible`, `destino_no_permitido` (protección SSRF) y `error_interno`. El mensaje del evento nunca incluye texto del modelo, del proveedor ni datos internos, y el log solo registra el tipo de excepción.
+- Las fallas del proveedor se traducen a códigos seguros: `clave_invalida` (401/403), `sin_saldo` (cuota agotada o pago requerido), `limite_proveedor` (429), `proveedor_no_disponible` (5xx, conexión o tiempo agotado), `destino_no_permitido` (protección SSRF) y `error_interno`. Con los tres primeros, si el proveedor no es Groq, el evento sugiere Groq como respaldo, pero la corrida nunca cambia de proveedor por su cuenta. El mensaje del evento nunca incluye texto del modelo, del proveedor ni datos internos, y el log solo registra el tipo de excepción.
 - Los reintentos de cada llamada se reportan en `uso.reintentos` (peticiones al modelo menos una).
 
 ## Política de rondas

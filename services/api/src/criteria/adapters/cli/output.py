@@ -17,7 +17,6 @@ from criteria.domain.events import (
     EnEsperaHumano,
     EventoBase,
     HumanoResponde,
-    RespaldoActivado,
     RevisorObserva,
     Uso,
 )
@@ -105,9 +104,12 @@ def _resumen(event: EventoBase) -> tuple[str, list[str]]:  # noqa: PLR0911
                 ],
             )
         case AgenteError():
-            return f"error {event.codigo}: {event.mensaje}", []
-        case RespaldoActivado():
-            return f"respaldo {event.proveedor_anterior} → {event.proveedor_nuevo}", []
+            sugerencia = (
+                f" Puedes usar el gratuito ({event.respaldo_sugerido})."
+                if event.respaldo_sugerido
+                else ""
+            )
+            return f"error {event.codigo}: {event.mensaje}{sugerencia}", []
         case CorridaFin():
             t = event.totales
             return (
