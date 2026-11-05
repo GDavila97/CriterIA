@@ -1,6 +1,6 @@
 # 0006. Proveedores de modelos y respaldo
 
-**Estado:** aceptada.
+**Estado:** aceptada; ajustada por la [0016](0016-claves-por-usuario.md) (claves por usuario, Groq gratuito por defecto y sin cambio de proveedor automático).
 
 **Contexto:** presupuesto de unos 10 dólares en OpenAI y 10 en Anthropic; la app debe seguir funcionando sin créditos y solo con el modelo local; el juez no debe calificar a su propio proveedor sin advertirlo.
 
