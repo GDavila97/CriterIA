@@ -1,4 +1,5 @@
 from datetime import UTC, datetime, timedelta
+from uuid import UUID
 
 from pydantic import SecretStr
 
@@ -36,3 +37,11 @@ class FakeKeyValidator:
         key = api_key.get_secret_value()
         estado = "invalida" if "bad" in key else "no_verificable" if "down" in key else "valida"
         return KeyCheck(estado=estado, last4=key[-4:])  # type: ignore[arg-type]
+
+
+class FakeReporter:
+    def __init__(self) -> None:
+        self.reported: list[tuple[BaseException, UUID]] = []
+
+    def report(self, error: BaseException, run_id: UUID) -> None:
+        self.reported.append((error, run_id))

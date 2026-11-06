@@ -61,10 +61,12 @@ data: {"type":"agente_entrega","run_id":"…","seq":7,…}
 - Mientras un agente trabaja llega un comentario `: ping` cada `SSE_HEARTBEAT_SECONDS` (15 s).
 - El stream se cierra solo tras `en_espera_humano` o `corrida_fin`. Tras aprobar, se abre otro stream con el último `seq` como `Last-Event-ID`.
 - Solo puede haber un stream por corrida. Si llega otro mientras el anterior sigue abierto, recibe `409 stream_activo`; se reintenta en uno o dos segundos.
-- Si el cliente se va a mitad de un agente, la ejecución se cancela y el siguiente stream repite ese agente desde el último checkpoint.
+- Si el cliente se va a mitad de un agente, la ejecución se cancela y el siguiente stream repite ese agente desde el último checkpoint. Lo mismo pasa si se cae la instancia: Postgres libera el lock al perder su sesión, la corrida queda en `en_curso` y el siguiente stream la retoma.
+- Un error no previsto fuera de los agentes (un fallo de la base o un bug de un nodo) no corta el stream en seco: llega `corrida_fin` con `estado: "error"`, `codigo: "error_interno"` y un mensaje genérico, sin detalles. La corrida pasa a `fallida`, el cupo se ajusta a lo que de verdad se consumió y el error se reporta a Sentry solo con su tipo, la traza y el `run_id`, sin el mensaje, las variables ni los breadcrumbs.
+- El cierre (ajuste del cupo, copia al historial y borrado) se puede repetir sin efectos dobles. Si la instancia cae después de `corrida_fin`, el siguiente stream solo termina el cierre: no vuelve a ejecutar el grafo y no ajusta el cupo dos veces.
 - `EventSource` no permite enviar `Authorization`, así que la web consume el stream con `fetch` y un lector de `ReadableStream`.
 
-Una corrida sin actividad durante `RUN_TTL_MINUTES` se descarta al crear la siguiente corrida de cualquier usuario. Al terminar se borran sus eventos y checkpoints, y solo queda la copia del historial si el usuario lo tiene activado.
+Una corrida sin actividad durante `RUN_TTL_MINUTES` pasa a `fallida` al crear la siguiente corrida de cualquier usuario. La reserva del cupo se cambia por el costo de los agentes que alcanzaron a entregar, y se borran sus eventos y checkpoints. La limpieza toma el lock del stream y vuelve a comprobar la inactividad, así que nunca toca una corrida con un stream abierto. Al terminar cualquier corrida se borran sus eventos y checkpoints, y solo queda la copia del historial si el usuario lo tiene activado.
 
 ## Claves propias
 

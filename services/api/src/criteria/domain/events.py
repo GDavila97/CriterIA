@@ -145,6 +145,9 @@ class CorridaFin(EventoBase):
     puntajes: list[Puntaje]
     totales: Totales
     respaldo_sugerido: RespaldoSugerido | None = None
+    # Only when the run stopped outside an agent; agent failures carry theirs in agente_error.
+    codigo: CodigoError | None = None
+    mensaje: MensajeSeguro | None = None
 
 
 Evento = Annotated[

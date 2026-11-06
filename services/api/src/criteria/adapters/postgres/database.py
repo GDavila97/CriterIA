@@ -87,6 +87,7 @@ run = sa.Table(
     sa.Column("approval", JSONB),
     sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
     sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
+    sa.Column("settled", sa.Boolean, nullable=False, server_default=sa.false()),
 )
 
 run_event = sa.Table(

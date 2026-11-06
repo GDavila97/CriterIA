@@ -26,7 +26,17 @@ def user_ref(user_id: str) -> str:
 
 
 class JsonFormatter(logging.Formatter):
-    FIELDS = ("method", "path", "status", "duration_ms", "run_id", "user", "estado")
+    FIELDS = (
+        "method",
+        "path",
+        "status",
+        "duration_ms",
+        "run_id",
+        "user",
+        "estado",
+        "error",
+        "runs",
+    )
 
     def format(self, record: logging.LogRecord) -> str:
         entry: dict[str, Any] = {

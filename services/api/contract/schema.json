@@ -610,6 +610,39 @@
             }
           ],
           "default": null
+        },
+        "codigo": {
+          "anyOf": [
+            {
+              "enum": [
+                "salida_invalida",
+                "clave_invalida",
+                "sin_saldo",
+                "limite_proveedor",
+                "proveedor_no_disponible",
+                "destino_no_permitido",
+                "error_interno"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "mensaje": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         }
       },
       "required": [
@@ -621,7 +654,9 @@
         "estado",
         "puntajes",
         "totales",
-        "respaldo_sugerido"
+        "respaldo_sugerido",
+        "codigo",
+        "mensaje"
       ],
       "title": "CorridaFin",
       "type": "object"

@@ -36,8 +36,10 @@ from criteria.application.run_api import AgentBuilder, RunApplication, RunDefaul
 from criteria.application.runs import RunService
 from criteria.config import ApiSettings, Settings
 from criteria.domain.run_config import ProviderSelection
+from criteria.observability import SentryErrorReporter
 from criteria.ports.agents import AgentSet
 from criteria.ports.clock import Clock
+from criteria.ports.errors import ErrorReporter
 from criteria.ports.keys import KeyValidator
 from criteria.ports.stores import UsageLimits
 
@@ -89,6 +91,7 @@ class ApiOverrides:
     key_validator: KeyValidator | None = None
     agent_builder: AgentBuilder | None = None
     clock: Clock | None = None
+    reporter: ErrorReporter | None = None
 
 
 def build_api_services(settings: ApiSettings, overrides: ApiOverrides | None = None) -> ApiServices:
@@ -143,6 +146,7 @@ def build_api_services(settings: ApiSettings, overrides: ApiOverrides | None = N
             abandoned_after=timedelta(minutes=settings.run_ttl_minutes),
             heartbeat_seconds=settings.sse_heartbeat_seconds,
         ),
+        reporter=overrides.reporter or SentryErrorReporter(),
     )
     verifier = JwtVerifier(
         JwksCache(

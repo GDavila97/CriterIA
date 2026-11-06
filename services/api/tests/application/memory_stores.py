@@ -98,8 +98,14 @@ class MemoryRuns:
         self.events.pop(run_id, None)
         self.touched.pop(run_id, None)
 
-    async def stale(self, updated_before: datetime) -> list[UUID]:
-        return [run_id for run_id, at in self.touched.items() if at < updated_before]
+    async def stale(self, updated_before: datetime) -> list[RunRecord]:
+        return [self.records[i] for i, at in self.touched.items() if at < updated_before]
+
+    async def fail_if_stale(self, run_id: UUID, updated_before: datetime) -> bool:
+        if self.touched.get(run_id, updated_before) >= updated_before:
+            return False
+        await self.set_status(run_id, "fallida")
+        return True
 
     @asynccontextmanager
     async def stream_lock(self, run_id: UUID) -> AsyncIterator[None]:
@@ -116,6 +122,7 @@ class MemoryRuns:
 class MemoryUsage:
     reserved: list[tuple[str, bool, float]] = field(default_factory=list)
     settled: list[tuple[str, date, float, float | None]] = field(default_factory=list)
+    settled_runs: set[UUID] = field(default_factory=set)
     refuse: LimitExceededError | None = None
 
     async def reserve(
@@ -126,8 +133,11 @@ class MemoryUsage:
         self.reserved.append((user_id, uses_server_key, server_cost_usd))
 
     async def settle(
-        self, user_id: str, day: date, reserved_usd: float, actual_usd: float | None
+        self, run_id: UUID, user_id: str, day: date, reserved_usd: float, actual_usd: float | None
     ) -> None:
+        if run_id in self.settled_runs:
+            return
+        self.settled_runs.add(run_id)
         self.settled.append((user_id, day, reserved_usd, actual_usd))
 
 
@@ -136,7 +146,9 @@ class MemoryHistory:
         self.runs: dict[str, list[SavedRun]] = {}
 
     async def save(self, user_id: str, run: SavedRun) -> None:
-        self.runs.setdefault(user_id, []).append(run)
+        saved = self.runs.setdefault(user_id, [])
+        if all(r.id != run.id for r in saved):
+            saved.append(run)
 
     async def list(self, user_id: str, limit: int) -> list[SavedRunSummary]:
         return [

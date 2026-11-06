@@ -18,8 +18,8 @@ from criteria.domain.run_config import ProviderSelection
 from criteria.main import create_app
 from criteria.ports.agents import AgentSet
 from tests import factories as f
-from tests.agent_models import ScriptedTeam, make_binding, team
-from tests.fakes import FakeKeyValidator
+from tests.agent_models import ScriptedTeam, make_binding, team, with_broken
+from tests.fakes import FakeKeyValidator, FakeReporter
 from tests.http.support import TokenFactory, api_settings
 from tests.postgres.database import Database
 
@@ -60,6 +60,8 @@ class Api:
     validator: FakeKeyValidator
     team: ScriptedTeam = field(default_factory=happy_team)
     selections: list[tuple[ProviderSelection, ProviderSelection]] = field(default_factory=list)
+    reporter: FakeReporter = field(default_factory=FakeReporter)
+    broken: dict[str, BaseException] = field(default_factory=dict)
 
     def headers(self, user: str = "user-1", verified: bool = True) -> dict[str, str]:
         return self.tokens.headers(user, verified)
@@ -117,7 +119,8 @@ def agent_builder(
         api = api_ref()
         api.selections.append((generation, judge))
         factory = AgentFactory(SERVICE_ROOT / "prompts", "v1", "v1", SystemClock())
-        return factory.build(_binding(api.team, generation), _binding(api.team, judge))
+        agents = factory.build(_binding(api.team, generation), _binding(api.team, judge))
+        return with_broken(agents, api.broken)
 
     return build
 
@@ -134,6 +137,7 @@ async def api(database: Database, request: pytest.FixtureRequest) -> AsyncIterat
     settings = api_settings(database_url=database.api, **overrides_kwargs)
     tokens = TokenFactory()
     validator = FakeKeyValidator()
+    reporter = FakeReporter()
     holder: list[Api] = []
     app = create_app(
         settings,
@@ -141,6 +145,7 @@ async def api(database: Database, request: pytest.FixtureRequest) -> AsyncIterat
             jwks_fetcher=tokens.fetch,
             key_validator=validator,
             agent_builder=agent_builder(lambda: holder[0]),
+            reporter=reporter,
         ),
     )
     async with app.router.lifespan_context(app):
@@ -154,6 +159,7 @@ async def api(database: Database, request: pytest.FixtureRequest) -> AsyncIterat
                     database=database,
                     settings=settings,
                     validator=validator,
+                    reporter=reporter,
                 )
             )
             yield holder[0]

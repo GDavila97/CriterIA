@@ -276,6 +276,18 @@ export interface CorridaFin {
   puntajes: Puntaje[];
   totales: Totales;
   respaldo_sugerido: 'groq' | null;
+  codigo:
+    | (
+        | 'salida_invalida'
+        | 'clave_invalida'
+        | 'sin_saldo'
+        | 'limite_proveedor'
+        | 'proveedor_no_disponible'
+        | 'destino_no_permitido'
+        | 'error_interno'
+      )
+    | null;
+  mensaje: string | null;
 }
 /**
  * This interface was referenced by `CriteriaContract`'s JSON-Schema

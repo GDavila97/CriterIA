@@ -1,7 +1,7 @@
 import asyncio
 import os
 from dataclasses import dataclass, field, replace
-from datetime import timedelta
+from datetime import datetime, timedelta
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -18,6 +18,7 @@ from criteria.adapters.memory.checkpointer import MemoryCheckpointer
 from criteria.application.credentials import CredentialService
 from criteria.application.errors import ConflictError, InvalidInputError, NotFoundError
 from criteria.application.run_api import (
+    INTERNAL_ERROR_MESSAGE,
     RunApplication,
     RunDefaults,
     RunRequest,
@@ -27,7 +28,7 @@ from criteria.application.run_api import (
 from criteria.application.runs import RunService
 from criteria.config import SERVICE_ROOT, Settings
 from criteria.domain.approval import RespuestaHumana
-from criteria.domain.events import EventoBase, evento_adapter
+from criteria.domain.events import AgenteEntrega, CorridaFin, EventoBase, evento_adapter
 from criteria.domain.run_config import ProviderSelection
 from criteria.ports.agents import AgentSet
 from criteria.ports.models import KeyRequiredError, ProviderNotAllowedError
@@ -39,7 +40,7 @@ from criteria.ports.stores import (
     UserSettings,
 )
 from tests import factories as f
-from tests.agent_models import ScriptedTeam, make_binding, team
+from tests.agent_models import ScriptedTeam, make_binding, team, with_broken
 from tests.application.memory_stores import (
     MemoryCredentials,
     MemoryHistory,
@@ -47,7 +48,7 @@ from tests.application.memory_stores import (
     MemorySettings,
     MemoryUsage,
 )
-from tests.fakes import FakeClock, FakeKeyValidator
+from tests.fakes import FakeClock, FakeKeyValidator, FakeReporter
 
 CATALOG = ModelCatalog.load(SERVICE_ROOT / "config" / "models.toml")
 USER = "user-1"
@@ -74,6 +75,8 @@ class Harness:
     team: ScriptedTeam = field(default_factory=happy)
     built: list[tuple[ProviderSelection, ProviderSelection]] = field(default_factory=list)
     model: FunctionModel | None = None
+    reporter: FakeReporter = field(default_factory=FakeReporter)
+    broken: dict[str, BaseException] = field(default_factory=dict)
 
     async def collect(self, run_id: UUID, last: int = 0) -> list[EventoBase]:
         stream = await self.app.open_stream(USER, run_id, last)
@@ -117,7 +120,7 @@ def harness(**settings: Any) -> Harness:
                 base, cost_usd=lambda i, o: CATALOG.cost_usd(selection.proveedor, modelo, i, o)
             )
 
-        return factory.build(bind(generation), bind(judge))
+        return with_broken(factory.build(bind(generation), bind(judge)), h.broken)
 
     runs, usage, user_settings, history = (
         MemoryRuns(),
@@ -126,6 +129,7 @@ def harness(**settings: Any) -> Harness:
         MemoryHistory(),
     )
     checkpointer = MemoryCheckpointer()
+    reporter = FakeReporter()
     app = RunApplication(
         runs=runs,
         usage=usage,
@@ -143,8 +147,11 @@ def harness(**settings: Any) -> Harness:
             abandoned_after=timedelta(minutes=60),
             heartbeat_seconds=0.01,
         ),
+        reporter=reporter,
     )
-    holder.append(Harness(app, runs, usage, user_settings, history, credentials, clock))
+    holder.append(
+        Harness(app, runs, usage, user_settings, history, credentials, clock, reporter=reporter)
+    )
     return holder[0]
 
 
@@ -320,6 +327,110 @@ class TestStream:
         assert h.runs.locked == set()
         rest = await h.collect(run_id, h.runs.events[run_id][-1]["seq"])
         assert rest[-1].type == "en_espera_humano"  # type: ignore[attr-defined]
+
+
+class TestUnexpectedFailures:
+    async def _cut_after_the_analista(self, h: Harness, run_id: UUID) -> None:
+        stream = await h.app.open_stream(USER, run_id, 0)
+        async for event in stream:
+            if event is not None and event.type == "en_espera_humano":  # type: ignore[attr-defined]
+                break
+        await stream.aclose()  # type: ignore[attr-defined]
+
+    async def test_an_error_in_a_node_ends_the_run_with_a_safe_corrida_fin(self) -> None:
+        h = harness()
+        await h.settings.put(USER, UserSettings(save_history=True))
+        boom = RuntimeError("detalle con el texto del requerimiento")
+        h.broken = {"qa": boom}
+        created = await h.app.create(USER, request())
+        first = await h.collect(created.run_id)
+        await h.app.approve(USER, created.run_id, RespuestaHumana(decision="aprobado"))
+
+        second = await h.collect(created.run_id, first[-1].seq)
+
+        end = second[-1]
+        assert isinstance(end, CorridaFin)
+        assert (end.estado, end.codigo, end.mensaje) == (
+            "error",
+            "error_interno",
+            INTERNAL_ERROR_MESSAGE,
+        )
+        assert end.totales.tokens_entrada > 0
+        assert all("requerimiento" not in e.model_dump_json() for e in second)
+        assert [e.seq for e in first + second] == list(range(1, len(first + second) + 1))
+        assert h.reporter.reported == [(boom, created.run_id)]
+        assert created.run_id not in h.runs.records
+        analista = next(e for e in first if isinstance(e, AgenteEntrega))
+        [(_, _, reserved, actual)] = h.usage.settled
+        assert reserved == created.costo_servidor_usd
+        assert actual == pytest.approx(analista.uso.costo_usd, abs=1e-6)
+        assert [r.status for r in h.history.runs[USER]] == ["error"]
+
+    async def test_a_run_whose_close_was_cut_is_closed_once_without_running_again(
+        self,
+    ) -> None:
+        h = harness()
+        await h.settings.put(USER, UserSettings(save_history=True))
+        run_id = (await h.app.create(USER, request())).run_id
+        first = await h.collect(run_id)
+        await h.app.approve(USER, run_id, RespuestaHumana(decision="aprobado"))
+        delete, calls = h.runs.delete, dict(h.team.calls)
+
+        async def crash_once(target: UUID) -> None:
+            h.runs.delete = delete  # type: ignore[method-assign]
+            raise ConnectionError("instance lost")
+
+        h.runs.delete = crash_once  # type: ignore[method-assign,assignment]
+        with pytest.raises(ConnectionError):
+            await h.collect(run_id, first[-1].seq)
+        calls_after_end = dict(h.team.calls)
+
+        assert h.runs.events[run_id][-1]["type"] == "corrida_fin"
+        assert await h.collect(run_id, h.runs.events[run_id][-1]["seq"]) == []
+        assert run_id not in h.runs.records
+        assert h.team.calls == calls_after_end != calls
+        assert len(h.usage.settled) == 1
+        assert len(h.history.runs[USER]) == 1
+
+    async def test_an_orphan_older_than_the_ttl_fails_and_returns_the_unused_quota(
+        self,
+    ) -> None:
+        h = harness()
+        created = await h.app.create(USER, request())
+        await self._cut_after_the_analista(h, created.run_id)
+        spent = sum(
+            e["uso"]["costo_usd"]
+            for e in h.runs.events[created.run_id]
+            if e["type"] == "agente_entrega"
+        )
+        failed: list[UUID] = []
+        fail_if_stale = h.runs.fail_if_stale
+
+        async def spy(run_id: UUID, updated_before: datetime) -> bool:
+            failed.append(run_id)
+            return await fail_if_stale(run_id, updated_before)
+
+        h.runs.fail_if_stale = spy  # type: ignore[method-assign]
+        h.runs.touched[created.run_id] -= timedelta(hours=2)
+
+        await h.app.create(USER, request())
+
+        assert created.run_id not in h.runs.records
+        assert failed == [created.run_id]
+        [(user, _, reserved, actual)] = h.usage.settled
+        assert (user, reserved) == (USER, created.costo_servidor_usd)
+        assert actual == pytest.approx(spent, abs=1e-6)
+
+    async def test_an_orphan_with_an_open_stream_is_left_alone(self) -> None:
+        h = harness()
+        run_id = (await h.app.create(USER, request())).run_id
+        h.runs.touched[run_id] -= timedelta(hours=2)
+
+        async with h.runs.stream_lock(run_id):
+            await h.app.create(USER, request())
+
+        assert run_id in h.runs.records
+        assert h.usage.settled == []
 
 
 class TestApprove:

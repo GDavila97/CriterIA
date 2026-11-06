@@ -7,7 +7,7 @@ from uuid import UUID
 from criteria.domain.events import ProveedorId
 from criteria.domain.run_config import Nivel
 
-RunStatus = Literal["creada", "en_curso", "esperando_aprobacion"]
+RunStatus = Literal["creada", "en_curso", "esperando_aprobacion", "fallida"]
 KeySource = Literal["usuario", "servidor"]
 LimitCode = Literal["limite_hora", "limite_dia", "cupo_gratuito_agotado", "limite_validaciones"]
 
@@ -75,7 +75,11 @@ class RunStore(Protocol):
 
     async def delete(self, run_id: UUID) -> None: ...
 
-    async def stale(self, updated_before: datetime) -> list[UUID]: ...
+    async def stale(self, updated_before: datetime) -> list[RunRecord]: ...
+
+    async def fail_if_stale(self, run_id: UUID, updated_before: datetime) -> bool:
+        """Marks the run as failed only if nothing touched it since; False if something did."""
+        ...
 
     def stream_lock(self, run_id: UUID) -> AbstractAsyncContextManager[None]:
         """Held for the whole stream; raises StreamBusyError when another stream owns the run."""
@@ -104,9 +108,9 @@ class UsageGuard(Protocol):
         ...
 
     async def settle(
-        self, user_id: str, day: date, reserved_usd: float, actual_usd: float | None
+        self, run_id: UUID, user_id: str, day: date, reserved_usd: float, actual_usd: float | None
     ) -> None:
-        """Replaces the reserved server cost with the real one once the run ends."""
+        """Replaces the reserved server cost with the real one, once per run even if retried."""
         ...
 
 

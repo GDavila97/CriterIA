@@ -5,6 +5,7 @@ from typing import Any, cast
 from uuid import UUID, uuid4
 
 import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncEngine
 
@@ -229,13 +230,17 @@ class PostgresUsageGuard:
             raise LimitExceededError("cupo_gratuito_agotado")
 
     async def settle(
-        self, user_id: str, day: date, reserved_usd: float, actual_usd: float | None
+        self, run_id: UUID, user_id: str, day: date, reserved_usd: float, actual_usd: float | None
     ) -> None:
-        if actual_usd is None or actual_usd == reserved_usd:
-            return
-        delta = actual_usd - reserved_usd
-        g, u = t.global_usage_daily, t.usage_daily
+        g, u, r = t.global_usage_daily, t.usage_daily, t.run
         async with self._engine.begin() as conn:
+            # The flag and the adjustment commit together: a close retried after a crash skips it.
+            marked = await conn.execute(
+                sa.update(r).where(r.c.id == run_id, r.c.settled.is_(False)).values(settled=True)
+            )
+            if not marked.rowcount or actual_usd is None or actual_usd == reserved_usd:
+                return
+            delta = actual_usd - reserved_usd
             await conn.execute(
                 sa.update(g)
                 .where(g.c.day == day)
@@ -260,6 +265,24 @@ def _plan_json(plan: ModelPlan) -> dict[str, Any]:
         "max_tokens": plan.max_tokens,
         "clave": plan.clave,
     }
+
+
+def _run_record(row: Any) -> RunRecord:
+    return RunRecord(
+        id=row["id"],
+        user_id=row["user_id"],
+        status=cast(RunStatus, row["status"]),
+        requirement=row["requirement"],
+        generation=_plan(row["generation"]),
+        judge=_plan(row["judge"]),
+        max_rounds=row["max_rounds"],
+        server_cost_reserved_usd=_float(row["server_cost_reserved_usd"]),
+        estimated_cost_usd=None
+        if row["estimated_cost_usd"] is None
+        else float(row["estimated_cost_usd"]),
+        created_at=row["created_at"],
+        approval=row["approval"],
+    )
 
 
 def _lock_key(run_id: UUID) -> int:
@@ -297,23 +320,7 @@ class PostgresRunStore:
                 .mappings()
                 .first()
             )
-        if row is None:
-            return None
-        return RunRecord(
-            id=row["id"],
-            user_id=row["user_id"],
-            status=cast(RunStatus, row["status"]),
-            requirement=row["requirement"],
-            generation=_plan(row["generation"]),
-            judge=_plan(row["judge"]),
-            max_rounds=row["max_rounds"],
-            server_cost_reserved_usd=_float(row["server_cost_reserved_usd"]),
-            estimated_cost_usd=None
-            if row["estimated_cost_usd"] is None
-            else float(row["estimated_cost_usd"]),
-            created_at=row["created_at"],
-            approval=row["approval"],
-        )
+        return None if row is None else _run_record(row)
 
     async def set_status(self, run_id: UUID, status: RunStatus) -> None:
         async with self._engine.begin() as conn:
@@ -364,12 +371,20 @@ class PostgresRunStore:
         async with self._engine.begin() as conn:
             await conn.execute(sa.delete(t.run).where(t.run.c.id == run_id))
 
-    async def stale(self, updated_before: datetime) -> list[UUID]:
+    async def stale(self, updated_before: datetime) -> list[RunRecord]:
         async with self._engine.connect() as conn:
-            rows = await conn.execute(
-                sa.select(t.run.c.id).where(t.run.c.updated_at < updated_before)
+            rows = await conn.execute(sa.select(t.run).where(t.run.c.updated_at < updated_before))
+            return [_run_record(row) for row in rows.mappings()]
+
+    async def fail_if_stale(self, run_id: UUID, updated_before: datetime) -> bool:
+        c = t.run.c
+        async with self._engine.begin() as conn:
+            result = await conn.execute(
+                sa.update(t.run)
+                .where(c.id == run_id, c.updated_at < updated_before)
+                .values(status="fallida", updated_at=_now())
             )
-            return [row[0] for row in rows]
+        return bool(result.rowcount)
 
     @asynccontextmanager
     async def stream_lock(self, run_id: UUID) -> AsyncIterator[None]:
@@ -394,7 +409,8 @@ class PostgresHistoryStore:
     async def save(self, user_id: str, run: SavedRun) -> None:
         async with self._engine.begin() as conn:
             await conn.execute(
-                sa.insert(t.saved_run).values(
+                postgresql.insert(t.saved_run)
+                .values(
                     id=run.id,
                     user_id=user_id,
                     status=run.status,
@@ -410,6 +426,8 @@ class PostgresHistoryStore:
                     totals=run.totals,
                     created_at=run.created_at or _now(),
                 )
+                # A close retried after a crash must not fail on the copy it already made.
+                .on_conflict_do_nothing(index_elements=["id"])
             )
 
     async def list(self, user_id: str, limit: int) -> list[SavedRunSummary]:

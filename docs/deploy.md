@@ -61,7 +61,7 @@ Siempre antes de desplegar la API, con la imagen del mismo SHA y `MIGRATION_DATA
 docker run --rm -e MIGRATION_DATABASE_URL="$MIGRATION_DATABASE_URL" <imagen> alembic upgrade head
 ```
 
-La primera migración crea las tablas de `app`; la segunda aplica las migraciones del checkpointer de LangGraph en `graph`. La API no ejecuta DDL: si los checkpoints no están en la última versión, se niega a arrancar. Al actualizar `langgraph-checkpoint-postgres` hay que agregar una migración de Alembic que vuelva a correr sus migraciones. En F6 este paso se vuelve un job manual de Cloud Run con environment protegido, junto con las migraciones de Better Auth (esquema `auth`).
+La primera migración crea las tablas de `app`, la segunda aplica las migraciones del checkpointer de LangGraph en `graph` y la tercera agrega `app.run.settled`, que evita ajustar dos veces el cupo de una corrida. La API no ejecuta DDL: si los checkpoints no están en la última versión, se niega a arrancar. Al actualizar `langgraph-checkpoint-postgres` hay que agregar una migración de Alembic que vuelva a correr sus migraciones. En F6 este paso se vuelve un job manual de Cloud Run con environment protegido, junto con las migraciones de Better Auth (esquema `auth`).
 
 ## API en Cloud Run
 

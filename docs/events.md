@@ -24,7 +24,7 @@ Los eventos son modelos Pydantic (`services/api/src/criteria/domain/events.py`) 
 | `humano_responde` | `analista` | `decision` (`aprobado` o `editado`), `cambios` (`agregadas`, `modificadas`, `eliminadas`: listas de ids) |
 | `revisor_observa` | `revisor` | `ronda`, `observaciones`, `se_corrige` (falso cuando ya no quedan rondas) |
 | `agente_error` | el agente | `codigo`, `mensaje` (seguro, máximo 200 caracteres), `respaldo_sugerido` |
-| `corrida_fin` | `sistema` | `estado` (`completada` o `error`), `puntajes`, `totales`, `respaldo_sugerido` |
+| `corrida_fin` | `sistema` | `estado` (`completada` o `error`), `puntajes`, `totales`, `respaldo_sugerido`, `codigo` y `mensaje` (solo con `error_interno`; si no, `null`) |
 
 ### `artefactos`
 
@@ -65,6 +65,8 @@ Flujo feliz: `corrida_inicia` → (`agente_inicia`, `agente_progreso`, `agente_e
 Con observaciones: después de la entrega del Revisor llega `revisor_observa`. Si `se_corrige` es verdadero, siguen el agente destino (y QA, si el destino fue el Analista) y otra revisión con la ronda aumentada.
 
 Con error: `agente_error` del agente que falló y enseguida `corrida_fin` con `estado: "error"` y `puntajes` vacíos.
+
+Con un error no previsto fuera de los agentes (solo en la API): directamente `corrida_fin` con `estado: "error"`, `codigo: "error_interno"` y un `mensaje` genérico, sin `agente_error` antes. `totales` suma lo que los agentes alcanzaron a entregar.
 
 ### Sin cambio de proveedor automático
 

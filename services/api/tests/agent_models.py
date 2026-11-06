@@ -1,5 +1,5 @@
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any
 
 from pydantic_ai import ModelMessage, ModelResponse, ToolCallPart, UserPromptPart
@@ -8,6 +8,7 @@ from pydantic_ai.settings import ModelSettings
 
 from criteria.adapters.agents.runner import ModelBinding
 from criteria.domain.events import ProveedorId
+from criteria.ports.agents import AgentResult, AgentSet
 
 Step = dict[str, Any] | BaseException | Callable[[list[ModelMessage]], dict[str, Any]]
 ModelFunction = Callable[[list[ModelMessage], AgentInfo], ModelResponse]
@@ -97,3 +98,23 @@ class ScriptedTeam:
 
 def team(**scripts: list[Step]) -> ScriptedTeam:
     return ScriptedTeam(scripts)
+
+
+@dataclass(frozen=True)
+class BrokenRunner:
+    """A runner that fails with an error no agent wrapper would catch, like a bug in a node."""
+
+    error: BaseException
+    proveedor: ProveedorId = "ollama"
+    modelo: str = "broken"
+
+    async def run(self, entrada: object) -> AgentResult[Any]:
+        raise self.error
+
+
+def with_broken(agents: AgentSet, broken: dict[str, BaseException]) -> AgentSet:
+    runners = {
+        rol: BrokenRunner(error, getattr(agents, rol).proveedor, getattr(agents, rol).modelo)
+        for rol, error in broken.items()
+    }
+    return replace(agents, **runners)  # type: ignore[arg-type]

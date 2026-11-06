@@ -1,5 +1,6 @@
 from collections.abc import Mapping
 from typing import Any
+from uuid import UUID
 
 import sentry_sdk
 from sentry_sdk.types import Event, Hint
@@ -30,6 +31,26 @@ def scrub_sensitive_data(event: Event, _hint: Hint) -> Event:
     return event
 
 
+def without_error_details(event: Event, _hint: Hint) -> Event:
+    """Keeps the exception type and stack; drops messages that may carry user text."""
+    for exception in event.get("exception", {}).get("values", []):
+        exception["value"] = ""
+        for frame in exception.get("stacktrace", {}).get("frames", []):
+            frame.pop("vars", None)
+    event.pop("breadcrumbs", None)
+    event.pop("extra", None)
+    event.pop("user", None)
+    return event
+
+
+class SentryErrorReporter:
+    def report(self, error: BaseException, run_id: UUID) -> None:
+        with sentry_sdk.new_scope() as scope:
+            scope.set_tag("run_id", str(run_id))
+            scope.add_event_processor(without_error_details)
+            sentry_sdk.capture_exception(error)
+
+
 def init_sentry(settings: Settings) -> bool:
     if settings.sentry_dsn is None:
         return False
@@ -37,6 +58,8 @@ def init_sentry(settings: Settings) -> bool:
         dsn=str(settings.sentry_dsn),
         environment=settings.app_env,
         send_default_pii=False,
+        # Locals can hold the requirement or a decrypted key.
+        include_local_variables=False,
         traces_sample_rate=settings.sentry_traces_sample_rate,
         before_send=scrub_sensitive_data,
     )

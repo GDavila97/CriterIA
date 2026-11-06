@@ -78,7 +78,7 @@ services/api/
                    claves (credentials.py) y cuenta (accounts.py), errores con código
     ports/         AgentRunner por rol, EventSink, Checkpointer, Clock, KeyValidator, ModelRouter,
                    TokenVerifier, Cipher, CredentialStore, RunStore, UsageGuard, SettingsStore,
-                   HistoryStore, EvaluationReader
+                   HistoryStore, EvaluationReader, ErrorReporter
     adapters/
       llm/         registro de proveedores, catálogo (niveles, precios, perfil de consumo), protección
                    SSRF y validación de claves
@@ -125,7 +125,8 @@ Puertos:
 | `Cipher` | Cifra y descifra una clave con datos asociados | `AesGcmCipher` |
 | `CredentialStore`, `SettingsStore`, `HistoryStore`, `EvaluationReader` | Persistencia por usuario | adaptadores de `postgres/`; en memoria en las pruebas unitarias |
 | `RunStore` | Corrida en curso, sus eventos, estado, aprobación, abandonadas y lock del stream | `PostgresRunStore` (advisory lock de sesión) |
-| `UsageGuard` | Reserva atómica de los límites por usuario y del cupo global, y ajuste al costo real | `PostgresUsageGuard` |
+| `UsageGuard` | Reserva atómica de los límites por usuario y del cupo global, y ajuste al costo real una sola vez por corrida | `PostgresUsageGuard` |
+| `ErrorReporter` | Reporta un error no previsto de una corrida sin datos del usuario | `SentryErrorReporter` (tipo, traza y `run_id`; sin mensaje, variables ni breadcrumbs) |
 
 Detalle de agentes, grafo, reintentos y rondas en [agents.md](agents.md), de los eventos en [events.md](events.md) y de los endpoints, la autenticación, los límites y los errores en [api.md](api.md).
 
@@ -171,7 +172,7 @@ Eventos SSE: todos llevan `run_id`, `seq` (entero creciente), `ts` y `agent`. El
 ## Seguridad transversal
 
 - Variables de entorno validadas al arrancar en ambas partes: pydantic-settings en la API y zod en la web. Una variable obligatoria ausente detiene el arranque con un mensaje que la nombra.
-- Sentry en ambas partes, activo solo con DSN, con `send_default_pii` / `sendDefaultPii` en falso y un filtro que elimina las cabeceras `authorization`, `cookie` y `x-provider-key` y las cookies de la petición.
+- Sentry en ambas partes, activo solo con DSN, con `send_default_pii` / `sendDefaultPii` en falso y un filtro que elimina las cabeceras `authorization`, `cookie` y `x-provider-key` y las cookies de la petición. La API además no envía variables locales, y los errores de corrida llegan sin mensaje ni breadcrumbs.
 - CSP estricta con nonce, sin `'unsafe-inline'` ni `'unsafe-eval'` en producción, más cabeceras fijas en `next.config.ts` ([ADR 0014](adr/0014-nonce-based-csp.md)).
 - Imagen de la API multi-etapa, con usuario no root y `PORT` tomado del entorno, como lo inyecta Cloud Run.
 - Las URLs base que envía el usuario (`openai_compatible`) pasan por un transporte propio sobre `httpx2`/`httpcore2`, el cliente HTTP del SDK de OpenAI. Ese transporte exige `https`, no sigue redirecciones y limita el tiempo y el tamaño de la respuesta. Además resuelve el DNS, rechaza direcciones no públicas y se conecta a la IP que validó. La URL de Ollama sale de la configuración del servidor y queda fuera de esa regla.

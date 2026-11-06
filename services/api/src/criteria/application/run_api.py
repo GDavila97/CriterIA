@@ -12,12 +12,20 @@ from criteria.application.errors import ConflictError, InvalidInputError, NotFou
 from criteria.application.runs import EsperandoAprobacion, RunOutcome, RunService, Terminada
 from criteria.domain.approval import RespuestaHumana
 from criteria.domain.artifacts import Requerimiento
-from criteria.domain.events import EventoBase, ProveedorId, evento_adapter
+from criteria.domain.events import (
+    AgenteEntrega,
+    CorridaFin,
+    EventoBase,
+    ProveedorId,
+    evento_adapter,
+    sumar_totales,
+)
 from criteria.domain.judge import elegir_juez
 from criteria.domain.run_config import Nivel, ProviderSelection, SelectionError, parse_selection
 from criteria.ports.agents import AgentSet
 from criteria.ports.checkpoint import Checkpointer
 from criteria.ports.clock import Clock
+from criteria.ports.errors import ErrorReporter
 from criteria.ports.events import EventSink
 from criteria.ports.models import KeyRequiredError, ModelRouter
 from criteria.ports.stores import (
@@ -28,6 +36,7 @@ from criteria.ports.stores import (
     RunStore,
     SavedRun,
     SettingsStore,
+    StreamBusyError,
     UsageGuard,
 )
 
@@ -37,6 +46,7 @@ AgentBuilder = Callable[[ProviderSelection, ProviderSelection], AgentSet]
 Action = Callable[[EventSink], Coroutine[Any, Any, RunOutcome]]
 GENERATION_AGENTS = frozenset({"analista", "qa", "revisor"})
 MAX_ROUNDS = 5
+INTERNAL_ERROR_MESSAGE = "La corrida se detuvo por un error interno. Intenta de nuevo."
 
 
 @dataclass(frozen=True)
@@ -155,6 +165,7 @@ class RunApplication:
         checkpointer: Checkpointer,
         clock: Clock,
         defaults: RunDefaults,
+        reporter: ErrorReporter,
     ) -> None:
         self._runs = runs
         self._usage = usage
@@ -167,6 +178,7 @@ class RunApplication:
         self._checkpointer = checkpointer
         self._clock = clock
         self._defaults = defaults
+        self._reporter = reporter
 
     async def create(self, user_id: str, request: RunRequest) -> RunCreated:
         try:
@@ -265,13 +277,24 @@ class RunApplication:
         return self._events(stack, record, replay, action)
 
     async def cleanup(self) -> int:
-        """Opportunistic: runs nobody touched for a while lose their checkpoints and events."""
+        """Opportunistic: runs nobody touched for a while fail and give back the unused quota."""
         cutoff = self._clock.now() - self._defaults.abandoned_after
-        stale = await self._runs.stale(cutoff)
-        for run_id in stale:
-            await self._checkpointer.discard(run_id)
-            await self._runs.delete(run_id)
-        return len(stale)
+        cleaned = 0
+        for record in await self._runs.stale(cutoff):
+            try:
+                async with self._runs.stream_lock(record.id):
+                    # Checked again under the lock: a stream may have touched it in between.
+                    if not await self._runs.fail_if_stale(record.id, cutoff):
+                        continue
+                    await self._settle(record, await self._stored_events(record.id))
+                    await self._checkpointer.discard(record.id)
+                    await self._runs.delete(record.id)
+                    cleaned += 1
+            except StreamBusyError:
+                continue
+        if cleaned:
+            logger.info("abandoned runs cleaned", extra={"runs": cleaned})
+        return cleaned
 
     def _judge_for(self, user_keys: set[ProveedorId], generation: ProveedorId) -> ProveedorId:
         candidates = [
@@ -340,6 +363,15 @@ class RunApplication:
     async def _action(self, record: RunRecord) -> Action | None:
         if record.status == "esperando_aprobacion" and record.approval is None:
             return None
+        last = await self._runs.events_after(record.id, await self._runs.last_seq(record.id) - 1)
+        if last and last[-1]["type"] == "corrida_fin":
+            # The instance stopped after the end: only the closing work is left, never a rerun.
+            ended = Terminada(estado=last[-1]["estado"], puntajes=[])
+
+            async def closed(_sink: EventSink) -> RunOutcome:
+                return ended
+
+            return closed
         generation = await self._selection(record.user_id, record.generation)
         judge = await self._selection(record.user_id, record.judge)
         agents = self._build_agents(generation, judge)
@@ -395,7 +427,15 @@ class RunApplication:
                     getter.cancel()
                     if not done:
                         yield None
-                await self._finish(record, task.result())
+                failure = task.exception()
+                if failure is None:
+                    await self._finish(record, task.result())
+                elif isinstance(failure, Exception):
+                    await self._fail(record, sink, failure)
+                    while not queue.empty():
+                        yield queue.get_nowait()
+                else:
+                    raise failure
             finally:
                 if not task.done():
                     # The client left: the run stays at its last checkpoint for the next stream.
@@ -407,20 +447,48 @@ class RunApplication:
         if isinstance(outcome, EsperandoAprobacion):
             return
         assert isinstance(outcome, Terminada)  # noqa: S101  RunOutcome has two variants
-        events = [
+        await self._close(record)
+        logger.info("run finished", extra={"run_id": str(record.id), "estado": outcome.estado})
+
+    async def _fail(self, record: RunRecord, sink: EventSink, error: Exception) -> None:
+        """An unexpected failure ends the run like an agent error, without exposing details."""
+        self._reporter.report(error, record.id)
+        logger.error("run failed", extra={"run_id": str(record.id), "error": type(error).__name__})
+        events = await self._stored_events(record.id)
+        await sink.emit(
+            CorridaFin,
+            agent="sistema",
+            estado="error",
+            puntajes=[],
+            totales=sumar_totales([e.uso for e in events if isinstance(e, AgenteEntrega)]),
+            codigo="error_interno",
+            mensaje=INTERNAL_ERROR_MESSAGE,
+        )
+        # Only after corrida_fin is stored: until then the next stream can still recover the run.
+        await self._runs.set_status(record.id, "fallida")
+        await self._close(record)
+
+    async def _stored_events(self, run_id: UUID) -> list[EventoBase]:
+        return [
             evento_adapter.validate_python(payload)
-            for payload in await self._runs.events_after(record.id, 0)
+            for payload in await self._runs.events_after(run_id, 0)
         ]
+
+    async def _settle(self, record: RunRecord, events: Sequence[EventoBase]) -> None:
         await self._usage.settle(
+            record.id,
             record.user_id,
             record.created_at.date(),
             record.server_cost_reserved_usd,
             _server_cost(events, record.generation, record.judge),
         )
+
+    async def _close(self, record: RunRecord) -> None:
+        events = await self._stored_events(record.id)
+        await self._settle(record, events)
         if (await self._settings.get(record.user_id)).save_history:
             saved = _saved_run(record, events)
             if saved is not None:
                 await self._history.save(record.user_id, saved)
         await self._checkpointer.discard(record.id)
         await self._runs.delete(record.id)
-        logger.info("run finished", extra={"run_id": str(record.id), "estado": outcome.estado})
