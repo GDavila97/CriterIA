@@ -1,6 +1,6 @@
 # 0016. Claves de API por usuario y Groq gratuito por defecto
 
-**Estado:** aceptada. Ajusta el ADR 0006.
+**Estado:** aceptada. Ajusta el ADR 0006; ajustada por la [0019](0019-groq-developer-for-the-free-mode.md) (modo gratuito sobre el plan Developer de Groq).
 
 **Contexto:** la herramienta la usarán otras personas (estudiantes y docentes de Cimat). Las claves del autor no deben pagar el uso de terceros, y quien use un modelo de pago debe hacerlo con su propia cuenta.
 

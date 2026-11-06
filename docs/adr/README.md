@@ -19,5 +19,7 @@ Cada ADR sigue el formato Estado, Contexto, Decisión, Alternativas y Consecuenc
 | [0013](0013-nextjs-routes-outside-src.md) | Rutas de Next.js fuera de `src/` | Aceptada |
 | [0014](0014-nonce-based-csp.md) | CSP estricta con nonce en `proxy.ts` | Aceptada |
 | [0015](0015-frozen-judge-prompt.md) | Juez con versión propia y congelado | Aceptada |
-| [0016](0016-claves-por-usuario.md) | Claves de API por usuario y Groq gratuito por defecto | Aceptada |
+| [0016](0016-claves-por-usuario.md) | Claves de API por usuario y Groq gratuito por defecto | Aceptada, ajustada por 0019 |
 | [0017](0017-native-output-for-local-models.md) | Salida JSON nativa para los modelos locales | Aceptada |
+| [0018](0018-run-lifecycle-bound-to-the-stream.md) | Ciclo de la corrida ligado al stream SSE | Aceptada |
+| [0019](0019-groq-developer-for-the-free-mode.md) | Modo gratuito sobre el plan Developer de Groq | Aceptada |
