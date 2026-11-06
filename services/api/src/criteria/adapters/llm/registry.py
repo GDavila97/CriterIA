@@ -7,7 +7,7 @@ from pydantic_ai.models import Model
 from pydantic_ai.models.anthropic import AnthropicModel
 from pydantic_ai.models.groq import GroqModel
 from pydantic_ai.models.ollama import OllamaModel
-from pydantic_ai.models.openai import OpenAIChatModel
+from pydantic_ai.models.openai import OpenAIChatModel, OpenAIChatModelSettings
 from pydantic_ai.providers.anthropic import AnthropicProvider
 from pydantic_ai.providers.groq import GroqProvider
 from pydantic_ai.providers.ollama import OllamaProvider
@@ -152,7 +152,7 @@ class ProviderRegistry:
 
     def model_settings(self, selection: ProviderSelection) -> ModelSettings:
         selection = self.resolve(selection)
-        model_settings = ModelSettings(
+        model_settings = OpenAIChatModelSettings(
             temperature=selection.temperatura,
             max_tokens=selection.max_tokens,
             timeout=self._settings.provider_timeout_seconds,
@@ -160,6 +160,10 @@ class ProviderRegistry:
         entry = self._catalog.entry(selection.proveedor, _model_name(selection))
         if entry is not None and entry.thinking is not None:
             model_settings["thinking"] = entry.thinking
+            if entry.thinking is False and selection.proveedor == "ollama":
+                # Pydantic AI sends nothing for thinking=False on Ollama; only this field turns
+                # Qwen 3 reasoning off on its OpenAI-compatible endpoint (verified in F2b).
+                model_settings["openai_reasoning_effort"] = "none"
         return model_settings
 
     def cost_usd(

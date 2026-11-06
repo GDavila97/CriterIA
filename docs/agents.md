@@ -94,4 +94,4 @@ El registro (`adapters/llm/registry.py`) construye el modelo de Pydantic AI seg�
   - Exige `https` y una URL sin credenciales.
   - No sigue redirecciones y aplica tiempo límite y tamaño máximo de respuesta.
   - Cada conexión resuelve el DNS, rechaza direcciones privadas, loopback, link-local, multicast y reservadas, `169.254.169.254` y sus equivalentes IPv6 (incluidas las IPv4 mapeadas, 6to4 y NAT64), y se conecta a la misma IP que validó. Después comprueba la dirección real del socket, lo que evita el rebinding de DNS.
-- **Ollama.** La URL sale de la configuración del servidor, la pone el operador y puede ser privada. La protección SSRF no aplica a ella, solo a las URLs que envía el usuario.
+- **Ollama.** La URL sale de la configuración del servidor, la pone el operador y puede ser privada. Para los modelos marcados con `thinking = false` en el catálogo (como `qwen3:8b`), el registro envía además `reasoning_effort: "none"`: el `thinking=False` de Pydantic AI no llega a Ollama, y es el único campo que apaga el razonamiento en su endpoint compatible con OpenAI. La protección SSRF no aplica a ella, solo a las URLs que envía el usuario.

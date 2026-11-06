@@ -237,7 +237,16 @@ class TestModels:
             "max_tokens": 512,
             "timeout": 30,
             "thinking": False,
+            "openai_reasoning_effort": "none",
         }
+
+    def test_reasoning_effort_is_only_forced_for_local_models_with_thinking_off(self) -> None:
+        reg = ProviderRegistry(settings(server_key_providers="groq", groq_api_key="g"), CATALOG)
+
+        model_settings = reg.model_settings(ProviderSelection(proveedor="groq", modelo="groq-test"))
+
+        assert "openai_reasoning_effort" not in model_settings
+        assert "thinking" not in model_settings
 
 
 class TestCatalog:
