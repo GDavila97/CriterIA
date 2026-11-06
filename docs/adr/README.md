@@ -7,7 +7,7 @@ Cada ADR sigue el formato Estado, Contexto, Decisión, Alternativas y Consecuenc
 | [0001](0001-monorepo.md) | Monorepo con web y API separadas | Aceptada |
 | [0002](0002-hexagonal-api.md) | API con arquitectura hexagonal | Aceptada |
 | [0003](0003-feature-sliced-web.md) | Web con Feature-Sliced Design | Aceptada, ajustada por 0013 |
-| [0004](0004-pydantic-ai-agents.md) | Agentes con Pydantic AI | Aceptada, ajustada por 0015 |
+| [0004](0004-pydantic-ai-agents.md) | Agentes con Pydantic AI | Aceptada, ajustada por 0015 y 0017 |
 | [0005](0005-langgraph-orchestration.md) | Orquestación con LangGraph | Aceptada |
 | [0006](0006-model-providers-and-fallback.md) | Proveedores de modelos y respaldo | Aceptada, ajustada por 0016 |
 | [0007](0007-neon-postgres-schemas.md) | Base de datos: Neon Postgres con esquemas separados | Aceptada |
@@ -20,3 +20,4 @@ Cada ADR sigue el formato Estado, Contexto, Decisión, Alternativas y Consecuenc
 | [0014](0014-nonce-based-csp.md) | CSP estricta con nonce en `proxy.ts` | Aceptada |
 | [0015](0015-frozen-judge-prompt.md) | Juez con versión propia y congelado | Aceptada |
 | [0016](0016-claves-por-usuario.md) | Claves de API por usuario y Groq gratuito por defecto | Aceptada |
+| [0017](0017-native-output-for-local-models.md) | Salida JSON nativa para los modelos locales | Aceptada |
