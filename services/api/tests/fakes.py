@@ -1,5 +1,10 @@
 from datetime import UTC, datetime, timedelta
 
+from pydantic import SecretStr
+
+from criteria.domain.events import ProveedorId
+from criteria.ports.keys import KeyCheck
+
 
 class FakeClock:
     """Advances one second per timestamp and a fixed step per latency reading."""
@@ -16,3 +21,18 @@ class FakeClock:
     def monotonic(self) -> float:
         self._monotonic += self._step
         return self._monotonic
+
+
+class FakeKeyValidator:
+    """Accepts any key except those containing "bad" or "down"; never touches the network."""
+
+    def __init__(self) -> None:
+        self.checked: list[ProveedorId] = []
+
+    async def validate(
+        self, proveedor: ProveedorId, api_key: SecretStr, base_url: str | None = None
+    ) -> KeyCheck:
+        self.checked.append(proveedor)
+        key = api_key.get_secret_value()
+        estado = "invalida" if "bad" in key else "no_verificable" if "down" in key else "valida"
+        return KeyCheck(estado=estado, last4=key[-4:])  # type: ignore[arg-type]

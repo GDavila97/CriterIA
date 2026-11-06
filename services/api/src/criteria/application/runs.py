@@ -33,6 +33,16 @@ class Terminada:
 RunOutcome = EsperandoAprobacion | Terminada
 
 
+def _initial_state(requerimiento: Requerimiento, max_rondas: int) -> RunState:
+    return {
+        "requerimiento": requerimiento.texto,
+        "max_rondas": max_rondas,
+        "ronda": 0,
+        "estado": "en_curso",
+        "usos": [],
+    }
+
+
 def _config(run_id: UUID) -> RunnableConfig:
     return {"configurable": {"thread_id": str(run_id)}}
 
@@ -62,14 +72,22 @@ class RunService:
             experimental=agents.experimental,
             max_rondas=max_rondas,
         )
-        state: RunState = {
-            "requerimiento": requerimiento.texto,
-            "max_rondas": max_rondas,
-            "ronda": 0,
-            "estado": "en_curso",
-            "usos": [],
-        }
-        return await self._advance(events.run_id, state, agents, events)
+        return await self._advance(
+            events.run_id, _initial_state(requerimiento, max_rondas), agents, events
+        )
+
+    async def continuar(
+        self,
+        *,
+        requerimiento: Requerimiento,
+        agents: AgentSet,
+        events: EventSink,
+        max_rondas: int,
+    ) -> RunOutcome:
+        """Resumes a run whose stream was cut, from its last checkpoint."""
+        snapshot = await self._graph.aget_state(_config(events.run_id))
+        payload: Any = None if snapshot.values else _initial_state(requerimiento, max_rondas)
+        return await self._advance(events.run_id, payload, agents, events)
 
     async def reanudar(
         self, *, respuesta: RespuestaHumana, agents: AgentSet, events: EventSink

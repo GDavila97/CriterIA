@@ -1,0 +1,426 @@
+import asyncio
+import logging
+from collections.abc import AsyncIterator, Callable, Coroutine, Sequence
+from contextlib import AsyncExitStack, suppress
+from dataclasses import dataclass
+from datetime import timedelta
+from typing import Any
+from uuid import UUID, uuid4
+
+from criteria.application.credentials import CredentialService
+from criteria.application.errors import ConflictError, InvalidInputError, NotFoundError
+from criteria.application.runs import EsperandoAprobacion, RunOutcome, RunService, Terminada
+from criteria.domain.approval import RespuestaHumana
+from criteria.domain.artifacts import Requerimiento
+from criteria.domain.events import EventoBase, ProveedorId, evento_adapter
+from criteria.domain.judge import elegir_juez
+from criteria.domain.run_config import Nivel, ProviderSelection, SelectionError, parse_selection
+from criteria.ports.agents import AgentSet
+from criteria.ports.checkpoint import Checkpointer
+from criteria.ports.clock import Clock
+from criteria.ports.events import EventSink
+from criteria.ports.models import KeyRequiredError, ModelRouter
+from criteria.ports.stores import (
+    HistoryStore,
+    KeySource,
+    ModelPlan,
+    RunRecord,
+    RunStore,
+    SavedRun,
+    SettingsStore,
+    UsageGuard,
+)
+
+logger = logging.getLogger(__name__)
+
+AgentBuilder = Callable[[ProviderSelection, ProviderSelection], AgentSet]
+Action = Callable[[EventSink], Coroutine[Any, Any, RunOutcome]]
+GENERATION_AGENTS = frozenset({"analista", "qa", "revisor"})
+MAX_ROUNDS = 5
+
+
+@dataclass(frozen=True)
+class RunDefaults:
+    provider: ProveedorId
+    max_rounds: int
+    abandoned_after: timedelta
+    heartbeat_seconds: float
+    temperature: float = 0.2
+    max_tokens: int = 4096
+
+
+@dataclass(frozen=True)
+class RunRequest:
+    requerimiento: str
+    proveedor: ProveedorId | None = None
+    nivel: Nivel | None = None
+    modelo: str | None = None
+    juez: ProveedorId | None = None
+    max_rondas: int | None = None
+
+
+@dataclass(frozen=True)
+class RunCreated:
+    run_id: UUID
+    generacion: ModelPlan
+    juez: ModelPlan
+    juez_mismo_proveedor: bool
+    costo_estimado_usd: float | None
+    costo_servidor_usd: float
+
+
+class StoreEventSink(EventSink):
+    """Persists each event before handing it to the open stream, so a reconnect can replay it."""
+
+    def __init__(
+        self,
+        run_id: UUID,
+        clock: Clock,
+        last_seq: int,
+        store: RunStore,
+        queue: asyncio.Queue[EventoBase],
+    ) -> None:
+        super().__init__(run_id, clock, last_seq)
+        self._store = store
+        self._queue = queue
+
+    async def deliver(self, event: EventoBase) -> None:
+        payload = event.model_dump(mode="json")
+        await self._store.append_event(self.run_id, event.seq, payload["type"], payload)
+        if payload["type"] == "en_espera_humano":
+            # Before the client sees the event, so an immediate approval is never refused.
+            await self._store.set_status(self.run_id, "esperando_aprobacion")
+            await self._store.set_approval(self.run_id, None)
+        await self._queue.put(event)
+
+
+def _server_cost(
+    events: Sequence[EventoBase], generation: ModelPlan, judge: ModelPlan
+) -> float | None:
+    """Real cost of the calls paid with server keys; null if any of them had no price."""
+    total = 0.0
+    for event in events:
+        uso = getattr(event, "uso", None)
+        if uso is None or getattr(event, "type", "") != "agente_entrega":
+            continue
+        plan = judge if event.agent == "evaluador" else generation
+        if plan.clave != "servidor":
+            continue
+        if uso.costo_usd is None:
+            return None
+        total += uso.costo_usd
+    return round(total, 6)
+
+
+def _saved_run(record: RunRecord, events: Sequence[EventoBase]) -> SavedRun | None:
+    dumped = [event.model_dump(mode="json") for event in events]
+    start = next((e for e in dumped if e["type"] == "corrida_inicia"), None)
+    end = next((e for e in reversed(dumped) if e["type"] == "corrida_fin"), None)
+    if start is None or end is None:
+        return None
+    artifacts: dict[str, Any] = {}
+    for event in dumped:
+        if event["type"] == "agente_entrega":
+            entrega = event["artefactos"]
+            artifacts[entrega["tipo"]] = {k: v for k, v in entrega.items() if k != "tipo"}
+    return SavedRun(
+        id=record.id,
+        status=end["estado"],
+        requirement=record.requirement,
+        artifacts=artifacts,
+        scores=end["puntajes"],
+        provider=record.generation.proveedor,
+        model=record.generation.modelo,
+        judge_model=start["modelos"]["juez"],
+        prompt_version=start["version_prompts"],
+        judge_version=start["version_juez"],
+        experimental=start["experimental"],
+        totals=end["totales"],
+        created_at=record.created_at,
+    )
+
+
+class RunApplication:
+    def __init__(  # noqa: PLR0913  composition point of the run use cases
+        self,
+        *,
+        runs: RunStore,
+        usage: UsageGuard,
+        credentials: CredentialService,
+        settings: SettingsStore,
+        history: HistoryStore,
+        router: ModelRouter,
+        build_agents: AgentBuilder,
+        service: RunService,
+        checkpointer: Checkpointer,
+        clock: Clock,
+        defaults: RunDefaults,
+    ) -> None:
+        self._runs = runs
+        self._usage = usage
+        self._credentials = credentials
+        self._settings = settings
+        self._history = history
+        self._router = router
+        self._build_agents = build_agents
+        self._service = service
+        self._checkpointer = checkpointer
+        self._clock = clock
+        self._defaults = defaults
+
+    async def create(self, user_id: str, request: RunRequest) -> RunCreated:
+        try:
+            requerimiento = Requerimiento(texto=request.requerimiento)
+        except ValueError:
+            raise InvalidInputError(
+                "the requirement needs 20 to 2,000 characters without control characters"
+            ) from None
+        max_rounds = self._defaults.max_rounds if request.max_rondas is None else request.max_rondas
+        if not 0 <= max_rounds <= MAX_ROUNDS:
+            raise InvalidInputError(f"max_rondas must be between 0 and {MAX_ROUNDS}")
+        preferences = await self._settings.get(user_id)
+        user_keys = await self._credentials.providers(user_id)
+        provider = request.proveedor or preferences.default_provider or self._defaults.provider
+        tier = request.nivel or (
+            preferences.default_tier if provider == preferences.default_provider else None
+        )
+        generation, gen_selection = await self._plan(
+            user_id, user_keys, provider, tier or "economico", request.modelo
+        )
+        judge_provider = (
+            request.juez or preferences.judge_provider or self._judge_for(user_keys, provider)
+        )
+        if judge_provider == provider:
+            judge, judge_selection = generation, gen_selection
+        else:
+            judge, judge_selection = await self._plan(
+                user_id, user_keys, judge_provider, "economico", None
+            )
+        gen_cost, judge_cost = self._router.estimate_parts(gen_selection, judge_selection)
+        estimate = (
+            None if gen_cost is None or judge_cost is None else round(gen_cost + judge_cost, 6)
+        )
+        server_cost = round(
+            (gen_cost or 0.0) * (generation.clave == "servidor")
+            + (judge_cost or 0.0) * (judge.clave == "servidor"),
+            6,
+        )
+        now = self._clock.now()
+        await self.cleanup()
+        await self._usage.reserve(
+            user_id,
+            now,
+            uses_server_key="servidor" in {generation.clave, judge.clave},
+            server_cost_usd=server_cost,
+        )
+        record = RunRecord(
+            id=uuid4(),
+            user_id=user_id,
+            status="creada",
+            requirement=requerimiento.texto,
+            generation=generation,
+            judge=judge,
+            max_rounds=max_rounds,
+            server_cost_reserved_usd=server_cost,
+            estimated_cost_usd=estimate,
+            created_at=now,
+        )
+        await self._runs.create(record)
+        return RunCreated(
+            run_id=record.id,
+            generacion=generation,
+            juez=judge,
+            juez_mismo_proveedor=judge.proveedor == generation.proveedor,
+            costo_estimado_usd=estimate,
+            costo_servidor_usd=server_cost,
+        )
+
+    async def approve(self, user_id: str, run_id: UUID, respuesta: RespuestaHumana) -> None:
+        record = await self._runs.get(run_id, user_id)
+        if record is None:
+            raise NotFoundError("run not found")
+        if record.status != "esperando_aprobacion":
+            raise ConflictError("the run is not waiting for an approval")
+        if not await self._runs.set_approval(run_id, respuesta.model_dump(mode="json")):
+            raise ConflictError("the run is not waiting for an approval")
+
+    async def open_stream(
+        self, user_id: str, run_id: UUID, last_event_id: int
+    ) -> AsyncIterator[EventoBase | None]:
+        """Takes the stream lock and prepares the run; yields events and None as a heartbeat."""
+        record = await self._runs.get(run_id, user_id)
+        if record is None:
+            raise NotFoundError("run not found")
+        stack = AsyncExitStack()
+        await stack.enter_async_context(self._runs.stream_lock(run_id))
+        try:
+            replay = [
+                evento_adapter.validate_python(payload)
+                for payload in await self._runs.events_after(run_id, last_event_id)
+            ]
+            action = await self._action(record)
+        except BaseException:
+            await stack.aclose()
+            raise
+        return self._events(stack, record, replay, action)
+
+    async def cleanup(self) -> int:
+        """Opportunistic: runs nobody touched for a while lose their checkpoints and events."""
+        cutoff = self._clock.now() - self._defaults.abandoned_after
+        stale = await self._runs.stale(cutoff)
+        for run_id in stale:
+            await self._checkpointer.discard(run_id)
+            await self._runs.delete(run_id)
+        return len(stale)
+
+    def _judge_for(self, user_keys: set[ProveedorId], generation: ProveedorId) -> ProveedorId:
+        candidates = [
+            p for p in self._router.available(user_keys) if self._router.has_tier(p, "economico")
+        ]
+        return elegir_juez(candidates, generation).proveedor
+
+    async def _plan(
+        self,
+        user_id: str,
+        user_keys: set[ProveedorId],
+        provider: ProveedorId,
+        tier: Nivel,
+        model: str | None,
+    ) -> tuple[ModelPlan, ProviderSelection]:
+        source: KeySource
+        if provider in user_keys:
+            source = "usuario"
+        elif self._router.server_access(provider):
+            source = "servidor"
+        else:
+            raise KeyRequiredError(f"{provider} needs the user's own API key")
+        selection = await self._selection(
+            user_id,
+            ModelPlan(
+                proveedor=provider,
+                modelo=model or "",
+                temperatura=self._defaults.temperature,
+                max_tokens=self._defaults.max_tokens,
+                clave=source,
+            ),
+            tier=None if model else tier,
+        )
+        selection = self._router.validate(selection)
+        plan = ModelPlan(
+            proveedor=provider,
+            modelo=selection.modelo or "",
+            temperatura=selection.temperatura,
+            max_tokens=selection.max_tokens,
+            clave=source,
+        )
+        return plan, selection
+
+    async def _selection(
+        self, user_id: str, plan: ModelPlan, tier: Nivel | None = None
+    ) -> ProviderSelection:
+        data: dict[str, object] = {
+            "proveedor": plan.proveedor,
+            "modelo": plan.modelo or None,
+            "nivel": tier,
+            "temperatura": plan.temperatura,
+            "max_tokens": plan.max_tokens,
+        }
+        if plan.clave == "usuario":
+            resolved = await self._credentials.resolve(user_id, plan.proveedor)
+            if resolved is None:
+                raise KeyRequiredError(f"the {plan.proveedor} key is no longer available")
+            data["api_key"] = resolved.api_key.get_secret_value()
+            if plan.proveedor == "openai_compatible":
+                data["base_url"] = resolved.base_url
+        try:
+            return parse_selection(data)
+        except SelectionError as error:
+            raise InvalidInputError(f"invalid model selection: {error}") from None
+
+    async def _action(self, record: RunRecord) -> Action | None:
+        if record.status == "esperando_aprobacion" and record.approval is None:
+            return None
+        generation = await self._selection(record.user_id, record.generation)
+        judge = await self._selection(record.user_id, record.judge)
+        agents = self._build_agents(generation, judge)
+        requerimiento = Requerimiento(texto=record.requirement)
+        service = self._service
+        if record.status == "creada":
+            await self._runs.set_status(record.id, "en_curso")
+            return lambda sink: service.iniciar(
+                requerimiento=requerimiento,
+                agents=agents,
+                events=sink,
+                max_rondas=record.max_rounds,
+            )
+        if record.status == "en_curso":
+            return lambda sink: service.continuar(
+                requerimiento=requerimiento,
+                agents=agents,
+                events=sink,
+                max_rondas=record.max_rounds,
+            )
+        respuesta = RespuestaHumana.model_validate(record.approval)
+        await self._runs.set_status(record.id, "en_curso")
+        return lambda sink: service.reanudar(respuesta=respuesta, agents=agents, events=sink)
+
+    async def _events(
+        self,
+        stack: AsyncExitStack,
+        record: RunRecord,
+        replay: Sequence[EventoBase],
+        action: Action | None,
+    ) -> AsyncIterator[EventoBase | None]:
+        async with stack:
+            for event in replay:
+                yield event
+            if action is None:
+                return
+            queue: asyncio.Queue[EventoBase] = asyncio.Queue()
+            sink = StoreEventSink(
+                record.id, self._clock, await self._runs.last_seq(record.id), self._runs, queue
+            )
+            task: asyncio.Task[RunOutcome] = asyncio.create_task(action(sink))
+            try:
+                while not (task.done() and queue.empty()):
+                    getter = asyncio.ensure_future(queue.get())
+                    done, _ = await asyncio.wait(
+                        {getter, task},
+                        timeout=self._defaults.heartbeat_seconds,
+                        return_when=asyncio.FIRST_COMPLETED,
+                    )
+                    if getter in done:
+                        yield getter.result()
+                        continue
+                    getter.cancel()
+                    if not done:
+                        yield None
+                await self._finish(record, task.result())
+            finally:
+                if not task.done():
+                    # The client left: the run stays at its last checkpoint for the next stream.
+                    task.cancel()
+                    with suppress(asyncio.CancelledError):
+                        await task
+
+    async def _finish(self, record: RunRecord, outcome: RunOutcome) -> None:
+        if isinstance(outcome, EsperandoAprobacion):
+            return
+        assert isinstance(outcome, Terminada)  # noqa: S101  RunOutcome has two variants
+        events = [
+            evento_adapter.validate_python(payload)
+            for payload in await self._runs.events_after(record.id, 0)
+        ]
+        await self._usage.settle(
+            record.user_id,
+            record.created_at.date(),
+            record.server_cost_reserved_usd,
+            _server_cost(events, record.generation, record.judge),
+        )
+        if (await self._settings.get(record.user_id)).save_history:
+            saved = _saved_run(record, events)
+            if saved is not None:
+                await self._history.save(record.user_id, saved)
+        await self._checkpointer.discard(record.id)
+        await self._runs.delete(record.id)
+        logger.info("run finished", extra={"run_id": str(record.id), "estado": outcome.estado})
