@@ -271,9 +271,8 @@ class TestCatalog:
         assert catalog.allowed_models("ollama") == ["llama3.1:8b", "qwen3:8b"]
         assert catalog.cost_usd("openai", "gpt-5.4-mini", 1_000_000, 1_000_000) == 5.25
         assert catalog.cost_usd("anthropic", "claude-haiku-5-5", 1_000_000, 1_000_000) == 0.6
-        for free in ("groq", "ollama"):
-            for name in catalog.allowed_models(free):
-                assert catalog.cost_usd(free, name, 1_000_000, 1_000_000) == 0.0
+        for name in catalog.allowed_models("ollama"):
+            assert catalog.cost_usd("ollama", name, 1_000_000, 1_000_000) == 0.0
 
     def test_load_reads_toml(self, tmp_path: Path) -> None:
         path = tmp_path / "models.toml"
@@ -320,6 +319,8 @@ class TestTiers:
             ("openai", "gpt-5.4-mini", (0.75, 4.50)),
             ("anthropic", "claude-sonnet-5-5", (2.0, 10.0)),
             ("anthropic", "claude-opus-5-5", (4.0, 20.0)),
+            ("groq", "openai/gpt-oss-20b", (0.07, 0.30)),
+            ("groq", "llama-3.3-70b-versatile", (0.59, 0.79)),
         ],
     )
     def test_shipped_prices(
@@ -458,11 +459,11 @@ class TestCostEstimate:
         empty = ProviderRegistry(settings(), SHIPPED.model_copy(update={"consumption_profile": {}}))
         assert empty.estimate_run_cost(haiku, haiku) is None
 
-    def test_free_models_estimate_zero(self) -> None:
-        reg = ProviderRegistry(settings(), SHIPPED)
-        groq = ProviderSelection(proveedor="groq", nivel="economico")
+    def test_local_models_estimate_zero(self) -> None:
+        reg = ProviderRegistry(settings(ollama_base_url="http://127.0.0.1:11434"), SHIPPED)
+        local = ProviderSelection(proveedor="ollama", modelo="llama3.1:8b")
 
-        assert reg.estimate_run_cost(groq, groq) == 0.0
+        assert reg.estimate_run_cost(local, local) == 0.0
 
 
 class TestUserKey:

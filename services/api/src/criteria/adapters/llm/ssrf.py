@@ -14,13 +14,14 @@ import httpcore2
 import httpx2
 
 from criteria.adapters.llm.retry import TransientRetryTransport
+from criteria.ports.models import EndpointRejectedError
 
 Resolver = Callable[[str, int], Awaitable[list[str]]]
 
 NAT64_PREFIX = ipaddress.IPv6Network("64:ff9b::/96")
 
 
-class EndpointNotAllowedError(Exception):
+class EndpointNotAllowedError(EndpointRejectedError):
     pass
 
 

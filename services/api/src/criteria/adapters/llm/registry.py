@@ -22,6 +22,7 @@ from criteria.adapters.llm.ssrf import guarded_client, validate_endpoint_url
 from criteria.config import Settings
 from criteria.domain.events import ProveedorId
 from criteria.domain.run_config import USER_KEY_PROVIDERS, Nivel, OutputMode, ProviderSelection
+from criteria.ports.models import KeyRequiredError, ProviderNotAllowedError
 
 PROVIDER_ORDER: tuple[ProveedorId, ...] = (
     "openai",
@@ -32,12 +33,7 @@ PROVIDER_ORDER: tuple[ProveedorId, ...] = (
 )
 
 
-class ProviderNotAllowedError(ValueError):
-    pass
-
-
-class KeyRequiredError(ProviderNotAllowedError):
-    codigo = "clave_requerida"
+__all__ = ["KeyRequiredError", "ProviderNotAllowedError", "ProviderRegistry"]
 
 
 def _secret(value: SecretStr | None) -> str | None:
@@ -120,6 +116,20 @@ class ProviderRegistry:
         return self._catalog.estimate_run_cost(
             (gen.proveedor, _model_name(gen)), (judge.proveedor, _model_name(judge))
         )
+
+    def estimate_parts(
+        self, generacion: ProviderSelection, juez: ProviderSelection
+    ) -> tuple[float | None, float | None]:
+        gen, judge = self.resolve(generacion), self.resolve(juez)
+        return self._catalog.estimate_parts(
+            (gen.proveedor, _model_name(gen)), (judge.proveedor, _model_name(judge))
+        )
+
+    def tiers(self, provider: ProveedorId) -> dict[Nivel, str]:
+        return self._catalog.tiers(provider)
+
+    def models(self, provider: ProveedorId) -> list[str]:
+        return self._catalog.allowed_models(provider)
 
     def model(self, selection: ProviderSelection) -> Model:
         selection = self.validate(selection)

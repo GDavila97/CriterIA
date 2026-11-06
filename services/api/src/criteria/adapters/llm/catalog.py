@@ -90,23 +90,41 @@ class ModelCatalog(BaseModel):
                 return entry.name
         raise TierNotAvailableError(f"{provider} has no model for the {nivel} tier")
 
-    def estimate_run_cost(
-        self, generacion: tuple[ProveedorId, str], juez: tuple[ProveedorId, str]
+    def tiers(self, provider: ProveedorId) -> dict[Nivel, str]:
+        return {m.nivel: m.name for m in self.models if m.provider == provider and m.nivel}
+
+    def _profile_cost(
+        self, roles: tuple[RolAgente, ...], model: tuple[ProveedorId, str]
     ) -> float | None:
-        """Typical cost of one run from the consumption profile; null if a price is missing."""
         total = 0.0
-        for rol in (*GENERATION_ROLES, "evaluador"):
+        for rol in roles:
             profile = self.consumption_profile.get(rol)
-            provider, name = juez if rol == "evaluador" else generacion
             cost = (
-                self.cost_usd(provider, name, profile.input_tokens, profile.output_tokens)
+                self.cost_usd(*model, profile.input_tokens, profile.output_tokens)
                 if profile
                 else None
             )
             if cost is None:
                 return None
             total += cost
-        return round(total, 6)
+        return total
+
+    def estimate_parts(
+        self, generacion: tuple[ProveedorId, str], juez: tuple[ProveedorId, str]
+    ) -> tuple[float | None, float | None]:
+        gen = self._profile_cost(GENERATION_ROLES, generacion)
+        judge = self._profile_cost(("evaluador",), juez)
+        return (
+            None if gen is None else round(gen, 6),
+            None if judge is None else round(judge, 6),
+        )
+
+    def estimate_run_cost(
+        self, generacion: tuple[ProveedorId, str], juez: tuple[ProveedorId, str]
+    ) -> float | None:
+        """Typical cost of one run from the consumption profile; null if a price is missing."""
+        gen, judge = self.estimate_parts(generacion, juez)
+        return None if gen is None or judge is None else round(gen + judge, 6)
 
     def cost_usd(
         self, provider: ProveedorId, name: str, tokens_in: int, tokens_out: int

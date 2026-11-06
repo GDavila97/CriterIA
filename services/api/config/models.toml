@@ -53,19 +53,19 @@ nivel = "maximo"
 input_usd_per_million = 4.0
 output_usd_per_million = 20.0
 
-# Groq runs on the free plan.
+# Groq Developer plan (ADR 0019). Provisional prices: pending verification in the Groq console in F5.
 [[models]]
 provider = "groq"
 name = "openai/gpt-oss-20b"
 nivel = "economico"
-input_usd_per_million = 0.0
-output_usd_per_million = 0.0
+input_usd_per_million = 0.07
+output_usd_per_million = 0.30
 
 [[models]]
 provider = "groq"
 name = "llama-3.3-70b-versatile"
-input_usd_per_million = 0.0
-output_usd_per_million = 0.0
+input_usd_per_million = 0.59
+output_usd_per_million = 0.79
 
 # Local models have no API charge.
 # Default local model, chosen in F2b (docs/evaluation.md, "Selección del modelo local").
