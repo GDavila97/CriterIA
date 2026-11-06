@@ -1,6 +1,7 @@
 import json
 import logging
 import re
+from dataclasses import replace
 from pathlib import Path
 
 import httpx2
@@ -9,9 +10,13 @@ from pydantic_ai import (
     ModelAPIError,
     ModelAuthenticationError,
     ModelHTTPError,
+    ModelMessage,
     ModelQuotaExceededError,
     ModelRateLimitError,
+    ModelResponse,
+    TextPart,
 )
+from pydantic_ai.models.function import AgentInfo, FunctionModel
 
 from criteria.adapters.agents.blocks import data_block
 from criteria.adapters.agents.factory import AgentFactory, render_analista, render_qa
@@ -91,6 +96,45 @@ class TestRunner:
 
     async def test_exposes_the_model_label(self) -> None:
         assert agents(scripted(f.historias(1))).analista.modelo == "test:scripted"
+
+
+class TestNativeOutput:
+    def native_binding(self, replies: list[str], seen: list[AgentInfo]) -> ModelBinding:
+        def reply(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+            seen.append(info)
+            return ModelResponse(parts=[TextPart(replies[min(len(seen), len(replies)) - 1])])
+
+        return replace(scripted().binding(), model=FunctionModel(reply), output_mode="native")
+
+    async def test_native_mode_asks_for_schema_json_instead_of_a_tool_call(self) -> None:
+        seen: list[AgentInfo] = []
+        binding = self.native_binding([json.dumps(f.historias(2))], seen)
+
+        result = (
+            await AgentFactory(PROMPTS, "v1", "v1", FakeClock())
+            .build(binding, binding)
+            .analista.run(entrada_analista())
+        )
+
+        assert [h.id for h in result.salida.historias] == ["HU-1", "HU-2"]
+        assert seen[0].output_tools == []
+        assert seen[0].model_request_parameters.output_mode == "native"
+
+    async def test_consistency_rules_still_trigger_the_retry_in_native_mode(self) -> None:
+        seen: list[AgentInfo] = []
+        untested = f.entrega_qa(1)
+        complete = f.entrega_qa(1, historia_ids=("HU-1", "HU-2"))
+        complete["casos"].append(f.caso(2, "HU-2"))
+        binding = self.native_binding([json.dumps(untested), json.dumps(complete)], seen)
+
+        result = (
+            await AgentFactory(PROMPTS, "v1", "v1", FakeClock())
+            .build(binding, binding)
+            .qa.run(entrada_qa())
+        )
+
+        assert result.uso.reintentos == 1
+        assert len(seen) == 2
 
 
 class TestConsistencyRetries:

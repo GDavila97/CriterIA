@@ -18,7 +18,7 @@ from criteria.adapters.llm.catalog import ModelCatalog, TierNotAvailableError
 from criteria.adapters.llm.ssrf import guarded_client, validate_endpoint_url
 from criteria.config import Settings
 from criteria.domain.events import ProveedorId
-from criteria.domain.run_config import USER_KEY_PROVIDERS, Nivel, ProviderSelection
+from criteria.domain.run_config import USER_KEY_PROVIDERS, Nivel, OutputMode, ProviderSelection
 
 PROVIDER_ORDER: tuple[ProveedorId, ...] = (
     "openai",
@@ -165,6 +165,11 @@ class ProviderRegistry:
                 # Qwen 3 reasoning off on its OpenAI-compatible endpoint (verified in F2b).
                 model_settings["openai_reasoning_effort"] = "none"
         return model_settings
+
+    def output_mode(self, selection: ProviderSelection) -> OutputMode:
+        selection = self.resolve(selection)
+        entry = self._catalog.entry(selection.proveedor, _model_name(selection))
+        return entry.output_mode if entry is not None else "tool"
 
     def cost_usd(
         self, selection: ProviderSelection, tokens_in: int, tokens_out: int

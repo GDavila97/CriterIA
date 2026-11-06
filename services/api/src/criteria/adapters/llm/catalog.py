@@ -5,7 +5,7 @@ from typing import Literal, Self
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
 from criteria.domain.events import ProveedorId
-from criteria.domain.run_config import Nivel, NombreModelo
+from criteria.domain.run_config import Nivel, NombreModelo, OutputMode
 
 RolAgente = Literal["analista", "qa", "revisor", "evaluador"]
 GENERATION_ROLES: tuple[RolAgente, ...] = ("analista", "qa", "revisor")
@@ -28,6 +28,7 @@ class CatalogEntry(BaseModel):
     output_usd_per_million: float | None = Field(default=None, ge=0)
     nivel: Nivel | None = None
     thinking: bool | None = None
+    output_mode: OutputMode = "tool"
 
     @model_validator(mode="after")
     def _prices_come_in_pairs(self) -> Self:

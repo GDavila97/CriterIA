@@ -397,6 +397,33 @@ class TestTiers:
             )
 
 
+class TestOutputMode:
+    def test_local_models_use_native_output_and_the_rest_tool_calls(self) -> None:
+        reg = ProviderRegistry(settings(), SHIPPED)
+
+        assert reg.output_mode(ProviderSelection(proveedor="ollama", modelo="qwen3:8b")) == "native"
+        assert (
+            reg.output_mode(ProviderSelection(proveedor="ollama", modelo="llama3.1:8b")) == "native"
+        )
+        for provider in ("openai", "anthropic", "groq"):
+            assert (
+                reg.output_mode(ProviderSelection(proveedor=provider, nivel="economico")) == "tool"
+            )
+        assert (
+            reg.output_mode(
+                parse_selection(
+                    {
+                        "proveedor": "openai_compatible",
+                        "modelo": "x",
+                        "api_key": USER_KEY,
+                        "base_url": "https://llm.example.com/v1",
+                    }
+                )
+            )
+            == "tool"
+        )
+
+
 class TestCostEstimate:
     def test_estimate_multiplies_the_profile_by_each_models_prices(self) -> None:
         reg = ProviderRegistry(settings(), SHIPPED)

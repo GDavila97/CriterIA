@@ -16,6 +16,7 @@ from pydantic_ai.settings import ModelSettings
 
 from criteria.adapters.llm.ssrf import EndpointNotAllowedError, ResponseTooLargeError
 from criteria.domain.events import CodigoError, ProveedorId, Uso
+from criteria.domain.run_config import OutputMode
 from criteria.ports.agents import AgentResult, AgentRunError
 from criteria.ports.clock import Clock
 
@@ -94,6 +95,7 @@ class ModelBinding:
     label: str
     settings: ModelSettings
     cost_usd: Callable[[int, int], float | None]
+    output_mode: OutputMode = "tool"
 
 
 class PydanticAgentRunner[Entrada, Salida]:

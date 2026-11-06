@@ -420,3 +420,4 @@ def test_real_container_builds_agents_from_the_catalog(monkeypatch: pytest.Monke
 
     assert agents.analista.modelo == agents.evaluador.modelo == "ollama:qwen3:8b"
     assert (agents.version_prompts, agents.version_juez) == ("v1", "v1")
+    assert container.binding(selection).output_mode == "native"

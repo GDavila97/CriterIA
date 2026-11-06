@@ -2,7 +2,8 @@ from collections.abc import Callable
 from pathlib import Path
 
 import pydantic_ai
-from pydantic_ai import Agent, ModelRetry, RunContext
+from pydantic_ai import Agent, ModelRetry, NativeOutput, RunContext
+from pydantic_ai.output import OutputSpec
 
 from criteria.adapters.agents.blocks import data_block
 from criteria.adapters.agents.prompts import RolAgente, load_prompt
@@ -92,12 +93,14 @@ class AgentFactory:
     def build(
         self, generacion: ModelBinding, juez: ModelBinding, experimental: bool = False
     ) -> AgentSet:
-        analista = self._agent("analista", EntradaAnalista, Historias)
-        qa = self._agent("qa", EntradaQA, EntregaQA)
+        analista = self._agent("analista", EntradaAnalista, Historias, generacion)
+        qa = self._agent("qa", EntradaQA, EntregaQA, generacion)
         qa.output_validator(_check_qa)
-        revisor = self._agent("revisor", EntradaRevisor, VeredictoRevisor)
+        revisor = self._agent("revisor", EntradaRevisor, VeredictoRevisor, generacion)
         revisor.output_validator(_check_revisor)
-        evaluador = self._agent("evaluador", EntradaEvaluador, Evaluacion, self._judge_version)
+        evaluador = self._agent(
+            "evaluador", EntradaEvaluador, Evaluacion, juez, self._judge_version
+        )
         return AgentSet(
             analista=self._runner("analista", analista, generacion, render_analista),
             qa=self._runner("qa", qa, generacion, render_qa),
@@ -113,10 +116,14 @@ class AgentFactory:
         rol: RolAgente,
         deps: type[Entrada],
         output: type[Salida],
+        binding: ModelBinding,
         version: str | None = None,
     ) -> Agent[Entrada, Salida]:
+        output_type: OutputSpec[Salida] = (
+            NativeOutput(output) if binding.output_mode == "native" else output
+        )
         return Agent(
-            output_type=output,
+            output_type=output_type,
             deps_type=deps,
             instructions=load_prompt(self._prompts_dir, version or self._version, rol),
             retries={"output": OUTPUT_RETRIES, "tools": 0},

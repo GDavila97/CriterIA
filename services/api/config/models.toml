@@ -72,12 +72,15 @@ output_usd_per_million = 0.0
 provider = "ollama"
 name = "qwen3:8b"
 thinking = false
+# Schema-constrained JSON instead of a tool call; local models often skip or reshape tool calls.
+output_mode = "native"
 input_usd_per_million = 0.0
 output_usd_per_million = 0.0
 
 [[models]]
 provider = "ollama"
 name = "llama3.1:8b"
+output_mode = "native"
 input_usd_per_million = 0.0
 output_usd_per_million = 0.0
 
