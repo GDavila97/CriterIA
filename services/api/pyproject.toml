@@ -26,6 +26,7 @@ dependencies = [
 [project.scripts]
 criteria = "criteria.adapters.cli.main:entrypoint"
 criteria-api = "criteria.main:run"
+criteria-contract = "criteria.adapters.http.contract:run"
 
 [build-system]
 requires = ["uv_build>=0.13.6,<0.14.0"]

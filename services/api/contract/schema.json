@@ -1,0 +1,1978 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CriteriaContract",
+  "description": "HTTP bodies and SSE events of the CriterIA API.",
+  "$defs": {
+    "AgenteEntrega": {
+      "additionalProperties": false,
+      "properties": {
+        "run_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "seq": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "ts": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "agent": {
+          "enum": [
+            "analista",
+            "qa",
+            "revisor",
+            "evaluador",
+            "sistema"
+          ],
+          "type": "string"
+        },
+        "type": {
+          "const": "agente_entrega",
+          "default": "agente_entrega",
+          "type": "string"
+        },
+        "ronda": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "artefactos": {
+          "discriminator": {
+            "mapping": {
+              "historias": "#/$defs/ArtefactosHistorias",
+              "pruebas": "#/$defs/ArtefactosPruebas",
+              "puntajes": "#/$defs/ArtefactosPuntajes",
+              "revision": "#/$defs/ArtefactosRevision"
+            },
+            "propertyName": "tipo"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/ArtefactosHistorias"
+            },
+            {
+              "$ref": "#/$defs/ArtefactosPruebas"
+            },
+            {
+              "$ref": "#/$defs/ArtefactosRevision"
+            },
+            {
+              "$ref": "#/$defs/ArtefactosPuntajes"
+            }
+          ]
+        },
+        "uso": {
+          "$ref": "#/$defs/Uso"
+        }
+      },
+      "required": [
+        "run_id",
+        "seq",
+        "ts",
+        "agent",
+        "type",
+        "ronda",
+        "artefactos",
+        "uso"
+      ],
+      "title": "AgenteEntrega",
+      "type": "object"
+    },
+    "AgenteError": {
+      "additionalProperties": false,
+      "properties": {
+        "run_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "seq": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "ts": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "agent": {
+          "enum": [
+            "analista",
+            "qa",
+            "revisor",
+            "evaluador",
+            "sistema"
+          ],
+          "type": "string"
+        },
+        "type": {
+          "const": "agente_error",
+          "default": "agente_error",
+          "type": "string"
+        },
+        "codigo": {
+          "enum": [
+            "salida_invalida",
+            "clave_invalida",
+            "sin_saldo",
+            "limite_proveedor",
+            "proveedor_no_disponible",
+            "destino_no_permitido",
+            "error_interno"
+          ],
+          "type": "string"
+        },
+        "mensaje": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        "respaldo_sugerido": {
+          "anyOf": [
+            {
+              "const": "groq",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "run_id",
+        "seq",
+        "ts",
+        "agent",
+        "type",
+        "codigo",
+        "mensaje",
+        "respaldo_sugerido"
+      ],
+      "title": "AgenteError",
+      "type": "object"
+    },
+    "AgenteInicia": {
+      "additionalProperties": false,
+      "properties": {
+        "run_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "seq": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "ts": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "agent": {
+          "enum": [
+            "analista",
+            "qa",
+            "revisor",
+            "evaluador",
+            "sistema"
+          ],
+          "type": "string"
+        },
+        "type": {
+          "const": "agente_inicia",
+          "default": "agente_inicia",
+          "type": "string"
+        },
+        "ronda": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "run_id",
+        "seq",
+        "ts",
+        "agent",
+        "type",
+        "ronda"
+      ],
+      "title": "AgenteInicia",
+      "type": "object"
+    },
+    "AgenteProgreso": {
+      "additionalProperties": false,
+      "properties": {
+        "run_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "seq": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "ts": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "agent": {
+          "enum": [
+            "analista",
+            "qa",
+            "revisor",
+            "evaluador",
+            "sistema"
+          ],
+          "type": "string"
+        },
+        "type": {
+          "const": "agente_progreso",
+          "default": "agente_progreso",
+          "type": "string"
+        },
+        "mensaje": {
+          "maxLength": 80,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "run_id",
+        "seq",
+        "ts",
+        "agent",
+        "type",
+        "mensaje"
+      ],
+      "title": "AgenteProgreso",
+      "type": "object"
+    },
+    "ArtefactosHistorias": {
+      "additionalProperties": false,
+      "properties": {
+        "tipo": {
+          "const": "historias",
+          "default": "historias",
+          "type": "string"
+        },
+        "historias": {
+          "items": {
+            "$ref": "#/$defs/HistoriaUsuario"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "tipo",
+        "historias"
+      ],
+      "title": "ArtefactosHistorias",
+      "type": "object"
+    },
+    "ArtefactosPruebas": {
+      "additionalProperties": false,
+      "properties": {
+        "tipo": {
+          "const": "pruebas",
+          "default": "pruebas",
+          "type": "string"
+        },
+        "criterios": {
+          "items": {
+            "$ref": "#/$defs/CriterioAceptacion"
+          },
+          "type": "array"
+        },
+        "casos": {
+          "items": {
+            "$ref": "#/$defs/CasoPrueba"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "tipo",
+        "criterios",
+        "casos"
+      ],
+      "title": "ArtefactosPruebas",
+      "type": "object"
+    },
+    "ArtefactosPuntajes": {
+      "additionalProperties": false,
+      "properties": {
+        "tipo": {
+          "const": "puntajes",
+          "default": "puntajes",
+          "type": "string"
+        },
+        "puntajes": {
+          "items": {
+            "$ref": "#/$defs/Puntaje"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "tipo",
+        "puntajes"
+      ],
+      "title": "ArtefactosPuntajes",
+      "type": "object"
+    },
+    "ArtefactosRevision": {
+      "additionalProperties": false,
+      "properties": {
+        "tipo": {
+          "const": "revision",
+          "default": "revision",
+          "type": "string"
+        },
+        "veredicto": {
+          "$ref": "#/$defs/VeredictoRevisor"
+        }
+      },
+      "required": [
+        "tipo",
+        "veredicto"
+      ],
+      "title": "ArtefactosRevision",
+      "type": "object"
+    },
+    "CambiosHistorias": {
+      "additionalProperties": false,
+      "properties": {
+        "agregadas": {
+          "items": {
+            "pattern": "^HU-[1-9]\\d?$",
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "modificadas": {
+          "items": {
+            "pattern": "^HU-[1-9]\\d?$",
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "eliminadas": {
+          "items": {
+            "pattern": "^HU-[1-9]\\d?$",
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "agregadas",
+        "modificadas",
+        "eliminadas"
+      ],
+      "title": "CambiosHistorias",
+      "type": "object"
+    },
+    "CasoPrueba": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^CP-\\d{2}$",
+          "type": "string"
+        },
+        "historia_id": {
+          "pattern": "^HU-[1-9]\\d?$",
+          "type": "string"
+        },
+        "titulo": {
+          "maxLength": 120,
+          "minLength": 1,
+          "type": "string"
+        },
+        "pasos": {
+          "items": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 12,
+          "minItems": 1,
+          "type": "array"
+        },
+        "resultado_esperado": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "gherkin": {
+          "$ref": "#/$defs/EscenarioGherkin"
+        },
+        "origen": {
+          "default": "qa",
+          "enum": [
+            "qa",
+            "revisor"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "historia_id",
+        "titulo",
+        "pasos",
+        "resultado_esperado",
+        "gherkin",
+        "origen"
+      ],
+      "title": "CasoPrueba",
+      "type": "object"
+    },
+    "CatalogBody": {
+      "additionalProperties": false,
+      "properties": {
+        "proveedores": {
+          "items": {
+            "$ref": "#/$defs/CatalogProviderBody"
+          },
+          "type": "array"
+        },
+        "proveedor_predeterminado": {
+          "enum": [
+            "openai",
+            "anthropic",
+            "groq",
+            "ollama",
+            "openai_compatible"
+          ],
+          "type": "string"
+        },
+        "juez_predeterminado": {
+          "enum": [
+            "openai",
+            "anthropic",
+            "groq",
+            "ollama",
+            "openai_compatible"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "proveedores",
+        "proveedor_predeterminado",
+        "juez_predeterminado"
+      ],
+      "title": "CatalogBody",
+      "type": "object"
+    },
+    "CatalogProviderBody": {
+      "additionalProperties": false,
+      "properties": {
+        "proveedor": {
+          "enum": [
+            "openai",
+            "anthropic",
+            "groq",
+            "ollama",
+            "openai_compatible"
+          ],
+          "type": "string"
+        },
+        "disponible": {
+          "type": "boolean"
+        },
+        "clave": {
+          "anyOf": [
+            {
+              "enum": [
+                "usuario",
+                "servidor"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "acepta_clave_propia": {
+          "type": "boolean"
+        },
+        "niveles": {
+          "items": {
+            "$ref": "#/$defs/CatalogTierBody"
+          },
+          "type": "array"
+        },
+        "modelos": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "proveedor",
+        "disponible",
+        "clave",
+        "acepta_clave_propia",
+        "niveles",
+        "modelos"
+      ],
+      "title": "CatalogProviderBody",
+      "type": "object"
+    },
+    "CatalogTierBody": {
+      "additionalProperties": false,
+      "properties": {
+        "nivel": {
+          "enum": [
+            "economico",
+            "equilibrado",
+            "maximo"
+          ],
+          "type": "string"
+        },
+        "modelo": {
+          "type": "string"
+        },
+        "costo_estimado_usd": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "nivel",
+        "modelo",
+        "costo_estimado_usd"
+      ],
+      "title": "CatalogTierBody",
+      "type": "object"
+    },
+    "CorridaFin": {
+      "additionalProperties": false,
+      "properties": {
+        "run_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "seq": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "ts": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "agent": {
+          "enum": [
+            "analista",
+            "qa",
+            "revisor",
+            "evaluador",
+            "sistema"
+          ],
+          "type": "string"
+        },
+        "type": {
+          "const": "corrida_fin",
+          "default": "corrida_fin",
+          "type": "string"
+        },
+        "estado": {
+          "enum": [
+            "completada",
+            "error"
+          ],
+          "type": "string"
+        },
+        "puntajes": {
+          "items": {
+            "$ref": "#/$defs/Puntaje"
+          },
+          "type": "array"
+        },
+        "totales": {
+          "$ref": "#/$defs/Totales"
+        },
+        "respaldo_sugerido": {
+          "anyOf": [
+            {
+              "const": "groq",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "run_id",
+        "seq",
+        "ts",
+        "agent",
+        "type",
+        "estado",
+        "puntajes",
+        "totales",
+        "respaldo_sugerido"
+      ],
+      "title": "CorridaFin",
+      "type": "object"
+    },
+    "CorridaInicia": {
+      "additionalProperties": false,
+      "properties": {
+        "run_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "seq": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "ts": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "agent": {
+          "enum": [
+            "analista",
+            "qa",
+            "revisor",
+            "evaluador",
+            "sistema"
+          ],
+          "type": "string"
+        },
+        "type": {
+          "const": "corrida_inicia",
+          "default": "corrida_inicia",
+          "type": "string"
+        },
+        "proveedor": {
+          "enum": [
+            "openai",
+            "anthropic",
+            "groq",
+            "ollama",
+            "openai_compatible"
+          ],
+          "type": "string"
+        },
+        "modelos": {
+          "$ref": "#/$defs/ModelosCorrida"
+        },
+        "version_prompts": {
+          "pattern": "^v\\d+$",
+          "type": "string"
+        },
+        "version_juez": {
+          "pattern": "^v\\d+$",
+          "type": "string"
+        },
+        "juez_mismo_proveedor": {
+          "type": "boolean"
+        },
+        "experimental": {
+          "type": "boolean"
+        },
+        "max_rondas": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "run_id",
+        "seq",
+        "ts",
+        "agent",
+        "type",
+        "proveedor",
+        "modelos",
+        "version_prompts",
+        "version_juez",
+        "juez_mismo_proveedor",
+        "experimental",
+        "max_rondas"
+      ],
+      "title": "CorridaInicia",
+      "type": "object"
+    },
+    "CredentialBody": {
+      "additionalProperties": false,
+      "properties": {
+        "proveedor": {
+          "enum": [
+            "openai",
+            "anthropic",
+            "groq",
+            "ollama",
+            "openai_compatible"
+          ],
+          "type": "string"
+        },
+        "last4": {
+          "type": "string"
+        },
+        "validated_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "base_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "proveedor",
+        "last4",
+        "validated_at",
+        "base_url"
+      ],
+      "title": "CredentialBody",
+      "type": "object"
+    },
+    "CredentialPutBody": {
+      "additionalProperties": false,
+      "properties": {
+        "api_key": {
+          "format": "password",
+          "maxLength": 512,
+          "minLength": 1,
+          "type": "string",
+          "writeOnly": true
+        },
+        "base_url": {
+          "anyOf": [
+            {
+              "format": "uri",
+              "maxLength": 2083,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "api_key"
+      ],
+      "title": "CredentialPutBody",
+      "type": "object"
+    },
+    "CriterioAceptacion": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^CA-[1-9]\\d{0,2}$",
+          "type": "string"
+        },
+        "historia_id": {
+          "pattern": "^HU-[1-9]\\d?$",
+          "type": "string"
+        },
+        "texto": {
+          "maxLength": 400,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "historia_id",
+        "texto"
+      ],
+      "title": "CriterioAceptacion",
+      "type": "object"
+    },
+    "EnEsperaHumano": {
+      "additionalProperties": false,
+      "properties": {
+        "run_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "seq": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "ts": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "agent": {
+          "enum": [
+            "analista",
+            "qa",
+            "revisor",
+            "evaluador",
+            "sistema"
+          ],
+          "type": "string"
+        },
+        "type": {
+          "const": "en_espera_humano",
+          "default": "en_espera_humano",
+          "type": "string"
+        },
+        "solicitud": {
+          "const": "aprobar_historias",
+          "default": "aprobar_historias",
+          "type": "string"
+        },
+        "historias": {
+          "items": {
+            "$ref": "#/$defs/HistoriaUsuario"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "run_id",
+        "seq",
+        "ts",
+        "agent",
+        "type",
+        "solicitud",
+        "historias"
+      ],
+      "title": "EnEsperaHumano",
+      "type": "object"
+    },
+    "ErrorBody": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "code",
+        "message"
+      ],
+      "title": "ErrorBody",
+      "type": "object"
+    },
+    "EscenarioGherkin": {
+      "additionalProperties": false,
+      "properties": {
+        "escenario": {
+          "maxLength": 120,
+          "minLength": 1,
+          "type": "string"
+        },
+        "dado": {
+          "items": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 6,
+          "minItems": 1,
+          "type": "array"
+        },
+        "cuando": {
+          "items": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 6,
+          "minItems": 1,
+          "type": "array"
+        },
+        "entonces": {
+          "items": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 6,
+          "minItems": 1,
+          "type": "array"
+        }
+      },
+      "required": [
+        "escenario",
+        "dado",
+        "cuando",
+        "entonces"
+      ],
+      "title": "EscenarioGherkin",
+      "type": "object"
+    },
+    "EvaluationBatchBody": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "provider": {
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        },
+        "prompt_version": {
+          "type": "string"
+        },
+        "judge_model": {
+          "type": "string"
+        },
+        "judge_version": {
+          "type": "string"
+        },
+        "output_mode": {
+          "type": "string"
+        },
+        "cases": {
+          "type": "integer"
+        },
+        "valid_rate": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "latency_p50_ms": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "latency_p95_ms": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "cost_usd_avg": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "created_at",
+        "provider",
+        "model",
+        "prompt_version",
+        "judge_model",
+        "judge_version",
+        "output_mode",
+        "cases",
+        "valid_rate",
+        "latency_p50_ms",
+        "latency_p95_ms",
+        "cost_usd_avg"
+      ],
+      "title": "EvaluationBatchBody",
+      "type": "object"
+    },
+    "EvaluationBody": {
+      "additionalProperties": false,
+      "properties": {
+        "lotes": {
+          "items": {
+            "$ref": "#/$defs/EvaluationBatchBody"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "lotes"
+      ],
+      "title": "EvaluationBody",
+      "type": "object"
+    },
+    "Evento": {
+      "description": "Every SSE frame carries one of these in its data line.",
+      "discriminator": {
+        "mapping": {
+          "agente_entrega": "#/$defs/AgenteEntrega",
+          "agente_error": "#/$defs/AgenteError",
+          "agente_inicia": "#/$defs/AgenteInicia",
+          "agente_progreso": "#/$defs/AgenteProgreso",
+          "corrida_fin": "#/$defs/CorridaFin",
+          "corrida_inicia": "#/$defs/CorridaInicia",
+          "en_espera_humano": "#/$defs/EnEsperaHumano",
+          "humano_responde": "#/$defs/HumanoResponde",
+          "revisor_observa": "#/$defs/RevisorObserva"
+        },
+        "propertyName": "type"
+      },
+      "oneOf": [
+        {
+          "$ref": "#/$defs/CorridaInicia"
+        },
+        {
+          "$ref": "#/$defs/AgenteInicia"
+        },
+        {
+          "$ref": "#/$defs/AgenteProgreso"
+        },
+        {
+          "$ref": "#/$defs/AgenteEntrega"
+        },
+        {
+          "$ref": "#/$defs/EnEsperaHumano"
+        },
+        {
+          "$ref": "#/$defs/HumanoResponde"
+        },
+        {
+          "$ref": "#/$defs/RevisorObserva"
+        },
+        {
+          "$ref": "#/$defs/AgenteError"
+        },
+        {
+          "$ref": "#/$defs/CorridaFin"
+        }
+      ],
+      "title": "Evento"
+    },
+    "HealthBody": {
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "const": "ok",
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "status",
+        "version"
+      ],
+      "title": "HealthBody",
+      "type": "object"
+    },
+    "HistoriaUsuario": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^HU-[1-9]\\d?$",
+          "type": "string"
+        },
+        "como": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "quiero": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "para": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "prioridad": {
+          "enum": [
+            "alta",
+            "media",
+            "baja"
+          ],
+          "type": "string"
+        },
+        "supuestos": {
+          "items": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 8,
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "como",
+        "quiero",
+        "para",
+        "prioridad",
+        "supuestos"
+      ],
+      "title": "HistoriaUsuario",
+      "type": "object"
+    },
+    "HistoriaUsuarioInput": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^HU-[1-9]\\d?$",
+          "type": "string"
+        },
+        "como": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "quiero": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "para": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "prioridad": {
+          "enum": [
+            "alta",
+            "media",
+            "baja"
+          ],
+          "type": "string"
+        },
+        "supuestos": {
+          "items": {
+            "maxLength": 300,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 8,
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "como",
+        "quiero",
+        "para",
+        "prioridad"
+      ],
+      "title": "HistoriaUsuarioInput",
+      "type": "object"
+    },
+    "Historias": {
+      "additionalProperties": false,
+      "properties": {
+        "historias": {
+          "items": {
+            "$ref": "#/$defs/HistoriaUsuarioInput"
+          },
+          "maxItems": 12,
+          "minItems": 1,
+          "type": "array"
+        }
+      },
+      "required": [
+        "historias"
+      ],
+      "title": "Historias",
+      "type": "object"
+    },
+    "HistoryDeletedBody": {
+      "additionalProperties": false,
+      "properties": {
+        "deleted": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "deleted"
+      ],
+      "title": "HistoryDeletedBody",
+      "type": "object"
+    },
+    "HistoryItemBody": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "requirement": {
+          "type": "string"
+        },
+        "artifacts": {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        "scores": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "provider": {
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        },
+        "judge_model": {
+          "type": "string"
+        },
+        "prompt_version": {
+          "type": "string"
+        },
+        "judge_version": {
+          "type": "string"
+        },
+        "experimental": {
+          "type": "boolean"
+        },
+        "totals": {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        "created_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "status",
+        "requirement",
+        "artifacts",
+        "scores",
+        "provider",
+        "model",
+        "judge_model",
+        "prompt_version",
+        "judge_version",
+        "experimental",
+        "totals",
+        "created_at"
+      ],
+      "title": "HistoryItemBody",
+      "type": "object"
+    },
+    "HistorySummaryBody": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "provider": {
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "scores": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "status",
+        "provider",
+        "model",
+        "created_at",
+        "scores"
+      ],
+      "title": "HistorySummaryBody",
+      "type": "object"
+    },
+    "HumanoResponde": {
+      "additionalProperties": false,
+      "properties": {
+        "run_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "seq": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "ts": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "agent": {
+          "enum": [
+            "analista",
+            "qa",
+            "revisor",
+            "evaluador",
+            "sistema"
+          ],
+          "type": "string"
+        },
+        "type": {
+          "const": "humano_responde",
+          "default": "humano_responde",
+          "type": "string"
+        },
+        "decision": {
+          "enum": [
+            "aprobado",
+            "editado"
+          ],
+          "type": "string"
+        },
+        "cambios": {
+          "$ref": "#/$defs/CambiosHistorias"
+        }
+      },
+      "required": [
+        "run_id",
+        "seq",
+        "ts",
+        "agent",
+        "type",
+        "decision",
+        "cambios"
+      ],
+      "title": "HumanoResponde",
+      "type": "object"
+    },
+    "ModelPlanBody": {
+      "additionalProperties": false,
+      "properties": {
+        "proveedor": {
+          "enum": [
+            "openai",
+            "anthropic",
+            "groq",
+            "ollama",
+            "openai_compatible"
+          ],
+          "type": "string"
+        },
+        "modelo": {
+          "type": "string"
+        },
+        "clave": {
+          "enum": [
+            "usuario",
+            "servidor"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "proveedor",
+        "modelo",
+        "clave"
+      ],
+      "title": "ModelPlanBody",
+      "type": "object"
+    },
+    "ModelosCorrida": {
+      "additionalProperties": false,
+      "properties": {
+        "generacion": {
+          "maxLength": 120,
+          "minLength": 1,
+          "type": "string"
+        },
+        "juez": {
+          "maxLength": 120,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "generacion",
+        "juez"
+      ],
+      "title": "ModelosCorrida",
+      "type": "object"
+    },
+    "Observacion": {
+      "additionalProperties": false,
+      "properties": {
+        "tipo": {
+          "enum": [
+            "ambiguedad",
+            "inconsistencia",
+            "faltante"
+          ],
+          "type": "string"
+        },
+        "destino": {
+          "enum": [
+            "analista",
+            "qa"
+          ],
+          "type": "string"
+        },
+        "referencias": {
+          "items": {
+            "pattern": "^(HU-[1-9]\\d?|CA-[1-9]\\d{0,2}|CP-\\d{2})$",
+            "type": "string"
+          },
+          "maxItems": 10,
+          "type": "array"
+        },
+        "descripcion": {
+          "maxLength": 400,
+          "minLength": 1,
+          "type": "string"
+        },
+        "sugerencia": {
+          "maxLength": 400,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "tipo",
+        "destino",
+        "referencias",
+        "descripcion",
+        "sugerencia"
+      ],
+      "title": "Observacion",
+      "type": "object"
+    },
+    "Puntaje": {
+      "additionalProperties": false,
+      "properties": {
+        "criterio": {
+          "enum": [
+            "claridad",
+            "verificabilidad",
+            "completitud",
+            "consistencia"
+          ],
+          "type": "string"
+        },
+        "valor": {
+          "maximum": 5,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "justificacion": {
+          "maxLength": 280,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "criterio",
+        "valor",
+        "justificacion"
+      ],
+      "title": "Puntaje",
+      "type": "object"
+    },
+    "RespuestaHumana": {
+      "additionalProperties": false,
+      "properties": {
+        "decision": {
+          "enum": [
+            "aprobado",
+            "editado"
+          ],
+          "type": "string"
+        },
+        "historias": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Historias"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "decision"
+      ],
+      "title": "RespuestaHumana",
+      "type": "object"
+    },
+    "RevisorObserva": {
+      "additionalProperties": false,
+      "properties": {
+        "run_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "seq": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "ts": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "agent": {
+          "enum": [
+            "analista",
+            "qa",
+            "revisor",
+            "evaluador",
+            "sistema"
+          ],
+          "type": "string"
+        },
+        "type": {
+          "const": "revisor_observa",
+          "default": "revisor_observa",
+          "type": "string"
+        },
+        "ronda": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "observaciones": {
+          "items": {
+            "$ref": "#/$defs/Observacion"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "se_corrige": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "run_id",
+        "seq",
+        "ts",
+        "agent",
+        "type",
+        "ronda",
+        "observaciones",
+        "se_corrige"
+      ],
+      "title": "RevisorObserva",
+      "type": "object"
+    },
+    "RunCreateBody": {
+      "additionalProperties": false,
+      "properties": {
+        "requerimiento": {
+          "maxLength": 2000,
+          "type": "string"
+        },
+        "proveedor": {
+          "anyOf": [
+            {
+              "enum": [
+                "openai",
+                "anthropic",
+                "groq",
+                "ollama",
+                "openai_compatible"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "nivel": {
+          "anyOf": [
+            {
+              "enum": [
+                "economico",
+                "equilibrado",
+                "maximo"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "modelo": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,99}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "juez": {
+          "anyOf": [
+            {
+              "enum": [
+                "openai",
+                "anthropic",
+                "groq",
+                "ollama",
+                "openai_compatible"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "max_rondas": {
+          "anyOf": [
+            {
+              "maximum": 5,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "requerimiento"
+      ],
+      "title": "RunCreateBody",
+      "type": "object"
+    },
+    "RunCreatedBody": {
+      "additionalProperties": false,
+      "properties": {
+        "run_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "generacion": {
+          "$ref": "#/$defs/ModelPlanBody"
+        },
+        "juez": {
+          "$ref": "#/$defs/ModelPlanBody"
+        },
+        "juez_mismo_proveedor": {
+          "type": "boolean"
+        },
+        "costo_estimado_usd": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "costo_servidor_usd": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "run_id",
+        "generacion",
+        "juez",
+        "juez_mismo_proveedor",
+        "costo_estimado_usd",
+        "costo_servidor_usd"
+      ],
+      "title": "RunCreatedBody",
+      "type": "object"
+    },
+    "SettingsBody": {
+      "additionalProperties": false,
+      "properties": {
+        "save_history": {
+          "default": false,
+          "type": "boolean"
+        },
+        "default_provider": {
+          "anyOf": [
+            {
+              "enum": [
+                "openai",
+                "anthropic",
+                "groq",
+                "ollama",
+                "openai_compatible"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "default_tier": {
+          "anyOf": [
+            {
+              "enum": [
+                "economico",
+                "equilibrado",
+                "maximo"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "judge_provider": {
+          "anyOf": [
+            {
+              "enum": [
+                "openai",
+                "anthropic",
+                "groq",
+                "ollama",
+                "openai_compatible"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "save_history",
+        "default_provider",
+        "default_tier",
+        "judge_provider"
+      ],
+      "title": "SettingsBody",
+      "type": "object"
+    },
+    "SettingsBodyInput": {
+      "additionalProperties": false,
+      "properties": {
+        "save_history": {
+          "default": false,
+          "type": "boolean"
+        },
+        "default_provider": {
+          "anyOf": [
+            {
+              "enum": [
+                "openai",
+                "anthropic",
+                "groq",
+                "ollama",
+                "openai_compatible"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "default_tier": {
+          "anyOf": [
+            {
+              "enum": [
+                "economico",
+                "equilibrado",
+                "maximo"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "judge_provider": {
+          "anyOf": [
+            {
+              "enum": [
+                "openai",
+                "anthropic",
+                "groq",
+                "ollama",
+                "openai_compatible"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "title": "SettingsBodyInput",
+      "type": "object"
+    },
+    "Totales": {
+      "additionalProperties": false,
+      "properties": {
+        "tokens_entrada": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "tokens_salida": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "latencia_ms": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "costo_usd": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "tokens_entrada",
+        "tokens_salida",
+        "latencia_ms",
+        "costo_usd"
+      ],
+      "title": "Totales",
+      "type": "object"
+    },
+    "Uso": {
+      "additionalProperties": false,
+      "properties": {
+        "tokens_entrada": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "tokens_salida": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "latencia_ms": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "costo_usd": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "reintentos": {
+          "default": 0,
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "tokens_entrada",
+        "tokens_salida",
+        "latencia_ms",
+        "costo_usd",
+        "reintentos"
+      ],
+      "title": "Uso",
+      "type": "object"
+    },
+    "VeredictoRevisor": {
+      "additionalProperties": false,
+      "properties": {
+        "aprobado": {
+          "type": "boolean"
+        },
+        "observaciones": {
+          "items": {
+            "$ref": "#/$defs/Observacion"
+          },
+          "maxItems": 10,
+          "type": "array"
+        }
+      },
+      "required": [
+        "aprobado",
+        "observaciones"
+      ],
+      "title": "VeredictoRevisor",
+      "type": "object"
+    }
+  }
+}
