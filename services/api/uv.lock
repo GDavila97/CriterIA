@@ -272,6 +272,7 @@ dependencies = [
     { name = "cryptography" },
     { name = "fastapi" },
     { name = "httpcore2" },
+    { name = "httpx" },
     { name = "httpx2" },
     { name = "langgraph" },
     { name = "langgraph-checkpoint-postgres" },
@@ -286,7 +287,6 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
-    { name = "httpx" },
     { name = "mypy" },
     { name = "pip-audit" },
     { name = "pytest" },
@@ -301,6 +301,7 @@ requires-dist = [
     { name = "cryptography", specifier = ">=50.0.2" },
     { name = "fastapi", specifier = ">=0.162.0" },
     { name = "httpcore2", specifier = ">=2.16.0" },
+    { name = "httpx", specifier = ">=0.28.1" },
     { name = "httpx2", specifier = ">=2.16.0" },
     { name = "langgraph", specifier = ">=1.2.19" },
     { name = "langgraph-checkpoint-postgres", specifier = ">=3.2.0" },
@@ -315,7 +316,6 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "httpx", specifier = ">=0.28.1" },
     { name = "mypy", specifier = ">=2.4.1" },
     { name = "pip-audit", specifier = ">=2.10.1" },
     { name = "pytest", specifier = ">=9.2.0" },

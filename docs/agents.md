@@ -67,6 +67,7 @@ flowchart TD
 - Si la segunda salida también falla, el nodo emite `agente_error` con código `salida_invalida` y un mensaje fijo. La corrida pasa a `cierre`, que emite `corrida_fin` con `estado: "error"`.
 - Las fallas del proveedor se traducen a códigos seguros: `clave_invalida` (401/403), `sin_saldo` (cuota agotada o pago requerido), `limite_proveedor` (429), `proveedor_no_disponible` (5xx, conexión o tiempo agotado), `destino_no_permitido` (protección SSRF) y `error_interno`. Con los tres primeros, si el proveedor no es Groq, el evento sugiere Groq como respaldo, pero la corrida nunca cambia de proveedor por su cuenta. El mensaje del evento nunca incluye texto del modelo, del proveedor ni datos internos, y el log solo registra el tipo de excepción.
 - Los reintentos de cada llamada se reportan en `uso.reintentos` (peticiones al modelo menos una).
+- Fallas transitorias del proveedor: los SDK corren sin reintentos propios (`max_retries=0`), porque los suyos también repiten los 429 y los tiempos agotados. Un transporte HTTP propio da un solo reintento, y solo a errores de conexión y respuestas 5xx. Cada proveedor tiene su tiempo límite (`PROVIDER_TIMEOUT_SECONDS` y `PROVIDER_TIMEOUTS`, por ejemplo `ollama:180`).
 
 ## Política de rondas
 

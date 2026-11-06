@@ -1,6 +1,8 @@
 from collections.abc import Callable, Collection
 
 import httpx2
+from anthropic import AsyncAnthropic
+from groq import AsyncGroq
 from openai import AsyncOpenAI
 from pydantic import SecretStr
 from pydantic_ai.models import Model
@@ -15,6 +17,7 @@ from pydantic_ai.providers.openai import OpenAIProvider
 from pydantic_ai.settings import ModelSettings
 
 from criteria.adapters.llm.catalog import ModelCatalog, TierNotAvailableError
+from criteria.adapters.llm.retry import legacy_provider_client, provider_client
 from criteria.adapters.llm.ssrf import guarded_client, validate_endpoint_url
 from criteria.config import Settings
 from criteria.domain.events import ProveedorId
@@ -122,40 +125,55 @@ class ProviderRegistry:
         selection = self.validate(selection)
         name = _model_name(selection)
         settings = self._settings
+        timeout = settings.timeout_for(selection.proveedor)
         match selection.proveedor:
             case "openai":
-                return OpenAIChatModel(
-                    name,
-                    provider=OpenAIProvider(api_key=_key(selection, settings.openai_api_key)),
+                openai_client = AsyncOpenAI(
+                    api_key=_key(selection, settings.openai_api_key),
+                    max_retries=0,
+                    http_client=provider_client(timeout),
                 )
+                return OpenAIChatModel(name, provider=OpenAIProvider(openai_client=openai_client))
             case "anthropic":
+                anthropic_client = AsyncAnthropic(
+                    api_key=_key(selection, settings.anthropic_api_key),
+                    max_retries=0,
+                    http_client=provider_client(timeout),
+                )
                 return AnthropicModel(
-                    name,
-                    provider=AnthropicProvider(api_key=_key(selection, settings.anthropic_api_key)),
+                    name, provider=AnthropicProvider(anthropic_client=anthropic_client)
                 )
             case "groq":
-                return GroqModel(
-                    name,
-                    provider=GroqProvider(api_key=_key(selection, settings.groq_api_key)),
+                groq_client = AsyncGroq(
+                    api_key=_key(selection, settings.groq_api_key),
+                    max_retries=0,
+                    http_client=legacy_provider_client(timeout),
                 )
+                return GroqModel(name, provider=GroqProvider(groq_client=groq_client))
             case "ollama":
                 base_url = str(settings.ollama_base_url).rstrip("/")
-                return OllamaModel(name, provider=OllamaProvider(base_url=f"{base_url}/v1"))
+                ollama_client = AsyncOpenAI(
+                    base_url=f"{base_url}/v1",
+                    api_key="ollama",
+                    max_retries=0,
+                    http_client=provider_client(timeout),
+                )
+                return OllamaModel(name, provider=OllamaProvider(openai_client=ollama_client))
             case "openai_compatible":
-                client = AsyncOpenAI(
+                user_client = AsyncOpenAI(
                     base_url=str(selection.base_url),
                     api_key=_secret(selection.api_key),
                     http_client=self._user_endpoint_client(),
                     max_retries=0,
                 )
-                return OpenAIChatModel(name, provider=OpenAIProvider(openai_client=client))
+                return OpenAIChatModel(name, provider=OpenAIProvider(openai_client=user_client))
 
     def model_settings(self, selection: ProviderSelection) -> ModelSettings:
         selection = self.resolve(selection)
         model_settings = OpenAIChatModelSettings(
             temperature=selection.temperatura,
             max_tokens=selection.max_tokens,
-            timeout=self._settings.provider_timeout_seconds,
+            timeout=self._settings.timeout_for(selection.proveedor),
         )
         entry = self._catalog.entry(selection.proveedor, _model_name(selection))
         if entry is not None and entry.thinking is not None:
@@ -181,6 +199,6 @@ class ProviderRegistry:
 
     def _default_user_endpoint_client(self) -> httpx2.AsyncClient:
         return guarded_client(
-            timeout_seconds=self._settings.provider_timeout_seconds,
+            timeout_seconds=self._settings.timeout_for("openai_compatible"),
             max_response_bytes=self._settings.provider_max_response_bytes,
         )

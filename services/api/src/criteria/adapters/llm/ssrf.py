@@ -13,6 +13,8 @@ from typing import Any
 import httpcore2
 import httpx2
 
+from criteria.adapters.llm.retry import TransientRetryTransport
+
 Resolver = Callable[[str, int], Awaitable[list[str]]]
 
 NAT64_PREFIX = ipaddress.IPv6Network("64:ff9b::/96")
@@ -181,9 +183,8 @@ def guarded_client(
     backend: httpcore2.AsyncNetworkBackend | None = None,
     inner: httpx2.AsyncBaseTransport | None = None,
 ) -> httpx2.AsyncClient:
-    transport = GuardedTransport(
-        inner or network_transport(backend or GuardedNetworkBackend()), max_response_bytes
-    )
+    network = TransientRetryTransport(network_transport(backend or GuardedNetworkBackend()))
+    transport = GuardedTransport(inner or network, max_response_bytes)
     return httpx2.AsyncClient(
         transport=transport,
         timeout=httpx2.Timeout(timeout_seconds),
