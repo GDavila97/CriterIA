@@ -37,7 +37,6 @@ jobs:
       run:
         working-directory: services/api
     services:
-      # Declared now for the integration tests that arrive in F3.
       postgres:
         image: postgres:16
         env:
@@ -51,8 +50,6 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
-    env:
-      DATABASE_URL: postgresql://criteria:criteria@localhost:5432/criteria_test
     steps:
       - uses: actions/checkout@v7
       # setup-uv publishes only full version tags since v8, so there is no moving major tag.
@@ -69,8 +66,15 @@ jobs:
         run: uv run ruff format --check .
       - name: Mypy
         run: uv run mypy
-      - name: Pytest
+      - name: Unit tests
+        run: uv run pytest -m "not integration and not ollama"
+      # The whole suite again against the Postgres service; coverage counts both kinds.
+      - name: Unit and integration tests
+        env:
+          TEST_DATABASE_ADMIN_URL: postgresql://criteria:criteria@localhost:5432/criteria_test
         run: uv run pytest
+      - name: Contract is up to date
+        run: uv run criteria-contract --check
       - name: Pip-audit
         run: |
           uv export --frozen --format requirements-txt --no-emit-project --quiet --output-file "$RUNNER_TEMP/requirements.txt"
@@ -103,6 +107,10 @@ jobs:
         run: pnpm format:check
       - name: Typecheck
         run: pnpm typecheck
+      - name: API types match the contract
+        run: |
+          pnpm gen:api
+          git diff --exit-code -- src/shared/api/types.gen.ts
       - name: Vitest
         run: pnpm test
       - name: Build
@@ -124,6 +132,22 @@ jobs:
   docker:
     name: API image
     runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: criteria
+          POSTGRES_PASSWORD: criteria
+          POSTGRES_DB: criteria
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U criteria -d criteria"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      ADMIN_URL: postgresql://criteria:criteria@localhost:5432/criteria
     steps:
       - uses: actions/checkout@v7
       - uses: docker/setup-buildx-action@v4
@@ -136,12 +160,37 @@ jobs:
           tags: criteria-api:ci
           cache-from: type=gha
           cache-to: type=gha,mode=max
+      - name: Create roles and run the migrations from the image
+        run: |
+          password="$(openssl rand -hex 16)"
+          echo "::add-mask::$password"
+          echo "ROLE_PASSWORD=$password" >> "$GITHUB_ENV"
+          psql "$ADMIN_URL" -v ON_ERROR_STOP=1 -q -f services/api/db/roles.sql
+          psql "$ADMIN_URL" -v ON_ERROR_STOP=1 -q \
+            -c "ALTER ROLE migrator_role PASSWORD '$password'" \
+            -c "ALTER ROLE api_role PASSWORD '$password'"
+          docker run --rm --network host \
+            -e MIGRATION_DATABASE_URL="postgresql://migrator_role:$password@localhost:5432/criteria" \
+            criteria-api:ci alembic upgrade head
       - name: Smoke test the container
         run: |
-          docker run -d --name api -e APP_ENV=test -e PORT=9000 -p 9000:9000 criteria-api:ci
-          # Docker's port proxy accepts connections before uvicorn listens and answers them empty.
+          docker run -d --name api --network host \
+            -e APP_ENV=test -e PORT=9000 \
+            -e DATABASE_URL="postgresql://api_role:$ROLE_PASSWORD@localhost:5432/criteria" \
+            -e WEB_ORIGIN=http://localhost:3000 \
+            -e AUTH_JWKS_URL=http://localhost:3000/api/auth/jwks \
+            -e AUTH_ISSUER=http://localhost:3000 \
+            -e AUTH_AUDIENCE=http://localhost:3000 \
+            -e CREDENTIALS_KEYS="1:$(openssl rand -base64 32)" \
+            -e CREDENTIALS_ACTIVE_KEY=1 \
+            criteria-api:ci
+          # uvicorn needs a moment before it listens; until then the connection is refused.
           curl --fail --silent --show-error --retry 10 --retry-all-errors --retry-delay 1 http://127.0.0.1:9000/healthz
+          test "$(curl --silent --output /dev/null --write-out '%{http_code}' http://127.0.0.1:9000/me/settings)" = "401"
           test "$(docker exec api id -u)" != "0"
+      - name: Container logs
+        if: failure()
+        run: docker logs api || true
 
   secrets:
     name: Secret scan
