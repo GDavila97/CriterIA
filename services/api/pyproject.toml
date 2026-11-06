@@ -76,6 +76,7 @@ addopts = "--strict-markers -m 'not ollama' --cov=criteria --cov-report=term-mis
 markers = [
     "integration: tests that need a real Postgres (from F3)",
     "ollama: tests that call a real Ollama server; run with -m ollama",
+    "api_settings: overrides for the API settings of the integration app fixture",
 ]
 
 [tool.coverage.run]

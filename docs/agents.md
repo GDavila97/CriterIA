@@ -59,7 +59,7 @@ flowchart TD
 
 - **Pausa humana.** Después del Analista la corrida se detiene con `interrupt` y el estado queda en el checkpointer. La respuesta es `aprobado` o `editado` con historias validadas por el esquema; una edición inválida se rechaza antes de reanudar. `en_espera_humano` se emite en un nodo previo porque LangGraph vuelve a ejecutar desde el principio el nodo que llamó a `interrupt` cuando se reanuda.
 - **Estado.** El estado del grafo solo guarda JSON (texto del requerimiento, artefactos, ronda, uso). Los agentes, la clave propia y el sink de eventos viajan en el contexto de ejecución de LangGraph, que no se guarda en el checkpoint.
-- **Checkpointer.** En F2 es en memoria (`MemoryCheckpointer`). En F3 llega el de Postgres detrás del mismo puerto `Checkpointer`. Los checkpoints de una corrida se borran al terminar o al cancelarla.
+- **Checkpointer.** La CLI usa uno en memoria (`MemoryCheckpointer`) y la API el de Postgres en el esquema `graph` (`PostgresCheckpointer`), detrás del mismo puerto `Checkpointer`. Los checkpoints de una corrida se borran al terminar o cuando se descarta por abandonada.
 
 ## Política de reintentos
 
@@ -84,7 +84,7 @@ El registro (`adapters/llm/registry.py`) construye el modelo de Pydantic AI seg�
 
 - **Quién paga ([ADR 0016](adr/0016-claves-por-usuario.md)).**
   - Cada usuario usa su propia clave para `openai`, `anthropic`, `groq` y `openai_compatible`; `ollama` no lleva clave.
-  - La clave del servidor solo se usa con los proveedores listados en `SERVER_KEY_PROVIDERS` que además tengan su credencial configurada: la clave, o `OLLAMA_BASE_URL` en el caso de Ollama. En producción la lista es solo `groq`, en su plan gratuito, que es la opción por defecto.
+  - La clave del servidor solo se usa con los proveedores listados en `SERVER_KEY_PROVIDERS` que además tengan su credencial configurada: la clave, o `OLLAMA_BASE_URL` en el caso de Ollama. En producción la lista es solo `groq`, en el plan Developer con tope diario ([ADR 0019](adr/0019-groq-developer-for-the-free-mode.md)), que es la opción gratuita por defecto para el usuario.
   - Una corrida sin clave del usuario para un proveedor fuera de esa lista se rechaza con el código `clave_requerida` antes de llamar a ningún modelo. `openai_compatible` nunca usa clave del servidor.
 - **Niveles.** `openai`, `anthropic` y `groq` tienen modelos por nivel (`economico`, `equilibrado`, `maximo`). Cada proveedor tiene como máximo un modelo por nivel, y el catálogo no carga si hay dos (el arranque falla con un mensaje que los nombra), así que el nivel no depende del orden del archivo. Los modelos sin nivel, como `gpt-5.4-mini` o `llama-3.3-70b-versatile`, siguen disponibles por nombre. `ProviderSelection` acepta un nivel o un modelo explícito (el panel del agente puede fijar el modelo), y el modelo explícito gana. Ollama y `openai_compatible` no tienen niveles: necesitan el nombre del modelo.
 - **Modo de salida.** Cada modelo del catálogo declara `output_mode`. Con `tool` (por defecto), la salida llega como llamada a una herramienta; con `native`, como JSON restringido al esquema (`NativeOutput` de Pydantic AI, que Ollama recibe como `response_format` con `json_schema`). Los validadores de coherencia y el reintento funcionan igual en los dos modos. Los modelos de Ollama usan `native` ([ADR 0017](adr/0017-native-output-for-local-models.md)).

@@ -24,6 +24,9 @@ WORKDIR /app
 COPY --from=builder --chown=app:app /app/.venv /app/.venv
 COPY --chown=app:app prompts ./prompts
 COPY --chown=app:app config ./config
+# The same image runs the migrations as a one-off job: alembic upgrade head.
+COPY --chown=app:app alembic.ini ./
+COPY --chown=app:app migrations ./migrations
 ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \

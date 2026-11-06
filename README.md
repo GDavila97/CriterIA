@@ -28,24 +28,24 @@ Flujo: Analista → pausa para que la persona apruebe o edite → QA → Revisor
 
 ## Estado
 
-Fase F2 (núcleo de agentes): los cuatro agentes, el grafo con la pausa humana y las rondas del Revisor corren de punta a punta desde la CLI, con proveedores intercambiables y modo solo local con Ollama. La web todavía muestra una página de inicio provisional, y la API expone solo `GET /healthz`. La base de datos, los endpoints de corrida y la autenticación llegan en F3 y F4.
+Fase F3 (API): el núcleo de agentes está expuesto por HTTP con autenticación por JWT, corridas transmitidas por SSE con reconexión, aprobación humana, claves propias cifradas, límites por usuario y cupo global, historial y tablero de evaluación, sobre Postgres. La web todavía muestra una página de inicio provisional; el registro, la sesión y las pantallas de corrida llegan en F4.
 
 ## Stack
 
 | Parte | Tecnología |
 | --- | --- |
 | Web (`apps/web`) | Next.js 16 con App Router, React 19, TypeScript estricto, zod, CSS Modules, Sentry |
-| API (`services/api`) | Python 3.13, Pydantic AI, LangGraph, FastAPI, pydantic-settings, Sentry |
-| Datos | Neon Postgres (desde F3) |
+| API (`services/api`) | Python 3.13, Pydantic AI, LangGraph, FastAPI, SQLAlchemy con psycopg, Alembic, PyJWT, pydantic-settings, Sentry |
+| Datos | Neon Postgres (Postgres 16 en Docker en local y en el CI) |
 | Nube | GCP Cloud Run (API) y Vercel (web) |
 | Calidad | ESLint, Prettier, Vitest, Playwright con axe · Ruff, mypy, pytest, pip-audit |
 | CI | GitHub Actions, Dependabot y gitleaks |
 
 ## Arquitectura
 
-Monorepo con la web y la API separadas. La API sigue una arquitectura hexagonal (dominio, aplicación, puertos y adaptadores) y la web, Feature-Sliced Design. El navegador recibe los eventos de los agentes por SSE directamente desde la API.
+Monorepo con la web y la API separadas. La API sigue una arquitectura hexagonal (dominio, aplicación, puertos y adaptadores) y la web, Feature-Sliced Design. El navegador recibe los eventos de los agentes por SSE directamente desde la API, y la corrida solo avanza mientras ese stream está abierto. Los tipos de la web se generan desde el JSON Schema que exporta la API.
 
-Detalle en [docs/architecture.md](docs/architecture.md) y decisiones en [docs/adr/](docs/adr/README.md).
+Detalle en [docs/architecture.md](docs/architecture.md), endpoints en [docs/api.md](docs/api.md) y decisiones en [docs/adr/](docs/adr/README.md).
 
 ## Estructura del repositorio
 
@@ -59,10 +59,14 @@ Detalle en [docs/architecture.md](docs/architecture.md) y decisiones en [docs/ad
 │   ├── src/criteria/    domain, application, ports, adapters, config
 │   ├── prompts/         prompts de sistema: v1/ para los agentes y juez/v1/ para el Evaluador
 │   ├── config/          modelos permitidos y precios
+│   ├── contract/        JSON Schema de cuerpos y eventos, fuente de los tipos de la web
+│   ├── db/              roles y esquemas de Postgres
+│   ├── migrations/      Alembic
 │   ├── examples/        requerimientos de ejemplo para la CLI
 │   ├── tests/
+│   ├── docker-compose.yml  Postgres local
 │   └── Dockerfile
-├── docs/                arquitectura, ADRs, despliegue y evaluación
+├── docs/                arquitectura, API, ADRs, despliegue y evaluación
 └── .github/             CI y Dependabot
 ```
 
@@ -72,16 +76,21 @@ Detalle en [docs/architecture.md](docs/architecture.md) y decisiones en [docs/ad
 
 - Node.js 26 LTS (fijado en `apps/web/.nvmrc`) y pnpm 12 (lo selecciona Corepack o pnpm a partir de `packageManager`).
 - [uv](https://docs.astral.sh/uv/) 0.13.7 exactamente: `services/api/pyproject.toml` lo exige en `[tool.uv] required-version` y uv se niega a correr con otra versión. uv instala Python 3.13 según `services/api/.python-version`.
-- Docker, opcional, para construir la imagen de la API.
+- Docker, para el Postgres local, las pruebas de integración y la imagen de la API. `psql` para aplicar los roles.
 
 ### API
 
 ```bash
 cd services/api
-cp .env.example .env      # APP_ENV es obligatoria
+cp .env.example .env      # completa CREDENTIALS_KEYS (el comando para generarla está en el archivo)
 uv sync --frozen
+make db-up                # Postgres 16 en 127.0.0.1:5432
+make db-setup             # roles, esquemas y contraseñas locales
+make migrate              # Alembic como migrator_role
 make run                  # http://127.0.0.1:8080/healthz
 ```
+
+La CLI (`uv run criteria run …`) no necesita base de datos ni las variables de la API.
 
 ### Web
 
@@ -144,10 +153,11 @@ OLLAMA_BASE_URL=http://localhost:11434 uv run pytest -m ollama --no-cov
 ```bash
 cd services/api
 docker build -t criteria-api .
-docker run --rm -e APP_ENV=development -e PORT=8080 -p 8080:8080 criteria-api
+docker run --rm -e MIGRATION_DATABASE_URL=… criteria-api alembic upgrade head
+docker run --rm --env-file .env -e HOST=0.0.0.0 -p 8080:8080 criteria-api
 ```
 
-La imagen corre con un usuario sin privilegios y toma el puerto de `PORT`, como lo inyecta Cloud Run.
+La misma imagen sirve la API y corre las migraciones. Corre con un usuario sin privilegios y toma el puerto de `PORT`, como lo inyecta Cloud Run. Desde el contenedor, `127.0.0.1` es el propio contenedor: en local, la base se alcanza con `host.docker.internal`.
 
 ## Scripts
 
@@ -158,9 +168,12 @@ API (`services/api`, con `make`):
 | `make lint` | Ruff check |
 | `make format` / `make format-check` | Ruff format, o solo verificación |
 | `make typecheck` | mypy en modo estricto |
-| `make test` | pytest con cobertura mínima del 90 % |
+| `make test` | pruebas unitarias con cobertura mínima del 90 % |
+| `make test-integration` | toda la suite contra el Postgres local (crea y borra una base temporal), cobertura mínima del 90 % |
 | `make audit` | pip-audit sobre `uv.lock` |
-| `make check` | todo lo anterior |
+| `make contract` | escribe `contract/schema.json` desde los esquemas Pydantic |
+| `make check` | lint, formato, tipos, pruebas unitarias, auditoría y contrato al día |
+| `make db-up` / `make db-setup` / `make migrate` | Postgres local, roles y migraciones |
 | `make run` | levanta la API |
 | `uv run criteria run …` | corre el grafo de agentes en la terminal (ver arriba) |
 
@@ -172,6 +185,7 @@ Web (`apps/web`, con `pnpm`):
 | `pnpm lint` | ESLint, incluida la regla de capas FSD |
 | `pnpm format` / `pnpm format:check` | Prettier |
 | `pnpm typecheck` | genera los tipos de Next.js y corre `tsc --noEmit` |
+| `pnpm gen:api` | genera `src/shared/api/types.gen.ts` desde el contrato de la API |
 | `pnpm test` | Vitest con cobertura mínima del 90 % |
 | `pnpm e2e` | Playwright en escritorio y a 390 px, claro y oscuro, con axe y verificación de CSP (requiere `pnpm build`) |
 | `pnpm audit` | `pnpm audit --audit-level=moderate` |
@@ -180,7 +194,7 @@ Web (`apps/web`, con `pnpm`):
 
 Las listas completas, con la fase en que se usa cada variable, están en [services/api/.env.example](services/api/.env.example) y [apps/web/.env.example](apps/web/.env.example). Nunca se versionan valores reales.
 
-| Variable | Parte | Obligatoria en F1 | Uso |
+| Variable | Parte | Obligatoria | Uso |
 | --- | --- | --- | --- |
 | `APP_ENV` | API | Sí | `development`, `test` o `production`; en producción se ocultan `/docs` y `/openapi.json` |
 | `HOST`, `PORT` | API | No | Interfaz y puerto (por defecto `127.0.0.1:8080`; la imagen usa `0.0.0.0`) |
@@ -191,10 +205,21 @@ Las listas completas, con la fase en que se usa cada variable, están en [servic
 | `SERVER_KEY_PROVIDERS` | API | No | Proveedores que pueden usar la clave del servidor, separados por comas; en producción, solo `groq`. Sin ella, toda corrida necesita la clave del usuario (`clave_requerida`) |
 | `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GROQ_API_KEY` | API | No | Claves del servidor. En producción solo existe la de Groq; las de OpenAI y Anthropic solo viven en un `.env` local para la evaluación |
 | `OLLAMA_BASE_URL` | API | No | URL de Ollama; el proveedor `ollama` solo se ofrece con ella y con `ollama` en `SERVER_KEY_PROVIDERS` |
-| `PROVIDER_TIMEOUT_SECONDS`, `PROVIDER_MAX_RESPONSE_BYTES` | API | No | Tiempo límite y tamaño máximo de respuesta del proveedor |
+| `PROVIDER_TIMEOUT_SECONDS`, `PROVIDER_TIMEOUTS`, `PROVIDER_MAX_RESPONSE_BYTES` | API | No | Tiempo límite general y por proveedor (`ollama:180`), y tamaño máximo de respuesta |
 | `PROMPT_VERSION`, `JUDGE_VERSION` | API | No | Versión de los prompts de los agentes y, por separado, la del juez (`v1`); el juez no cambia al comparar versiones de los agentes |
 | `MAX_REVIEW_ROUNDS` | API | No | Rondas de corrección del Revisor (2) |
 | `PROMPTS_DIR`, `MODELS_FILE` | API | No | Rutas de los prompts y del catálogo; la imagen Docker las fija |
+| `DATABASE_URL` | API | Sí (servidor) | Postgres como `api_role` |
+| `MIGRATION_DATABASE_URL` | Migraciones | Sí (migrar) | Postgres como `migrator_role` |
+| `WEB_ORIGIN` | API | Sí (servidor) | Único origen permitido por CORS |
+| `AUTH_JWKS_URL`, `AUTH_ISSUER`, `AUTH_AUDIENCE` | API | Sí (servidor) | Verificación de los JWT de la web |
+| `AUTH_ALGORITHMS`, `AUTH_VERIFIED_CLAIM`, `AUTH_JWKS_CACHE_SECONDS`, `AUTH_LEEWAY_SECONDS` | API | No | Algoritmos asimétricos (`EdDSA`), claim de correo verificado, caché del JWKS y tolerancia de reloj |
+| `CREDENTIALS_KEYS`, `CREDENTIALS_ACTIVE_KEY` | API | Sí (servidor) | Llaves versionadas de AES-256-GCM para las claves de los usuarios |
+| `CREDENTIAL_CHECKS_PER_HOUR` | API | No | Validaciones de claves por usuario y hora (10) |
+| `USER_RUNS_PER_HOUR`, `USER_RUNS_PER_DAY` | API | No | Corridas por usuario (5 por hora, 20 por día) |
+| `GLOBAL_DAILY_RUNS`, `GLOBAL_DAILY_BUDGET_USD` | API | No | Cupo diario de corridas con claves del servidor (100 y 1 dólar) |
+| `RUN_TTL_MINUTES`, `SSE_HEARTBEAT_SECONDS`, `MAX_REQUEST_BYTES`, `DATABASE_POOL_SIZE` | API | No | Corridas abandonadas, latido del stream, tamaño del cuerpo y pool de conexiones |
+| `TEST_DATABASE_ADMIN_URL` | Pruebas | No | Superusuario de un Postgres de pruebas; sin ella, las pruebas de integración se omiten |
 | `CRITERIA_USER_API_KEY` | CLI | No | Clave propia para `openai_compatible` o, con `--clave-propia`, para el proveedor de generación; se exporta en la sesión, no va en `.env` |
 | `NEXT_PUBLIC_APP_ENV` | Web | Sí | Entorno de la web |
 | `NEXT_PUBLIC_API_URL` | Web | Sí | URL de la API; también entra en `connect-src` de la CSP. En producción debe ser `https` |
@@ -205,6 +230,7 @@ Las listas completas, con la fase en que se usa cada variable, están en [servic
 - [Arquitectura](docs/architecture.md)
 - [Agentes y grafo](docs/agents.md)
 - [Eventos de una corrida](docs/events.md)
+- [API HTTP](docs/api.md)
 - [Decisiones de arquitectura (ADRs)](docs/adr/README.md)
 - [Despliegue](docs/deploy.md)
 - [Evaluación de modelos](docs/evaluation.md)

@@ -47,8 +47,19 @@ Relacional: Neon Postgres en capa gratuita, con esquemas separados y roles de m�
 | Esquema | Dueño | Migraciones | Contenido |
 | --- | --- | --- | --- |
 | `auth` | web (`web_role`) | CLI de Better Auth | Usuarios, sesiones, cuentas, verificaciones, JWKS |
-| `app` | API (`api_role`) | Alembic | Ajustes de usuario, uso diario, corridas guardadas, evaluación |
-| `graph` | API (`api_role`) | Checkpointer de LangGraph | Checkpoints para la pausa humana |
+| `app` | `migrator_role` (la API lee y escribe con `api_role`) | Alembic | Ajustes, claves cifradas, uso y cupos, corridas en curso y sus eventos, historial, evaluación |
+| `graph` | `migrator_role` (la API lee y escribe con `api_role`) | Migraciones de LangGraph, aplicadas por Alembic | Checkpoints de las corridas en curso |
+
+Roles ([services/api/db/roles.sql](../services/api/db/roles.sql), idempotente):
+
+| Rol | Puede | No puede |
+| --- | --- | --- |
+| `migrator_role` | DDL en `app` y `graph` | leer `auth` |
+| `api_role` | leer y escribir filas de `app` y `graph`; solo leer las tablas de evaluación | crear o alterar tablas, tocar la versión de Alembic o de los checkpoints, ver `auth` |
+| `eval_writer` | insertar resultados de evaluación desde la CLI local | leer corridas, claves o ajustes, borrar o actualizar |
+| `web_role` | dueño de `auth` (Better Auth, desde F4) | tocar `app` o `graph` |
+
+La API nunca ejecuta DDL: al arrancar comprueba que los checkpoints estén en la última migración y, si no, se niega a arrancar. `user_id` es texto sin llave foránea hasta que exista `auth.user` en F4.
 
 Se eligió un modelo relacional porque las métricas de evaluación se comparan con SQL (agregados por modelo, versión y criterio). Los artefactos y puntajes viven en `jsonb` validado por esquema en la API.
 
@@ -62,23 +73,34 @@ services/api/
     domain/        artifacts (Requerimiento, HistoriaUsuario, CriterioAceptacion, CasoPrueba,
                    Observacion, VeredictoRevisor, Puntaje), reglas puras, eventos, respuesta
                    humana y ProviderSelection; solo Pydantic
-    application/   grafo de LangGraph (graph.py) y servicio de corridas (runs.py): iniciar,
-                   reanudar tras la aprobación y descartar
-    ports/         AgentRunner por rol con sus entradas, EventSink, Checkpointer, Clock, KeyValidator
+    application/   grafo de LangGraph (graph.py), servicio de corridas (runs.py: iniciar,
+                   continuar, reanudar y descartar), casos de uso HTTP de corridas (run_api.py),
+                   claves (credentials.py) y cuenta (accounts.py), errores con código
+    ports/         AgentRunner por rol, EventSink, Checkpointer, Clock, KeyValidator, ModelRouter,
+                   TokenVerifier, Cipher, CredentialStore, RunStore, UsageGuard, SettingsStore,
+                   HistoryStore, EvaluationReader
     adapters/
       llm/         registro de proveedores, catálogo (niveles, precios, perfil de consumo), protección
                    SSRF y validación de claves
       agents/      agentes de Pydantic AI expuestos como AgentRunner, bloques de datos, prompts
-      memory/      checkpointer y sink de eventos en memoria
+      memory/      checkpointer y sink de eventos en memoria (CLI y pruebas)
+      postgres/    tablas (SQLAlchemy Core), stores, reserva de cupos y checkpointer de LangGraph
+      auth/        verificación de JWT con JWKS en caché
+      crypto/      cifrado AES-256-GCM de las claves con versiones de llave
+      http/        rutas FastAPI, esquemas, errores, middleware de endurecimiento, SSE y contrato
       cli/         comando `criteria run` y salida legible o JSON por línea
       system_clock.py
-    bootstrap.py   módulo de arranque: arma registro, agentes y servicio para la CLI y la API
+    bootstrap.py   módulo de arranque: arma registro, agentes y servicios para la CLI y la API
     config.py      validación de variables al arrancar (pydantic-settings)
     observability.py  Sentry, activo solo con DSN y con filtro de cabeceras sensibles
-    main.py        app FastAPI (en F2, solo `GET /healthz`)
+    main.py        create_app y arranque de uvicorn
   prompts/v1/      prompts de sistema de Analista, QA y Revisor
   prompts/juez/v1/ prompt del Evaluador, con versión propia y congelado (ADR 0015)
   config/models.toml  modelos permitidos por proveedor y precios
+  contract/schema.json  JSON Schema de cuerpos y eventos, fuente de los tipos de la web
+  db/roles.sql     roles y esquemas; lo aplica el dueño de la base antes de migrar
+  migrations/      Alembic: tablas de app y migraciones de los checkpoints en graph
+  docker-compose.yml  Postgres 16 local
   examples/        requerimientos de ejemplo para la CLI
 ```
 
@@ -94,14 +116,20 @@ Puertos:
 | Puerto | Responsabilidad | Adaptadores |
 | --- | --- | --- |
 | `AgentRunner[Entrada, Salida]` | Ejecuta un agente y devuelve la salida validada con su uso (tokens, latencia, costo, reintentos); si falla, lanza `AgentRunError` con un código y un mensaje seguros | `PydanticAgentRunner` |
-| `EventSink` | Recibe los eventos de una corrida en orden y les asigna `seq` creciente y `ts` | `ListEventSink` (pruebas), `PrintingEventSink` (CLI); SSE en F3 |
-| `Checkpointer` | Guarda el estado del grafo entre la pausa humana y la reanudación, y lo borra al terminar | `MemoryCheckpointer`; Postgres en F3 |
+| `EventSink` | Recibe los eventos de una corrida en orden y les asigna `seq` creciente y `ts` | `ListEventSink` (pruebas), `PrintingEventSink` (CLI), `StoreEventSink` (guarda en `app.run_event` y entrega al stream) |
+| `Checkpointer` | Guarda el estado del grafo entre la pausa humana y la reanudación, y lo borra al terminar | `MemoryCheckpointer`, `PostgresCheckpointer` |
 | `Clock` | Hora con zona y reloj monotónico, para que las pruebas controlen `ts` y latencia | `SystemClock`; `FakeClock` en pruebas |
-| `KeyValidator` | Comprueba una clave con la llamada más barata del proveedor (listar modelos) y devuelve `valida`, `invalida` o `no_verificable` con los últimos 4 caracteres, sin guardar ni registrar la clave | `HttpKeyValidator`; el endpoint que lo usa llega en F3 |
+| `KeyValidator` | Comprueba una clave con la llamada más barata del proveedor (listar modelos) y devuelve `valida`, `invalida` o `no_verificable` con los últimos 4 caracteres, sin guardar ni registrar la clave | `HttpKeyValidator` |
+| `ModelRouter` | Acceso del servidor por proveedor, niveles, validación de la selección y costo estimado por parte | `ProviderRegistry` |
+| `TokenVerifier` | Convierte un JWT en `Principal` (`user_id`, correo verificado) o lanza `AuthError` | `JwtVerifier` con `JwksCache` |
+| `Cipher` | Cifra y descifra una clave con datos asociados | `AesGcmCipher` |
+| `CredentialStore`, `SettingsStore`, `HistoryStore`, `EvaluationReader` | Persistencia por usuario | adaptadores de `postgres/`; en memoria en las pruebas unitarias |
+| `RunStore` | Corrida en curso, sus eventos, estado, aprobación, abandonadas y lock del stream | `PostgresRunStore` (advisory lock de sesión) |
+| `UsageGuard` | Reserva atómica de los límites por usuario y del cupo global, y ajuste al costo real | `PostgresUsageGuard` |
 
-Detalle de agentes, grafo, reintentos y rondas en [agents.md](agents.md), y de los eventos en [events.md](events.md).
+Detalle de agentes, grafo, reintentos y rondas en [agents.md](agents.md), de los eventos en [events.md](events.md) y de los endpoints, la autenticación, los límites y los errores en [api.md](api.md).
 
-Estado en F2: el núcleo de agentes corre de punta a punta desde la CLI. `main.py` sigue exponiendo solo `GET /healthz`; en F3 las rutas pasan a `adapters/` y usan el mismo `bootstrap.py`. En producción no se publican `/docs` ni `/openapi.json`.
+Estado en F3: la API expone las corridas por HTTP con el ciclo ligado al stream ([ADR 0018](adr/0018-run-lifecycle-bound-to-the-stream.md)), claves cifradas, ajustes, catálogo, historial y el tablero público de evaluación. Las rutas viven en `adapters/http` y `create_app` arma los servicios dentro del lifespan, porque los pools de Postgres y el checkpointer se atan al event loop que sirve. En producción no se publican `/docs` ni `/openapi.json`.
 
 ## Web: Feature-Sliced Design
 
@@ -119,7 +147,7 @@ apps/web/
     widgets/     vista-clasica, vista-oficina, panel-agente, tablero-evaluacion
     features/    ejecutar-corrida, aprobar-historias, cambiar-vista, elegir-proveedor, exportar
     entities/    agente, corrida, artefacto, puntaje
-    shared/      cliente API, tipos generados, config (entorno validado con zod), lib, ui
+    shared/      api (tipos generados del contrato), config (entorno validado con zod), lib, ui
 ```
 
 Reglas, verificadas con `eslint-plugin-boundaries`:
@@ -136,7 +164,7 @@ Estado en F1: existe la página de inicio provisional (`src/pages/home`) con el 
 
 ## Contrato
 
-Los esquemas Pydantic del dominio generan JSON Schema, y de ahí salen los tipos TypeScript versionados en `apps/web/src/shared/api/types.gen.ts`. El CI fallará si los tipos generados no coinciden con los versionados (se agrega en F3, junto con los primeros esquemas).
+Los esquemas Pydantic de los cuerpos HTTP y de los eventos se exportan como JSON Schema a `services/api/contract/schema.json` (`uv run criteria-contract`), y de ahí `pnpm gen:api` genera los tipos TypeScript versionados en `apps/web/src/shared/api/types.gen.ts` con `json-schema-to-typescript`. El CI falla si cualquiera de los dos archivos no coincide con lo que se generaría ([api.md](api.md#contrato)).
 
 Eventos SSE: todos llevan `run_id`, `seq` (entero creciente), `ts` y `agent`. El cliente descarta duplicados por `seq` y se reconecta con `Last-Event-ID` ([ADR 0011](adr/0011-sse-typed-events.md)).
 
@@ -147,7 +175,8 @@ Eventos SSE: todos llevan `run_id`, `seq` (entero creciente), `ts` y `agent`. El
 - CSP estricta con nonce, sin `'unsafe-inline'` ni `'unsafe-eval'` en producción, más cabeceras fijas en `next.config.ts` ([ADR 0014](adr/0014-nonce-based-csp.md)).
 - Imagen de la API multi-etapa, con usuario no root y `PORT` tomado del entorno, como lo inyecta Cloud Run.
 - Las URLs base que envía el usuario (`openai_compatible`) pasan por un transporte propio sobre `httpx2`/`httpcore2`, el cliente HTTP del SDK de OpenAI. Ese transporte exige `https`, no sigue redirecciones y limita el tiempo y el tamaño de la respuesta. Además resuelve el DNS, rechaza direcciones no públicas y se conecta a la IP que validó. La URL de Ollama sale de la configuración del servidor y queda fuera de esa regla.
-- Cada usuario paga sus modelos con su propia clave ([ADR 0016](adr/0016-claves-por-usuario.md)). La clave del servidor solo se usa con los proveedores de `SERVER_KEY_PROVIDERS` (en producción, Groq gratuito) y nunca se cambia de proveedor automáticamente. Desde F3, las claves se guardan cifradas con AES-256-GCM y una llave maestra en Secret Manager.
+- Cada usuario paga sus modelos con su propia clave ([ADR 0016](adr/0016-claves-por-usuario.md)). La clave del servidor solo se usa con los proveedores de `SERVER_KEY_PROVIDERS` (en producción, Groq Developer con tope diario, [ADR 0019](adr/0019-groq-developer-for-the-free-mode.md)) y nunca se cambia de proveedor automáticamente. Las claves propias se guardan cifradas con AES-256-GCM, con datos asociados al usuario y al proveedor y llaves versionadas (`CREDENTIALS_KEYS`), que en producción viven en Secret Manager.
+- JWT de la web verificados con JWKS, solo algoritmos asimétricos, y correo verificado obligatorio para crear corridas y guardar claves. Errores con código y sin eco de la entrada, CORS limitado al origen de la web y sin credenciales, límite de tamaño del cuerpo y logs sin datos personales ([api.md](api.md)).
 - La clave propia es un `SecretStr` que solo vive en la selección de la corrida. No entra en el estado del grafo, en los checkpoints, en los eventos ni en los logs, y los errores de validación de una selección nunca contienen los valores enviados.
 - El requerimiento y los artefactos llegan a los modelos como JSON dentro de etiquetas, con `<`, `>` y `&` escapados, para que ningún texto pueda cerrar la etiqueta ni pasar por instrucción.
 
@@ -169,6 +198,9 @@ Eventos SSE: todos llevan `run_id`, `seq` (entero creciente), `ts` y `agent`. El
 | Capas y slices (FSD) | Web | Las vistas crecen sin mezclar lógica de corrida y presentación |
 | Funciones puras para políticas | `buildContentSecurityPolicy`, `scrub_sensitive_data`, `marcar_origen`, `cambios_historias` | Reglas de seguridad y de dominio probadas unitariamente |
 | Plantilla (template method) | `EventSink.emit` y `deliver` | La numeración de `seq` vive en un solo lugar; cada adaptador solo entrega |
+| Reserva y liquidación | `UsageGuard.reserve` y `settle` | El cupo se toma de forma atómica al crear y se ajusta al costo real al terminar |
+| Lock consultivo | `RunStore.stream_lock` y la reserva por usuario | Un stream por corrida y reservas serializadas sin tablas de bloqueo; Postgres lo libera si la conexión cae |
+| Repositorio | stores de `adapters/postgres` | Los casos de uso no conocen SQL y se prueban con stores en memoria |
 | Uniones discriminadas | `Evento` por `type`, `Artefactos` por `tipo` | Un solo esquema de eventos para la CLI, SSE y los tipos TypeScript |
 | Modelos simulados | `FunctionModel` de Pydantic AI en las pruebas | El grafo completo se prueba sin red ni modelos reales |
 
@@ -179,9 +211,9 @@ Eventos SSE: todos llevan `run_id`, `seq` (entero creciente), `ts` y `agent`. El
 | Web | Next.js 16 (App Router, Turbopack), React 19, TypeScript 6 estricto, zod 4, CSS Modules, `@sentry/nextjs` |
 | Calidad web | ESLint 9 (`eslint-config-next`, `eslint-plugin-boundaries`), Prettier, Vitest con Testing Library, Playwright con `@axe-core/playwright` |
 | Runtime web | Node.js 26 LTS, pnpm 12 |
-| API | Python 3.13, FastAPI, pydantic-settings, uvicorn, `sentry-sdk`, Pydantic AI 2, LangGraph 1, httpx2 |
-| Calidad API | Ruff (lint y formato), mypy estricto, pytest con pytest-asyncio y cobertura, pip-audit |
+| API | Python 3.13, FastAPI, pydantic-settings, uvicorn, `sentry-sdk`, Pydantic AI 2, LangGraph 1, httpx2, SQLAlchemy 2 (Core, async) con psycopg 3, Alembic, `langgraph-checkpoint-postgres`, PyJWT, `cryptography` |
+| Calidad API | Ruff (lint y formato), mypy estricto, pytest con pytest-asyncio y cobertura, pruebas de integración contra Postgres 16, pip-audit |
 | Entorno API | uv con `.venv` local y `uv.lock` versionado ([ADR 0010](adr/0010-python-environment-uv.md)) |
-| A partir de F3 | Neon Postgres, Alembic, Better Auth |
+| Datos | Neon Postgres en producción y Postgres 16 en Docker en local y en el CI; Better Auth desde F4 |
 | Nube | GCP Cloud Run para la API y Vercel para la web, con despliegue manual ([ADR 0009](adr/0009-cloud-run-and-vercel.md)) |
 | CI | GitHub Actions en cada push a `main`; Dependabot semanal agrupado |

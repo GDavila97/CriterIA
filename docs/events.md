@@ -1,6 +1,6 @@
 # Eventos de una corrida
 
-Los eventos son modelos Pydantic (`services/api/src/criteria/domain/events.py`) que forman una unión discriminada por `type` ([ADR 0011](adr/0011-sse-typed-events.md)). En F3 viajarán por SSE y de ellos saldrán los tipos TypeScript de la web; en F2 los imprime la CLI (`--json` da un evento por línea).
+Los eventos son modelos Pydantic (`services/api/src/criteria/domain/events.py`) que forman una unión discriminada por `type` ([ADR 0011](adr/0011-sse-typed-events.md)). La API los envía por SSE ([api.md](api.md#stream-sse)) y de ellos salen los tipos TypeScript de la web; la CLI los imprime (`--json` da un evento por línea).
 
 ## Campos comunes
 

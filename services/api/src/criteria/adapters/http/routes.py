@@ -1,0 +1,168 @@
+from dataclasses import asdict
+from importlib.metadata import version
+from typing import Annotated
+from uuid import UUID
+
+from fastapi import APIRouter, Header, Request, Response, status
+from fastapi.responses import StreamingResponse
+
+from criteria.adapters.http import sse
+from criteria.adapters.http.dependencies import CurrentUser, VerifiedUser
+from criteria.adapters.http.schemas import (
+    CatalogBody,
+    CredentialBody,
+    CredentialPutBody,
+    EvaluationBody,
+    HealthBody,
+    HistoryDeletedBody,
+    HistoryItemBody,
+    HistorySummaryBody,
+    ModelPlanBody,
+    RunCreateBody,
+    RunCreatedBody,
+    SettingsBody,
+)
+from criteria.adapters.http.services import ApiServices, services
+from criteria.adapters.llm.ssrf import validate_endpoint_url
+from criteria.application.errors import NotFoundError
+from criteria.application.run_api import RunRequest
+from criteria.domain.approval import RespuestaHumana
+from criteria.domain.events import ProveedorId
+from criteria.ports.stores import ModelPlan, UserSettings
+
+router = APIRouter()
+
+
+def _services(request: Request) -> ApiServices:
+    return services(request)
+
+
+def _plan(plan: ModelPlan) -> ModelPlanBody:
+    return ModelPlanBody(proveedor=plan.proveedor, modelo=plan.modelo, clave=plan.clave)
+
+
+@router.get("/healthz", response_model=HealthBody, tags=["salud"])
+async def healthz() -> HealthBody:
+    return HealthBody(status="ok", version=version("criteria"))
+
+
+@router.post(
+    "/runs", response_model=RunCreatedBody, status_code=status.HTTP_201_CREATED, tags=["corridas"]
+)
+async def create_run(body: RunCreateBody, user: VerifiedUser, request: Request) -> RunCreatedBody:
+    created = await _services(request).runs.create(user.user_id, RunRequest(**body.model_dump()))
+    return RunCreatedBody(
+        run_id=created.run_id,
+        generacion=_plan(created.generacion),
+        juez=_plan(created.juez),
+        juez_mismo_proveedor=created.juez_mismo_proveedor,
+        costo_estimado_usd=created.costo_estimado_usd,
+        costo_servidor_usd=created.costo_servidor_usd,
+    )
+
+
+@router.get("/runs/{run_id}/stream", tags=["corridas"], response_class=StreamingResponse)
+async def stream_run(
+    run_id: UUID,
+    user: VerifiedUser,
+    request: Request,
+    last_event_id: Annotated[str | None, Header()] = None,
+) -> StreamingResponse:
+    events = await _services(request).runs.open_stream(
+        user.user_id, run_id, sse.parse_last_event_id(last_event_id)
+    )
+    return StreamingResponse(
+        sse.encode(events),
+        media_type="text/event-stream",
+        headers={"cache-control": "no-store", "x-accel-buffering": "no"},
+    )
+
+
+@router.post("/runs/{run_id}/approval", status_code=status.HTTP_204_NO_CONTENT, tags=["corridas"])
+async def approve_run(
+    run_id: UUID, body: RespuestaHumana, user: VerifiedUser, request: Request
+) -> Response:
+    await _services(request).runs.approve(user.user_id, run_id, body)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.put("/me/credentials/{provider}", response_model=CredentialBody, tags=["claves"])
+async def save_credential(
+    provider: ProveedorId, body: CredentialPutBody, user: CurrentUser, request: Request
+) -> CredentialBody:
+    # Checked here too, so no stored URL ever skipped the outbound rules.
+    base_url = str(validate_endpoint_url(str(body.base_url))) if body.base_url else None
+    saved = await _services(request).credentials.save(
+        user.user_id, provider, body.api_key, base_url
+    )
+    return CredentialBody(
+        proveedor=saved.provider,
+        last4=saved.last4,
+        validated_at=saved.validated_at,
+        base_url=saved.base_url,
+    )
+
+
+@router.get("/me/credentials", response_model=list[CredentialBody], tags=["claves"])
+async def list_credentials(user: CurrentUser, request: Request) -> list[CredentialBody]:
+    return [
+        CredentialBody(
+            proveedor=item.provider,
+            last4=item.last4,
+            validated_at=item.validated_at,
+            base_url=item.base_url,
+        )
+        for item in await _services(request).credentials.list(user.user_id)
+    ]
+
+
+@router.delete(
+    "/me/credentials/{provider}", status_code=status.HTTP_204_NO_CONTENT, tags=["claves"]
+)
+async def delete_credential(provider: ProveedorId, user: CurrentUser, request: Request) -> Response:
+    if not await _services(request).credentials.delete(user.user_id, provider):
+        raise NotFoundError("credential not found")
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get("/me/settings", response_model=SettingsBody, tags=["ajustes"])
+async def get_settings(user: CurrentUser, request: Request) -> SettingsBody:
+    return SettingsBody(**asdict(await _services(request).accounts.settings(user.user_id)))
+
+
+@router.put("/me/settings", response_model=SettingsBody, tags=["ajustes"])
+async def put_settings(body: SettingsBody, user: CurrentUser, request: Request) -> SettingsBody:
+    saved = await _services(request).accounts.update_settings(
+        user.user_id, UserSettings(**body.model_dump())
+    )
+    return SettingsBody(**asdict(saved))
+
+
+@router.get("/catalog", response_model=CatalogBody, tags=["catalogo"])
+async def catalog(user: CurrentUser, request: Request) -> CatalogBody:
+    return CatalogBody.model_validate(
+        asdict(await _services(request).accounts.catalog(user.user_id))
+    )
+
+
+@router.get("/me/runs", response_model=list[HistorySummaryBody], tags=["historial"])
+async def history(user: CurrentUser, request: Request) -> list[HistorySummaryBody]:
+    items = await _services(request).accounts.history(user.user_id)
+    return [HistorySummaryBody(**asdict(item)) for item in items]
+
+
+@router.get("/me/runs/{run_id}", response_model=HistoryItemBody, tags=["historial"])
+async def history_item(run_id: UUID, user: CurrentUser, request: Request) -> HistoryItemBody:
+    item = await _services(request).accounts.history_item(user.user_id, run_id)
+    return HistoryItemBody(**asdict(item))
+
+
+@router.delete("/me/runs", response_model=HistoryDeletedBody, tags=["historial"])
+async def clear_history(user: CurrentUser, request: Request) -> HistoryDeletedBody:
+    return HistoryDeletedBody(deleted=await _services(request).accounts.clear_history(user.user_id))
+
+
+@router.get("/evaluation", response_model=EvaluationBody, tags=["evaluacion"])
+async def evaluation(request: Request, response: Response) -> EvaluationBody:
+    response.headers["cache-control"] = "public, max-age=60"
+    return EvaluationBody.model_validate({"lotes": await _services(request).evaluation.batches()})
