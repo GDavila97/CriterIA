@@ -11,7 +11,8 @@ def database_url() -> str:
     url = context.config.attributes.get("url") or os.environ.get(MIGRATION_URL_ENV)
     if not url:
         raise RuntimeError(f"{MIGRATION_URL_ENV} is required to run the migrations")
-    return str(url)
+    # The same plain URL works for psql and for SQLAlchemy, which needs the psycopg driver named.
+    return str(url).replace("postgresql://", "postgresql+psycopg://", 1)
 
 
 def run_migrations() -> None:

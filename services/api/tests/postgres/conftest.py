@@ -6,7 +6,6 @@ without it these tests are skipped.
 
 import os
 from collections.abc import Iterator
-from dataclasses import dataclass
 from pathlib import Path
 from uuid import uuid4
 
@@ -18,22 +17,16 @@ from psycopg import sql
 from sqlalchemy.engine import make_url
 
 from criteria.config import SERVICE_ROOT
+from tests.postgres.api_support import api
+from tests.postgres.database import Database
 
 ADMIN_URL = os.environ.get("TEST_DATABASE_ADMIN_URL")
 # Local and CI clusters only; never a real password.
 ROLE_PASSWORD = "criteria-local"
 ROLES = ("migrator_role", "api_role", "eval_writer", "web_role")
+__all__ = ["api", "database"]
 
 pytestmark = pytest.mark.integration
-
-
-@dataclass(frozen=True)
-class Database:
-    name: str
-    admin: str
-    migrator: str
-    api: str
-    eval_writer: str
 
 
 def _url(role: str, database: str) -> str:
