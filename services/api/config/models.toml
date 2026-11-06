@@ -68,10 +68,10 @@ input_usd_per_million = 0.0
 output_usd_per_million = 0.0
 
 # Local models have no API charge.
+# Default local model, chosen in F2b (docs/evaluation.md, "Selección del modelo local").
 [[models]]
 provider = "ollama"
-name = "qwen3:8b"
-thinking = false
+name = "llama3.1:8b"
 # Schema-constrained JSON instead of a tool call; local models often skip or reshape tool calls.
 output_mode = "native"
 input_usd_per_million = 0.0
@@ -79,25 +79,26 @@ output_usd_per_million = 0.0
 
 [[models]]
 provider = "ollama"
-name = "llama3.1:8b"
+name = "qwen3:8b"
+thinking = false
 output_mode = "native"
 input_usd_per_million = 0.0
 output_usd_per_million = 0.0
 
-# Typical tokens per run for each agent, used to estimate a run's cost before it starts.
-# Provisional values; calibrated in F2b with the median of the local selection runs.
+# Typical tokens per run for each agent (all rounds and retries), used to estimate a run's cost
+# before it starts. Medians of the five complete F2b runs with native output (2026-11-05).
 [consumption_profile.analista]
-input_tokens = 1500
-output_tokens = 900
+input_tokens = 2995
+output_tokens = 1301
 
 [consumption_profile.qa]
-input_tokens = 2500
-output_tokens = 3500
+input_tokens = 6631
+output_tokens = 4894
 
 [consumption_profile.revisor]
-input_tokens = 5000
-output_tokens = 900
+input_tokens = 8071
+output_tokens = 1057
 
 [consumption_profile.evaluador]
-input_tokens = 5500
-output_tokens = 600
+input_tokens = 5605
+output_tokens = 819

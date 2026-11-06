@@ -268,7 +268,7 @@ class TestCatalog:
     def test_shipped_catalog_carries_the_verified_prices(self) -> None:
         catalog = ModelCatalog.load(SERVICE_ROOT / "config" / "models.toml")
 
-        assert catalog.allowed_models("ollama") == ["qwen3:8b", "llama3.1:8b"]
+        assert catalog.allowed_models("ollama") == ["llama3.1:8b", "qwen3:8b"]
         assert catalog.cost_usd("openai", "gpt-5.4-mini", 1_000_000, 1_000_000) == 5.25
         assert catalog.cost_usd("anthropic", "claude-haiku-5-5", 1_000_000, 1_000_000) == 0.6
         for free in ("groq", "ollama"):

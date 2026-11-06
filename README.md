@@ -99,7 +99,7 @@ Si falta una variable obligatoria, la API y la web se niegan a arrancar y el men
 La CLI corre el flujo completo (Analista → tu aprobación → QA → Revisor → Evaluador) e imprime cada evento. Desde `services/api`, con un `.env` que tenga al menos `APP_ENV`:
 
 ```bash
-uv run criteria run --provider ollama --model qwen3:8b --file examples/biblioteca.txt
+uv run criteria run --provider ollama --model llama3.1:8b --file examples/biblioteca.txt
 ```
 
 | Opción | Qué hace |
@@ -119,15 +119,15 @@ Hay tres requerimientos de ejemplo en `services/api/examples/`: `biblioteca.txt`
 
 ### Modo solo local con Ollama
 
-Con `PROVIDER=ollama` todo el flujo corre sin ninguna clave de API. Los modelos permitidos están en `services/api/config/models.toml`: `qwen3:8b` (con el modo de razonamiento apagado) y `llama3.1:8b`.
+Con `PROVIDER=ollama` todo el flujo corre sin ninguna clave de API. Los modelos permitidos están en `services/api/config/models.toml`: `llama3.1:8b` (el predeterminado, elegido en F2b) y `qwen3:8b` (con el razonamiento apagado). Los dos usan salida JSON nativa restringida al esquema.
 
 ```bash
-ollama pull qwen3:8b
+ollama pull llama3.1:8b
 # en services/api/.env
 APP_ENV=development
 SERVER_KEY_PROVIDERS=ollama
 PROVIDER=ollama
-GENERATION_MODEL=qwen3:8b
+GENERATION_MODEL=llama3.1:8b
 OLLAMA_BASE_URL=http://localhost:11434
 ```
 

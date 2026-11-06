@@ -1,5 +1,6 @@
 import io
 import json
+import re
 from collections.abc import Callable
 from pathlib import Path
 
@@ -168,7 +169,7 @@ class TestTiers:
         assert code == EXIT_OK
         assert container is not None
         assert container.selections[0][0].etiqueta == "anthropic:claude-sonnet-5-5"
-        assert "Costo estimado de la corrida: US$ 0.0" in console.err.getvalue()
+        assert re.search(r"Costo estimado de la corrida: US\$ \d+\.\d{6}", console.err.getvalue())
 
     def test_priced_models_print_a_dollar_estimate(self) -> None:
         code, console, _ = run_cli([*OLLAMA, "--text", f.REQUERIMIENTO, "--auto-aprobar"])
