@@ -10,15 +10,21 @@ from pydantic import SecretStr
 from pydantic_ai.messages import ModelMessage, ModelResponse
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
-from criteria.adapters.agents.factory import AgentFactory
+from criteria.adapters.agents.factory import AgentBindings, AgentFactory
 from criteria.adapters.crypto.aesgcm import AesGcmCipher
 from criteria.adapters.llm.catalog import ModelCatalog
 from criteria.adapters.llm.registry import ProviderRegistry
 from criteria.adapters.memory.checkpointer import MemoryCheckpointer
 from criteria.application.credentials import CredentialService
-from criteria.application.errors import ConflictError, InvalidInputError, NotFoundError
+from criteria.application.errors import (
+    ConflictError,
+    InvalidInputError,
+    NotFoundError,
+    VersionsExhaustedError,
+)
 from criteria.application.run_api import (
     INTERNAL_ERROR_MESSAGE,
+    AgentParams,
     RunApplication,
     RunDefaults,
     RunRequest,
@@ -29,7 +35,7 @@ from criteria.application.runs import RunService
 from criteria.config import SERVICE_ROOT, Settings
 from criteria.domain.approval import RespuestaHumana
 from criteria.domain.events import AgenteEntrega, CorridaFin, EventoBase, evento_adapter
-from criteria.domain.run_config import ProviderSelection
+from criteria.domain.run_config import AgentSelections, ProviderSelection
 from criteria.ports.agents import AgentSet
 from criteria.ports.models import KeyRequiredError, ProviderNotAllowedError
 from criteria.ports.stores import (
@@ -73,7 +79,7 @@ class Harness:
     credentials: CredentialService
     clock: FakeClock
     team: ScriptedTeam = field(default_factory=happy)
-    built: list[tuple[ProviderSelection, ProviderSelection]] = field(default_factory=list)
+    built: list[AgentSelections] = field(default_factory=list)
     model: FunctionModel | None = None
     reporter: FakeReporter = field(default_factory=FakeReporter)
     broken: dict[str, BaseException] = field(default_factory=dict)
@@ -105,9 +111,9 @@ def harness(**settings: Any) -> Harness:
     )
     holder: list[Harness] = []
 
-    def build(generation: ProviderSelection, judge: ProviderSelection) -> AgentSet:
+    def build(selections: AgentSelections) -> AgentSet:
         h = holder[0]
-        h.built.append((generation, judge))
+        h.built.append(selections)
         factory = AgentFactory(SERVICE_ROOT / "prompts", "v1", "v1", clock)
 
         def bind(selection: ProviderSelection) -> Any:
@@ -120,7 +126,13 @@ def harness(**settings: Any) -> Harness:
                 base, cost_usd=lambda i, o: CATALOG.cost_usd(selection.proveedor, modelo, i, o)
             )
 
-        return with_broken(factory.build(bind(generation), bind(judge)), h.broken)
+        bindings = AgentBindings(
+            analista=bind(selections.analista),
+            qa=bind(selections.qa),
+            revisor=bind(selections.revisor),
+            evaluador=bind(selections.evaluador),
+        )
+        return with_broken(factory.build_for(bindings), h.broken)
 
     runs, usage, user_settings, history = (
         MemoryRuns(),
@@ -433,6 +445,146 @@ class TestUnexpectedFailures:
         assert h.usage.settled == []
 
 
+class TestAgentParams:
+    async def test_each_agent_gets_its_own_model_and_tuning(self) -> None:
+        h = harness()
+        created = await h.app.create(
+            USER,
+            request(
+                agentes={
+                    "qa": AgentParams(modelo="llama-3.3-70b-versatile", temperatura=0.9),
+                    "revisor": AgentParams(max_tokens=2048),
+                }
+            ),
+        )
+        await h.collect(created.run_id)
+
+        [selections] = h.built
+        assert selections.qa.modelo == "llama-3.3-70b-versatile"
+        assert selections.qa.temperatura == 0.9
+        assert selections.revisor.max_tokens == 2048
+        assert selections.analista.modelo == "openai/gpt-oss-20b"
+        assert created.agentes["qa"].modelo == "llama-3.3-70b-versatile"
+
+    async def test_the_estimate_adds_each_agents_own_price(self) -> None:
+        h = harness()
+        cheap = await h.app.create(USER, request())
+        bigger = await h.app.create(
+            USER, request(agentes={"qa": AgentParams(modelo="llama-3.3-70b-versatile")})
+        )
+
+        assert bigger.costo_estimado_usd is not None
+        assert cheap.costo_estimado_usd is not None
+        assert bigger.costo_estimado_usd > cheap.costo_estimado_usd
+        assert bigger.costo_servidor_usd == bigger.costo_estimado_usd
+
+    @pytest.mark.parametrize(
+        "params",
+        [
+            AgentParams(temperatura=1.5),
+            AgentParams(temperatura=-0.1),
+            AgentParams(max_tokens=100),
+            AgentParams(max_tokens=9000),
+        ],
+    )
+    async def test_out_of_range_tuning_is_refused(self, params: AgentParams) -> None:
+        with pytest.raises(InvalidInputError):
+            await harness().app.create(USER, request(agentes={"analista": params}))
+
+    async def test_an_agent_cannot_leave_its_provider_catalog(self) -> None:
+        with pytest.raises(ProviderNotAllowedError):
+            await harness().app.create(
+                USER, request(agentes={"qa": AgentParams(modelo="claude-haiku-5-5")})
+            )
+
+    async def test_review_rounds_go_up_to_three(self) -> None:
+        h = harness()
+
+        created = await h.app.create(USER, request(max_rondas=3))
+
+        assert created.max_rondas == 3
+        with pytest.raises(InvalidInputError):
+            await h.app.create(USER, request(max_rondas=4))
+
+
+class TestHistoryChoice:
+    @pytest.mark.parametrize(
+        ("setting", "choice", "saved"),
+        [(False, None, False), (True, None, True), (True, False, False), (False, True, True)],
+    )
+    async def test_the_choice_is_fixed_when_the_run_is_created(
+        self, setting: bool, choice: bool | None, saved: bool
+    ) -> None:
+        h = harness()
+        await h.settings.put(USER, UserSettings(save_history=setting))
+        created = await h.app.create(USER, request(guardar_historial=choice))
+        await h.settings.put(USER, UserSettings(save_history=not saved))
+        first = await h.collect(created.run_id)
+        await h.app.approve(USER, created.run_id, RespuestaHumana(decision="aprobado"))
+
+        await h.collect(created.run_id, first[-1].seq)
+
+        assert created.guardar_historial is saved
+        assert bool(h.history.runs.get(USER)) is saved
+
+
+class TestAnotherVersion:
+    async def test_the_analista_writes_again_without_another_run_from_the_quota(self) -> None:
+        h = harness()
+        h.team.scripts["analista"] = [f.historias(1), f.historias(2)]
+        created = await h.app.create(USER, request())
+        first = await h.collect(created.run_id)
+
+        await h.app.approve(
+            USER, created.run_id, RespuestaHumana(decision="otra_version", nota="Más corto")
+        )
+        second = await h.collect(created.run_id, first[-1].seq)
+
+        assert second[0].type == "humano_responde"  # type: ignore[attr-defined]
+        assert second[-1].type == "en_espera_humano"  # type: ignore[attr-defined]
+        assert len(h.usage.reserved) == 1
+        [(run_id, extra)] = h.usage.extra
+        assert run_id == created.run_id
+        assert extra > 0
+
+    async def test_a_third_version_is_refused_before_it_is_stored(self) -> None:
+        h = harness()
+        h.team.scripts["analista"] = [f.historias(1)] * 3
+        run_id = (await h.app.create(USER, request())).run_id
+        last = (await h.collect(run_id))[-1].seq
+        for _ in range(2):
+            await h.app.approve(USER, run_id, RespuestaHumana(decision="otra_version"))
+            last = (await h.collect(run_id, last))[-1].seq
+
+        with pytest.raises(VersionsExhaustedError):
+            await h.app.approve(USER, run_id, RespuestaHumana(decision="otra_version"))
+
+        assert h.runs.records[run_id].approval is None
+        await h.app.approve(USER, run_id, RespuestaHumana(decision="aprobado"))
+
+    async def test_runs_on_the_users_key_reserve_nothing_extra(self) -> None:
+        h = harness()
+        await h.credentials.save(USER, "anthropic", SecretStr("sk-ant-user-0000"), None)
+        h.team.scripts["analista"] = [f.historias(1), f.historias(1)]
+        run_id = (await h.app.create(USER, request(proveedor="anthropic", juez="anthropic"))).run_id
+        await h.collect(run_id)
+
+        await h.app.approve(USER, run_id, RespuestaHumana(decision="otra_version"))
+
+        assert h.usage.extra == []
+
+    async def test_a_full_free_quota_refuses_another_version(self) -> None:
+        h = harness()
+        run_id = (await h.app.create(USER, request())).run_id
+        await h.collect(run_id)
+        h.usage.refuse = LimitExceededError("cupo_gratuito_agotado")
+
+        with pytest.raises(LimitExceededError):
+            await h.app.approve(USER, run_id, RespuestaHumana(decision="otra_version"))
+
+        assert h.runs.records[run_id].approval is None
+
+
 class TestApprove:
     async def test_approvals_need_a_waiting_run_of_the_owner(self) -> None:
         h = harness()
@@ -486,15 +638,21 @@ class TestServerCost:
     def test_only_server_paid_calls_count(self) -> None:
         events = _events(_entrega("analista", 0.01), _entrega("evaluador", 0.02))
 
-        assert _server_cost(events, SERVER, SERVER) == 0.03
-        assert _server_cost(events, OWN, SERVER) == 0.02
-        assert _server_cost(events, OWN, OWN) == 0.0
+        assert _server_cost(events, _record(SERVER, SERVER)) == 0.03
+        assert _server_cost(events, _record(OWN, SERVER)) == 0.02
+        assert _server_cost(events, _record(OWN, OWN)) == 0.0
 
     def test_an_unpriced_server_call_makes_the_cost_unknown(self) -> None:
         events = _events(_entrega("analista", None))
 
-        assert _server_cost(events, SERVER, SERVER) is None
-        assert _server_cost(events, OWN, SERVER) == 0.0
+        assert _server_cost(events, _record(SERVER, SERVER)) is None
+        assert _server_cost(events, _record(OWN, SERVER)) == 0.0
+
+    def test_each_agent_is_charged_with_its_own_plan(self) -> None:
+        events = _events(_entrega("analista", 0.01), _entrega("qa", 0.02))
+        record = replace(_record(SERVER, SERVER), agent_plans={"qa": OWN})
+
+        assert _server_cost(events, record) == 0.01
 
     def test_runs_without_start_or_end_are_not_saved(self) -> None:
         events = _events(_entrega("analista", 0.01))
@@ -502,14 +660,14 @@ class TestServerCost:
         assert _saved_run(_record(), events) is None
 
 
-def _record() -> RunRecord:
+def _record(generation: ModelPlan = SERVER, judge: ModelPlan = SERVER) -> RunRecord:
     return RunRecord(
         id=uuid4(),
         user_id=USER,
         status="en_curso",
         requirement=f.REQUERIMIENTO,
-        generation=SERVER,
-        judge=SERVER,
+        generation=generation,
+        judge=judge,
         max_rounds=1,
         server_cost_reserved_usd=0.0,
         estimated_cost_usd=None,

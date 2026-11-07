@@ -1,16 +1,21 @@
 import asyncio
 import logging
-from collections.abc import AsyncIterator, Callable, Coroutine, Sequence
+from collections.abc import AsyncIterator, Callable, Coroutine, Mapping, Sequence
 from contextlib import AsyncExitStack, suppress
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import timedelta
-from typing import Any
+from typing import Any, cast
 from uuid import UUID, uuid4
 
 from criteria.application.credentials import CredentialService
-from criteria.application.errors import ConflictError, InvalidInputError, NotFoundError
+from criteria.application.errors import (
+    ConflictError,
+    InvalidInputError,
+    NotFoundError,
+    VersionsExhaustedError,
+)
 from criteria.application.runs import EsperandoAprobacion, RunOutcome, RunService, Terminada
-from criteria.domain.approval import RespuestaHumana
+from criteria.domain.approval import MAX_OTRAS_VERSIONES, RespuestaHumana
 from criteria.domain.artifacts import Requerimiento
 from criteria.domain.events import (
     AgenteEntrega,
@@ -21,7 +26,19 @@ from criteria.domain.events import (
     sumar_totales,
 )
 from criteria.domain.judge import elegir_juez
-from criteria.domain.run_config import Nivel, ProviderSelection, SelectionError, parse_selection
+from criteria.domain.run_config import (
+    MAX_RONDAS,
+    MAX_TOKENS_MAXIMO,
+    MAX_TOKENS_MINIMO,
+    ROLES,
+    TEMPERATURA_MAXIMA,
+    AgentSelections,
+    Nivel,
+    ProviderSelection,
+    RolAgente,
+    SelectionError,
+    parse_selection,
+)
 from criteria.ports.agents import AgentSet
 from criteria.ports.checkpoint import Checkpointer
 from criteria.ports.clock import Clock
@@ -42,10 +59,8 @@ from criteria.ports.stores import (
 
 logger = logging.getLogger(__name__)
 
-AgentBuilder = Callable[[ProviderSelection, ProviderSelection], AgentSet]
+AgentBuilder = Callable[[AgentSelections], AgentSet]
 Action = Callable[[EventSink], Coroutine[Any, Any, RunOutcome]]
-GENERATION_AGENTS = frozenset({"analista", "qa", "revisor"})
-MAX_ROUNDS = 5
 INTERNAL_ERROR_MESSAGE = "La corrida se detuvo por un error interno. Intenta de nuevo."
 
 
@@ -60,6 +75,16 @@ class RunDefaults:
 
 
 @dataclass(frozen=True)
+class AgentParams:
+    """What a person tuned for one agent; anything left empty takes the run's default."""
+
+    nivel: Nivel | None = None
+    modelo: str | None = None
+    temperatura: float | None = None
+    max_tokens: int | None = None
+
+
+@dataclass(frozen=True)
 class RunRequest:
     requerimiento: str
     proveedor: ProveedorId | None = None
@@ -67,6 +92,8 @@ class RunRequest:
     modelo: str | None = None
     juez: ProveedorId | None = None
     max_rondas: int | None = None
+    agentes: Mapping[RolAgente, AgentParams] = field(default_factory=dict)
+    guardar_historial: bool | None = None
 
 
 @dataclass(frozen=True)
@@ -77,6 +104,18 @@ class RunCreated:
     juez_mismo_proveedor: bool
     costo_estimado_usd: float | None
     costo_servidor_usd: float
+    agentes: Mapping[RolAgente, ModelPlan]
+    max_rondas: int
+    guardar_historial: bool
+
+
+@dataclass(frozen=True)
+class _PlanBase:
+    """The provider, tier and model an agent gets before its own tuning."""
+
+    provider: ProveedorId
+    tier: Nivel
+    model: str | None
 
 
 class StoreEventSink(EventSink):
@@ -104,17 +143,14 @@ class StoreEventSink(EventSink):
         await self._queue.put(event)
 
 
-def _server_cost(
-    events: Sequence[EventoBase], generation: ModelPlan, judge: ModelPlan
-) -> float | None:
+def _server_cost(events: Sequence[EventoBase], record: RunRecord) -> float | None:
     """Real cost of the calls paid with server keys; null if any of them had no price."""
     total = 0.0
     for event in events:
         uso = getattr(event, "uso", None)
         if uso is None or getattr(event, "type", "") != "agente_entrega":
             continue
-        plan = judge if event.agent == "evaluador" else generation
-        if plan.clave != "servidor":
+        if record.plan_for(cast(RolAgente, event.agent)).clave != "servidor":
             continue
         if uso.costo_usd is None:
             return None
@@ -188,63 +224,73 @@ class RunApplication:
                 "the requirement needs 20 to 2,000 characters without control characters"
             ) from None
         max_rounds = self._defaults.max_rounds if request.max_rondas is None else request.max_rondas
-        if not 0 <= max_rounds <= MAX_ROUNDS:
-            raise InvalidInputError(f"max_rondas must be between 0 and {MAX_ROUNDS}")
+        if not 0 <= max_rounds <= MAX_RONDAS:
+            raise InvalidInputError(f"max_rondas must be between 0 and {MAX_RONDAS}")
         preferences = await self._settings.get(user_id)
         user_keys = await self._credentials.providers(user_id)
         provider = request.proveedor or preferences.default_provider or self._defaults.provider
         tier = request.nivel or (
             preferences.default_tier if provider == preferences.default_provider else None
         )
-        generation, gen_selection = await self._plan(
-            user_id, user_keys, provider, tier or "economico", request.modelo
-        )
         judge_provider = (
             request.juez or preferences.judge_provider or self._judge_for(user_keys, provider)
         )
-        if judge_provider == provider:
-            judge, judge_selection = generation, gen_selection
-        else:
-            judge, judge_selection = await self._plan(
-                user_id, user_keys, judge_provider, "economico", None
+        plans: dict[RolAgente, ModelPlan] = {}
+        costs: dict[RolAgente, float | None] = {}
+        for rol in ROLES:
+            judging = rol == "evaluador"
+            base = (
+                _PlanBase(judge_provider, "economico", None)
+                if judging
+                else _PlanBase(provider, tier or "economico", request.modelo)
             )
-        gen_cost, judge_cost = self._router.estimate_parts(gen_selection, judge_selection)
-        estimate = (
-            None if gen_cost is None or judge_cost is None else round(gen_cost + judge_cost, 6)
-        )
+            plan, selection = await self._plan(
+                user_id, user_keys, base, request.agentes.get(rol, AgentParams())
+            )
+            plans[rol], costs[rol] = plan, self._router.estimate_agent(rol, selection)
+        known = [cost for cost in costs.values() if cost is not None]
+        estimate = round(sum(known), 6) if len(known) == len(costs) else None
         server_cost = round(
-            (gen_cost or 0.0) * (generation.clave == "servidor")
-            + (judge_cost or 0.0) * (judge.clave == "servidor"),
-            6,
+            sum(cost or 0.0 for rol, cost in costs.items() if plans[rol].clave == "servidor"), 6
         )
         now = self._clock.now()
         await self.cleanup()
         await self._usage.reserve(
             user_id,
             now,
-            uses_server_key="servidor" in {generation.clave, judge.clave},
+            uses_server_key=any(plan.clave == "servidor" for plan in plans.values()),
             server_cost_usd=server_cost,
+        )
+        save_history = (
+            preferences.save_history
+            if request.guardar_historial is None
+            else request.guardar_historial
         )
         record = RunRecord(
             id=uuid4(),
             user_id=user_id,
             status="creada",
             requirement=requerimiento.texto,
-            generation=generation,
-            judge=judge,
+            generation=plans["analista"],
+            judge=plans["evaluador"],
             max_rounds=max_rounds,
             server_cost_reserved_usd=server_cost,
             estimated_cost_usd=estimate,
             created_at=now,
+            agent_plans=plans,
+            save_history=save_history,
         )
         await self._runs.create(record)
         return RunCreated(
             run_id=record.id,
-            generacion=generation,
-            juez=judge,
-            juez_mismo_proveedor=judge.proveedor == generation.proveedor,
+            generacion=record.generation,
+            juez=record.judge,
+            juez_mismo_proveedor=judge_provider == provider,
             costo_estimado_usd=estimate,
             costo_servidor_usd=server_cost,
+            agentes=plans,
+            max_rondas=max_rounds,
+            guardar_historial=save_history,
         )
 
     async def approve(self, user_id: str, run_id: UUID, respuesta: RespuestaHumana) -> None:
@@ -253,8 +299,34 @@ class RunApplication:
             raise NotFoundError("run not found")
         if record.status != "esperando_aprobacion":
             raise ConflictError("the run is not waiting for an approval")
+        if respuesta.decision == "otra_version":
+            await self._book_another_version(record)
         if not await self._runs.set_approval(run_id, respuesta.model_dump(mode="json")):
             raise ConflictError("the run is not waiting for an approval")
+
+    async def _book_another_version(self, record: RunRecord) -> None:
+        events = await self._runs.events_after(record.id, 0)
+        asked = sum(
+            1 for e in events if e["type"] == "humano_responde" and e["decision"] == "otra_version"
+        )
+        if asked >= MAX_OTRAS_VERSIONES:
+            raise VersionsExhaustedError("no more versions can be requested for this run")
+        plan = record.plan_for("analista")
+        # openai_compatible never runs on a server key, so only priced catalog models reach here.
+        if plan.clave != "servidor":
+            return
+        # The extra Analista call does not cost another run, but its dollars count.
+        selection = ProviderSelection(
+            proveedor=plan.proveedor,
+            modelo=plan.modelo,
+            temperatura=plan.temperatura,
+            max_tokens=plan.max_tokens,
+        )
+        cost = self._router.estimate_agent("analista", selection)
+        if cost:
+            await self._usage.reserve_extra(
+                record.id, record.user_id, record.created_at.date(), cost
+            )
 
     async def open_stream(
         self, user_id: str, run_id: UUID, last_event_id: int
@@ -292,6 +364,7 @@ class RunApplication:
                     cleaned += 1
             except StreamBusyError:
                 continue
+        cleaned += await self._checkpointer.discard_orphans()
         if cleaned:
             logger.info("abandoned runs cleaned", extra={"runs": cleaned})
         return cleaned
@@ -303,13 +376,9 @@ class RunApplication:
         return elegir_juez(candidates, generation).proveedor
 
     async def _plan(
-        self,
-        user_id: str,
-        user_keys: set[ProveedorId],
-        provider: ProveedorId,
-        tier: Nivel,
-        model: str | None,
+        self, user_id: str, user_keys: set[ProveedorId], base: _PlanBase, params: AgentParams
     ) -> tuple[ModelPlan, ProviderSelection]:
+        provider, tier, model = base.provider, base.tier, base.model
         source: KeySource
         if provider in user_keys:
             source = "usuario"
@@ -317,13 +386,26 @@ class RunApplication:
             source = "servidor"
         else:
             raise KeyRequiredError(f"{provider} needs the user's own API key")
+        temperature = (
+            self._defaults.temperature if params.temperatura is None else params.temperatura
+        )
+        max_tokens = self._defaults.max_tokens if params.max_tokens is None else params.max_tokens
+        if not 0 <= temperature <= TEMPERATURA_MAXIMA:
+            raise InvalidInputError(f"temperatura must be between 0 and {TEMPERATURA_MAXIMA}")
+        if not MAX_TOKENS_MINIMO <= max_tokens <= MAX_TOKENS_MAXIMO:
+            raise InvalidInputError(
+                f"max_tokens must be between {MAX_TOKENS_MINIMO} and {MAX_TOKENS_MAXIMO}"
+            )
+        # The agent's own model or tier wins over the run's.
+        if params.modelo or params.nivel:
+            model, tier = params.modelo, params.nivel or tier
         selection = await self._selection(
             user_id,
             ModelPlan(
                 proveedor=provider,
                 modelo=model or "",
-                temperatura=self._defaults.temperature,
-                max_tokens=self._defaults.max_tokens,
+                temperatura=temperature,
+                max_tokens=max_tokens,
                 clave=source,
             ),
             tier=None if model else tier,
@@ -372,9 +454,10 @@ class RunApplication:
                 return ended
 
             return closed
-        generation = await self._selection(record.user_id, record.generation)
-        judge = await self._selection(record.user_id, record.judge)
-        agents = self._build_agents(generation, judge)
+        selections = {
+            rol: await self._selection(record.user_id, record.plan_for(rol)) for rol in ROLES
+        }
+        agents = self._build_agents(AgentSelections(**selections))
         requerimiento = Requerimiento(texto=record.requirement)
         service = self._service
         if record.status == "creada":
@@ -480,13 +563,13 @@ class RunApplication:
             record.user_id,
             record.created_at.date(),
             record.server_cost_reserved_usd,
-            _server_cost(events, record.generation, record.judge),
+            _server_cost(events, record),
         )
 
     async def _close(self, record: RunRecord) -> None:
         events = await self._stored_events(record.id)
         await self._settle(record, events)
-        if (await self._settings.get(record.user_id)).save_history:
+        if record.save_history:
             saved = _saved_run(record, events)
             if saved is not None:
                 await self._history.save(record.user_id, saved)

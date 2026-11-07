@@ -19,6 +19,7 @@ class ApiServices:
     evaluation: EvaluationReader
     startup: Callable[[], Awaitable[None]]
     shutdown: Callable[[], Awaitable[None]]
+    require_verified_email: bool = True
 
 
 def services(request: Request) -> ApiServices:

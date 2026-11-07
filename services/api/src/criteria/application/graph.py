@@ -7,7 +7,7 @@ from langgraph.graph.state import CompiledStateGraph
 from langgraph.runtime import Runtime
 from langgraph.types import interrupt
 
-from criteria.domain.approval import RespuestaHumana
+from criteria.domain.approval import MAX_OTRAS_VERSIONES, RespuestaHumana
 from criteria.domain.artifacts import (
     EntregaQA,
     Historias,
@@ -34,7 +34,12 @@ from criteria.domain.events import (
     sumar_totales,
 )
 from criteria.domain.fallback import respaldo_sugerido
-from criteria.domain.rules import cambios_historias, destino_correccion, marcar_origen
+from criteria.domain.rules import (
+    CambiosHistorias,
+    cambios_historias,
+    destino_correccion,
+    marcar_origen,
+)
 from criteria.ports.agents import (
     AgentResult,
     AgentRunError,
@@ -51,6 +56,7 @@ Rol = Literal["analista", "qa", "revisor", "evaluador"]
 
 APPROVAL_NODE = "aprobacion"
 
+OTRA_VERSION = "Redactando otra versión de las historias"
 PROGRESO: dict[Rol, tuple[str, str]] = {
     "analista": ("Redactando historias de usuario", "Corrigiendo historias según el Revisor"),
     "qa": ("Escribiendo criterios y casos de prueba", "Corrigiendo pruebas según el Revisor"),
@@ -74,6 +80,9 @@ class RunState(TypedDict, total=False):
     estado: Literal["en_curso", "error", "completada"]
     respaldo_sugerido: RespaldoSugerido | None
     ultimo_seq: int
+    otras_versiones: int
+    pide_otra_version: bool
+    nota_usuario: str | None
 
 
 @dataclass(frozen=True)
@@ -105,9 +114,11 @@ def _usos(state: RunState, uso: Uso | None) -> list[dict[str, Any]]:
     return [*previos, uso.model_dump(mode="json")] if uso else previos
 
 
-async def _start(deps: GraphDeps, rol: Rol, ronda: int) -> None:
+async def _start(deps: GraphDeps, rol: Rol, ronda: int, mensaje: str | None = None) -> None:
     await deps.events.emit(AgenteInicia, agent=rol, ronda=ronda)
-    await deps.events.emit(AgenteProgreso, agent=rol, mensaje=PROGRESO[rol][1 if ronda else 0])
+    await deps.events.emit(
+        AgenteProgreso, agent=rol, mensaje=mensaje or PROGRESO[rol][1 if ronda else 0]
+    )
 
 
 async def _fail(deps: GraphDeps, rol: Rol, state: RunState, error: AgentRunError) -> RunState:
@@ -125,9 +136,17 @@ async def _fail(deps: GraphDeps, rol: Rol, state: RunState, error: AgentRunError
 
 async def analista(state: RunState, runtime: Runtime[GraphDeps]) -> RunState:
     deps, ronda = runtime.context, state.get("ronda", 0)
-    await _start(deps, "analista", ronda)
+    otra_version = state.get("pide_otra_version", False)
+    await _start(deps, "analista", ronda, OTRA_VERSION if otra_version else None)
     entrada = EntradaAnalista(requerimiento=_requerimiento(state))
-    if ronda:
+    if otra_version:
+        entrada = EntradaAnalista(
+            requerimiento=entrada.requerimiento,
+            historias_previas=_historias(state),
+            otra_version=True,
+            nota_usuario=state.get("nota_usuario"),
+        )
+    elif ronda:
         entrada = EntradaAnalista(
             requerimiento=entrada.requerimiento,
             historias_previas=_historias(state),
@@ -144,7 +163,12 @@ async def analista(state: RunState, runtime: Runtime[GraphDeps]) -> RunState:
         artefactos=ArtefactosHistorias(historias=result.salida.historias),
         uso=result.uso,
     )
-    return {"historias": result.salida.model_dump(mode="json"), "usos": _usos(state, result.uso)}
+    return {
+        "historias": result.salida.model_dump(mode="json"),
+        "usos": _usos(state, result.uso),
+        "pide_otra_version": False,
+        "nota_usuario": None,
+    }
 
 
 async def solicitar_aprobacion(state: RunState, runtime: Runtime[GraphDeps]) -> RunState:
@@ -156,16 +180,32 @@ async def solicitar_aprobacion(state: RunState, runtime: Runtime[GraphDeps]) -> 
 
 async def aprobacion(state: RunState, runtime: Runtime[GraphDeps]) -> RunState:
     respuesta = RespuestaHumana.model_validate(interrupt({"solicitud": "aprobar_historias"}))
+    events = runtime.context.events
+    if respuesta.decision == "otra_version":
+        otras = state.get("otras_versiones", 0)
+        if otras >= MAX_OTRAS_VERSIONES:
+            raise ValueError("no more versions can be requested for this run")
+        await events.emit(
+            HumanoResponde,
+            agent="analista",
+            decision="otra_version",
+            cambios=CambiosHistorias(agregadas=[], modificadas=[], eliminadas=[]),
+        )
+        return {
+            "otras_versiones": otras + 1,
+            "pide_otra_version": True,
+            "nota_usuario": respuesta.nota,
+        }
     previas = _historias(state)
     nuevas = respuesta.historias or previas
     cambios = cambios_historias(previas, nuevas)
-    await runtime.context.events.emit(
+    await events.emit(
         HumanoResponde,
         agent="analista",
         decision="editado" if cambios.hay_cambios() else "aprobado",
         cambios=cambios,
     )
-    return {"historias": nuevas.model_dump(mode="json")}
+    return {"historias": nuevas.model_dump(mode="json"), "pide_otra_version": False}
 
 
 async def qa(state: RunState, runtime: Runtime[GraphDeps]) -> RunState:
@@ -288,6 +328,10 @@ def after_analista(state: RunState) -> str:
     return "qa" if state.get("ronda", 0) else "solicitar_aprobacion"
 
 
+def after_aprobacion(state: RunState) -> str:
+    return "analista" if state.get("pide_otra_version") else "qa"
+
+
 def after_qa(state: RunState) -> str:
     return "cierre" if _failed(state) else "revisor"
 
@@ -312,7 +356,7 @@ def build_graph(saver: BaseCheckpointSaver[str]) -> CompiledStateGraph[Any, Any,
         "analista", after_analista, ["cierre", "qa", "solicitar_aprobacion"]
     )
     graph.add_edge("solicitar_aprobacion", APPROVAL_NODE)
-    graph.add_edge(APPROVAL_NODE, "qa")
+    graph.add_conditional_edges(APPROVAL_NODE, after_aprobacion, ["analista", "qa"])
     graph.add_conditional_edges("qa", after_qa, ["cierre", "revisor"])
     graph.add_conditional_edges("revisor", after_revisor, ["cierre", "analista", "qa", "evaluador"])
     graph.add_edge("evaluador", "cierre")

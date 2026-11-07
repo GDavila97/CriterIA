@@ -127,7 +127,7 @@ class TestCredentials:
         created = await api.create_run(proveedor="openai", juez="openai")
         _, events = await api.stream(created.json()["run_id"])
 
-        generation, judge = api.selections[0]
+        generation, judge = api.selections[0].analista, api.selections[0].evaluador
         assert generation.api_key is not None
         assert generation.api_key.get_secret_value() == KEY
         assert judge.api_key == generation.api_key

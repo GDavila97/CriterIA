@@ -1,6 +1,6 @@
 from dataclasses import asdict
 from importlib.metadata import version
-from typing import Annotated
+from typing import Annotated, cast
 from uuid import UUID
 
 from fastapi import APIRouter, Header, Request, Response, status
@@ -9,6 +9,9 @@ from fastapi.responses import StreamingResponse
 from criteria.adapters.http import sse
 from criteria.adapters.http.dependencies import CurrentUser, VerifiedUser
 from criteria.adapters.http.schemas import (
+    AgentPromptsBody,
+    AgentsBody,
+    AgentsPlanBody,
     CatalogBody,
     CredentialBody,
     CredentialPutBody,
@@ -21,13 +24,15 @@ from criteria.adapters.http.schemas import (
     RunCreateBody,
     RunCreatedBody,
     SettingsBody,
+    UsageBody,
 )
 from criteria.adapters.http.services import ApiServices, services
 from criteria.adapters.llm.ssrf import validate_endpoint_url
 from criteria.application.errors import NotFoundError
-from criteria.application.run_api import RunRequest
+from criteria.application.run_api import AgentParams, RunRequest
 from criteria.domain.approval import RespuestaHumana
 from criteria.domain.events import ProveedorId
+from criteria.domain.run_config import RolAgente
 from criteria.ports.stores import ModelPlan, UserSettings
 
 router = APIRouter()
@@ -38,7 +43,21 @@ def _services(request: Request) -> ApiServices:
 
 
 def _plan(plan: ModelPlan) -> ModelPlanBody:
-    return ModelPlanBody(proveedor=plan.proveedor, modelo=plan.modelo, clave=plan.clave)
+    return ModelPlanBody(
+        proveedor=plan.proveedor,
+        modelo=plan.modelo,
+        clave=plan.clave,
+        temperatura=plan.temperatura,
+        max_tokens=plan.max_tokens,
+    )
+
+
+def _run_request(body: RunCreateBody) -> RunRequest:
+    agentes = body.agentes.model_dump(exclude_none=True) if body.agentes else {}
+    return RunRequest(
+        **body.model_dump(exclude={"agentes"}),
+        agentes={cast(RolAgente, rol): AgentParams(**params) for rol, params in agentes.items()},
+    )
 
 
 @router.get("/healthz", response_model=HealthBody, tags=["salud"])
@@ -50,7 +69,7 @@ async def healthz() -> HealthBody:
     "/runs", response_model=RunCreatedBody, status_code=status.HTTP_201_CREATED, tags=["corridas"]
 )
 async def create_run(body: RunCreateBody, user: VerifiedUser, request: Request) -> RunCreatedBody:
-    created = await _services(request).runs.create(user.user_id, RunRequest(**body.model_dump()))
+    created = await _services(request).runs.create(user.user_id, _run_request(body))
     return RunCreatedBody(
         run_id=created.run_id,
         generacion=_plan(created.generacion),
@@ -58,6 +77,9 @@ async def create_run(body: RunCreateBody, user: VerifiedUser, request: Request) 
         juez_mismo_proveedor=created.juez_mismo_proveedor,
         costo_estimado_usd=created.costo_estimado_usd,
         costo_servidor_usd=created.costo_servidor_usd,
+        agentes=AgentsPlanBody(**{rol: _plan(plan) for rol, plan in created.agentes.items()}),
+        max_rondas=created.max_rondas,
+        guardar_historial=created.guardar_historial,
     )
 
 
@@ -136,6 +158,31 @@ async def put_settings(body: SettingsBody, user: CurrentUser, request: Request) 
         user.user_id, UserSettings(**body.model_dump())
     )
     return SettingsBody(**asdict(saved))
+
+
+@router.get("/me/usage", response_model=UsageBody, tags=["ajustes"])
+async def usage(user: CurrentUser, request: Request) -> UsageBody:
+    summary = await _services(request).accounts.usage(user.user_id)
+    return UsageBody(
+        corridas_hora=summary.runs_last_hour,
+        limite_hora=summary.runs_per_hour,
+        corridas_dia=summary.runs_today,
+        limite_dia=summary.runs_per_day,
+    )
+
+
+@router.get("/agents", response_model=AgentsBody, tags=["catalogo"])
+async def agents(user: CurrentUser, request: Request) -> AgentsBody:
+    guide = _services(request).accounts.agents()
+    return AgentsBody(
+        version_prompts=guide.prompts.version_prompts,
+        version_juez=guide.prompts.version_juez,
+        prompts=AgentPromptsBody.model_validate(dict(guide.prompts.prompts)),
+        temperatura_maxima=guide.temperatura_maxima,
+        max_tokens_minimo=guide.max_tokens_minimo,
+        max_tokens_maximo=guide.max_tokens_maximo,
+        rondas_maximas=guide.rondas_maximas,
+    )
 
 
 @router.get("/catalog", response_model=CatalogBody, tags=["catalogo"])

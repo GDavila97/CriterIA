@@ -1,14 +1,11 @@
 import tomllib
 from pathlib import Path
-from typing import Literal, Self
+from typing import Self
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
 from criteria.domain.events import ProveedorId
-from criteria.domain.run_config import Nivel, NombreModelo, OutputMode
-
-RolAgente = Literal["analista", "qa", "revisor", "evaluador"]
-GENERATION_ROLES: tuple[RolAgente, ...] = ("analista", "qa", "revisor")
+from criteria.domain.run_config import GENERATION_ROLES, Nivel, NombreModelo, OutputMode, RolAgente
 
 
 class TierNotAvailableError(LookupError):
@@ -118,6 +115,10 @@ class ModelCatalog(BaseModel):
             None if gen is None else round(gen, 6),
             None if judge is None else round(judge, 6),
         )
+
+    def estimate_agent(self, rol: RolAgente, model: tuple[ProveedorId, str]) -> float | None:
+        cost = self._profile_cost((rol,), model)
+        return None if cost is None else round(cost, 6)
 
     def estimate_run_cost(
         self, generacion: tuple[ProveedorId, str], juez: tuple[ProveedorId, str]

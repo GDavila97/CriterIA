@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
 
 import pydantic_ai
@@ -6,10 +7,11 @@ from pydantic_ai import Agent, ModelRetry, NativeOutput, RunContext
 from pydantic_ai.output import OutputSpec
 
 from criteria.adapters.agents.blocks import data_block
-from criteria.adapters.agents.prompts import RolAgente, load_prompt
+from criteria.adapters.agents.prompts import load_prompt
 from criteria.adapters.agents.runner import ModelBinding, PydanticAgentRunner
 from criteria.domain.artifacts import EntregaQA, Evaluacion, Historias, VeredictoRevisor
 from criteria.domain.rules import historias_desconocidas, referencias_desconocidas
+from criteria.domain.run_config import RolAgente
 from criteria.ports.agents import (
     AgentSet,
     EntradaAnalista,
@@ -29,6 +31,13 @@ def render_analista(entrada: EntradaAnalista) -> str:
     bloques = [data_block("requerimiento", entrada.requerimiento.texto)]
     if entrada.historias_previas is None:
         return "Tarea: redacta las historias de usuario.\n\n" + bloques[0]
+    if entrada.otra_version:
+        bloques.append(data_block("historias", entrada.historias_previas))
+        tarea = "Tarea: la persona pidió otra versión de las historias; redacta una versión nueva."
+        if entrada.nota_usuario is not None:
+            bloques.append(data_block("nota_usuario", entrada.nota_usuario))
+            tarea += " La nota explica qué esperaba."
+        return tarea + "\n\n" + "\n\n".join(bloques)
     bloques.append(data_block("historias", entrada.historias_previas))
     bloques.append(data_block("observaciones", list(entrada.observaciones)))
     return "Tarea: corrige las historias según las observaciones.\n\n" + "\n\n".join(bloques)
@@ -83,6 +92,14 @@ def _check_revisor(
     return veredicto
 
 
+@dataclass(frozen=True)
+class AgentBindings:
+    analista: ModelBinding
+    qa: ModelBinding
+    revisor: ModelBinding
+    evaluador: ModelBinding
+
+
 class AgentFactory:
     def __init__(self, prompts_dir: Path, version: str, judge_version: str, clock: Clock) -> None:
         self._prompts_dir = prompts_dir
@@ -93,19 +110,25 @@ class AgentFactory:
     def build(
         self, generacion: ModelBinding, juez: ModelBinding, experimental: bool = False
     ) -> AgentSet:
-        analista = self._agent("analista", EntradaAnalista, Historias, generacion)
-        qa = self._agent("qa", EntradaQA, EntregaQA, generacion)
+        return self.build_for(
+            AgentBindings(analista=generacion, qa=generacion, revisor=generacion, evaluador=juez),
+            experimental,
+        )
+
+    def build_for(self, bindings: AgentBindings, experimental: bool = False) -> AgentSet:
+        analista = self._agent("analista", EntradaAnalista, Historias, bindings.analista)
+        qa = self._agent("qa", EntradaQA, EntregaQA, bindings.qa)
         qa.output_validator(_check_qa)
-        revisor = self._agent("revisor", EntradaRevisor, VeredictoRevisor, generacion)
+        revisor = self._agent("revisor", EntradaRevisor, VeredictoRevisor, bindings.revisor)
         revisor.output_validator(_check_revisor)
         evaluador = self._agent(
-            "evaluador", EntradaEvaluador, Evaluacion, juez, self._judge_version
+            "evaluador", EntradaEvaluador, Evaluacion, bindings.evaluador, self._judge_version
         )
         return AgentSet(
-            analista=self._runner("analista", analista, generacion, render_analista),
-            qa=self._runner("qa", qa, generacion, render_qa),
-            revisor=self._runner("revisor", revisor, generacion, render_revisor),
-            evaluador=self._runner("evaluador", evaluador, juez, render_evaluador),
+            analista=self._runner("analista", analista, bindings.analista, render_analista),
+            qa=self._runner("qa", qa, bindings.qa, render_qa),
+            revisor=self._runner("revisor", revisor, bindings.revisor, render_revisor),
+            evaluador=self._runner("evaluador", evaluador, bindings.evaluador, render_evaluador),
             version_prompts=self._version,
             version_juez=self._judge_version,
             experimental=experimental,

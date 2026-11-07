@@ -7,14 +7,14 @@ import httpx
 import psycopg
 import pytest
 
-from criteria.adapters.agents.factory import AgentFactory
+from criteria.adapters.agents.factory import AgentBindings, AgentFactory
 from criteria.adapters.agents.runner import ModelBinding
 from criteria.adapters.http.services import ApiServices
 from criteria.adapters.llm.catalog import ModelCatalog
 from criteria.adapters.system_clock import SystemClock
 from criteria.bootstrap import ApiOverrides
 from criteria.config import SERVICE_ROOT, ApiSettings
-from criteria.domain.run_config import ProviderSelection
+from criteria.domain.run_config import AgentSelections, ProviderSelection
 from criteria.main import create_app
 from criteria.ports.agents import AgentSet
 from tests import factories as f
@@ -59,11 +59,12 @@ class Api:
     settings: ApiSettings
     validator: FakeKeyValidator
     team: ScriptedTeam = field(default_factory=happy_team)
-    selections: list[tuple[ProviderSelection, ProviderSelection]] = field(default_factory=list)
+    selections: list[AgentSelections] = field(default_factory=list)
     reporter: FakeReporter = field(default_factory=FakeReporter)
     broken: dict[str, BaseException] = field(default_factory=dict)
 
     def headers(self, user: str = "user-1", verified: bool = True) -> dict[str, str]:
+        self.database.ensure_user(user)
         return self.tokens.headers(user, verified)
 
     def sql(self, statement: str, *params: Any) -> list[tuple[Any, ...]]:
@@ -112,14 +113,20 @@ def _binding(scripted: ScriptedTeam, selection: ProviderSelection) -> ModelBindi
     )
 
 
-def agent_builder(
-    api_ref: Callable[[], Api],
-) -> Callable[[ProviderSelection, ProviderSelection], AgentSet]:
-    def build(generation: ProviderSelection, judge: ProviderSelection) -> AgentSet:
+def agent_builder(api_ref: Callable[[], Api]) -> Callable[[AgentSelections], AgentSet]:
+    def build(selections: AgentSelections) -> AgentSet:
         api = api_ref()
-        api.selections.append((generation, judge))
+        api.selections.append(selections)
         factory = AgentFactory(SERVICE_ROOT / "prompts", "v1", "v1", SystemClock())
-        agents = factory.build(_binding(api.team, generation), _binding(api.team, judge))
+        team = api.team
+        agents = factory.build_for(
+            AgentBindings(
+                analista=_binding(team, selections.analista),
+                qa=_binding(team, selections.qa),
+                revisor=_binding(team, selections.revisor),
+                evaluador=_binding(team, selections.evaluador),
+            )
+        )
         return with_broken(agents, api.broken)
 
     return build
@@ -130,7 +137,8 @@ async def api(database: Database, request: pytest.FixtureRequest) -> AsyncIterat
     with psycopg.connect(database.admin, autocommit=True) as conn:
         tables = ", ".join(f"app.{name}" for name in APP_TABLES)
         conn.execute(
-            f"TRUNCATE {tables}, graph.checkpoints, graph.checkpoint_blobs, graph.checkpoint_writes"
+            f'TRUNCATE auth."user", {tables}, graph.checkpoints, graph.checkpoint_blobs, '
+            "graph.checkpoint_writes CASCADE"
         )
     marker = request.node.get_closest_marker("api_settings")
     overrides_kwargs: dict[str, Any] = dict(marker.kwargs) if marker else {}
@@ -143,8 +151,11 @@ async def api(database: Database, request: pytest.FixtureRequest) -> AsyncIterat
         settings,
         ApiOverrides(
             jwks_fetcher=tokens.fetch,
-            key_validator=validator,
-            agent_builder=agent_builder(lambda: holder[0]),
+            # With MODEL_BACKEND=fake the app builds its own fake models and validator.
+            key_validator=None if settings.model_backend == "fake" else validator,
+            agent_builder=None
+            if settings.model_backend == "fake"
+            else agent_builder(lambda: holder[0]),
             reporter=reporter,
         ),
     )

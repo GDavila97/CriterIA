@@ -88,6 +88,8 @@ run = sa.Table(
     sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
     sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
     sa.Column("settled", sa.Boolean, nullable=False, server_default=sa.false()),
+    sa.Column("agent_plans", JSONB),
+    sa.Column("save_history", sa.Boolean, nullable=False, server_default=sa.false()),
 )
 
 run_event = sa.Table(
@@ -191,6 +193,17 @@ class PostgresCheckpointer:
 
     async def discard(self, run_id: object) -> None:
         await self._saver.adelete_thread(str(run_id))
+
+    async def discard_orphans(self) -> int:
+        async with self._pool.connection() as connection:
+            cursor = await connection.execute(
+                "SELECT DISTINCT thread_id FROM checkpoints"
+                " WHERE thread_id NOT IN (SELECT id::text FROM app.run)"
+            )
+            orphans = [cast(dict[str, Any], row)["thread_id"] for row in await cursor.fetchall()]
+        for thread_id in orphans:
+            await self._saver.adelete_thread(thread_id)
+        return len(orphans)
 
     async def ensure_migrated(self) -> None:
         """The API never runs DDL; it refuses to start if the checkpoint tables are behind."""

@@ -6,7 +6,7 @@ CriterIA usa cuatro agentes de Pydantic AI ([ADR 0004](adr/0004-pydantic-ai-agen
 
 | Agente | Entrada | Salida (`output_type`) | Prompt |
 | --- | --- | --- | --- |
-| **Analista** | `<requerimiento>`; en una corrección, también `<historias>` y `<observaciones>` dirigidas a él | `Historias`: de 1 a 12 `HistoriaUsuario` (`HU-n`, como / quiero / para, prioridad, supuestos) | `prompts/v1/analista.md` |
+| **Analista** | `<requerimiento>`; en una corrección, también `<historias>` y `<observaciones>` dirigidas a él; si la persona pide otra versión, `<historias>` previas y, si escribió una, `<nota_usuario>` | `Historias`: de 1 a 12 `HistoriaUsuario` (`HU-n`, como / quiero / para, prioridad, supuestos) | `prompts/v1/analista.md` |
 | **QA** | `<historias>` aprobadas; en una corrección, también `<entrega_previa>` y `<observaciones>` | `EntregaQA`: criterios (`CA-n`) y casos de prueba (`CP-nn`) con pasos, resultado esperado y escenario Gherkin | `prompts/v1/qa.md` |
 | **Revisor** | `<requerimiento>`, `<historias>`, `<entrega>` | `VeredictoRevisor`: `aprobado` y hasta 10 `Observacion` (tipo, destino, referencias, descripción, sugerencia) | `prompts/v1/revisor.md` |
 | **Evaluador** | `<requerimiento>`, `<historias>`, `<entrega>`, `<observaciones_pendientes>` | `Evaluacion`: un `Puntaje` de 1 a 5 por criterio (claridad, verificabilidad, completitud, consistencia) con justificación de hasta 280 caracteres | `prompts/juez/v1/evaluador.md` |
@@ -47,6 +47,7 @@ flowchart TD
   analista -- corrección --> qa
   solicitar --> aprobacion{{aprobacion<br/>interrupt}}
   aprobacion -- aprobado o editado --> qa[QA]
+  aprobacion -- otra_version --> analista
   qa -- error --> cierre
   qa --> revisor[Revisor]
   revisor -- error --> cierre
@@ -57,7 +58,7 @@ flowchart TD
   cierre --> fin([fin])
 ```
 
-- **Pausa humana.** Después del Analista la corrida se detiene con `interrupt` y el estado queda en el checkpointer. La respuesta es `aprobado` o `editado` con historias validadas por el esquema; una edición inválida se rechaza antes de reanudar. `en_espera_humano` se emite en un nodo previo porque LangGraph vuelve a ejecutar desde el principio el nodo que llamó a `interrupt` cuando se reanuda.
+- **Pausa humana.** Después del Analista la corrida se detiene con `interrupt` y el estado queda en el checkpointer. La respuesta es `aprobado`, `editado` con historias validadas por el esquema, u `otra_version` con una nota opcional; una edición inválida se rechaza antes de reanudar. Con `otra_version` el grafo vuelve al Analista y pausa otra vez, como mucho dos veces por corrida (`MAX_OTRAS_VERSIONES`). Los prompts de sistema no cambian: la tarea y la nota viajan en el mensaje del usuario. `en_espera_humano` se emite en un nodo previo porque LangGraph vuelve a ejecutar desde el principio el nodo que llamó a `interrupt` cuando se reanuda.
 - **Estado.** El estado del grafo solo guarda JSON (texto del requerimiento, artefactos, ronda, uso). Los agentes, la clave propia y el sink de eventos viajan en el contexto de ejecución de LangGraph, que no se guarda en el checkpoint.
 - **Checkpointer.** La CLI usa uno en memoria (`MemoryCheckpointer`) y la API el de Postgres en el esquema `graph` (`PostgresCheckpointer`), detrás del mismo puerto `Checkpointer`. Los checkpoints de una corrida se borran al terminar o cuando se descarta por abandonada.
 

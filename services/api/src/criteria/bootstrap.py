@@ -1,7 +1,8 @@
 from dataclasses import dataclass
 from datetime import timedelta
 
-from criteria.adapters.agents.factory import AgentFactory
+from criteria.adapters.agents.factory import AgentBindings, AgentFactory
+from criteria.adapters.agents.prompts import load_prompt
 from criteria.adapters.agents.runner import ModelBinding
 from criteria.adapters.auth.jwks import (
     JwksCache,
@@ -13,6 +14,7 @@ from criteria.adapters.auth.jwks import (
 from criteria.adapters.crypto.aesgcm import AesGcmCipher
 from criteria.adapters.http.services import ApiServices
 from criteria.adapters.llm.catalog import ModelCatalog
+from criteria.adapters.llm.fake import FakeKeyValidator, fake_agent_builder
 from criteria.adapters.llm.key_validator import HttpKeyValidator
 from criteria.adapters.llm.registry import ProviderRegistry
 from criteria.adapters.memory.checkpointer import MemoryCheckpointer
@@ -30,12 +32,12 @@ from criteria.adapters.postgres.stores import (
     PostgresUsageGuard,
 )
 from criteria.adapters.system_clock import SystemClock
-from criteria.application.accounts import AccountService
+from criteria.application.accounts import AccountService, AgentPrompts
 from criteria.application.credentials import CredentialService
 from criteria.application.run_api import AgentBuilder, RunApplication, RunDefaults
 from criteria.application.runs import RunService
 from criteria.config import ApiSettings, Settings
-from criteria.domain.run_config import ProviderSelection
+from criteria.domain.run_config import ROLES, AgentSelections, ProviderSelection
 from criteria.observability import SentryErrorReporter
 from criteria.ports.agents import AgentSet
 from criteria.ports.clock import Clock
@@ -66,11 +68,21 @@ class Container:
         )
 
     def agents(self, generacion: ProviderSelection, juez: ProviderSelection) -> AgentSet:
+        return self.agents_for(AgentSelections.uniforme(generacion, juez))
+
+    def agents_for(self, selections: AgentSelections) -> AgentSet:
         settings = self.settings
         factory = AgentFactory(
             settings.prompts_dir, settings.prompt_version, settings.judge_version, self.clock
         )
-        return factory.build(self.binding(generacion), self.binding(juez))
+        return factory.build_for(
+            AgentBindings(
+                analista=self.binding(selections.analista),
+                qa=self.binding(selections.qa),
+                revisor=self.binding(selections.revisor),
+                evaluador=self.binding(selections.evaluador),
+            )
+        )
 
 
 def build_container(settings: Settings) -> Container:
@@ -94,6 +106,38 @@ class ApiOverrides:
     reporter: ErrorReporter | None = None
 
 
+def _agent_builder(settings: ApiSettings, container: Container) -> AgentBuilder:
+    if settings.model_backend == "real":
+        return container.agents_for
+    factory = AgentFactory(
+        settings.prompts_dir, settings.prompt_version, settings.judge_version, container.clock
+    )
+    return fake_agent_builder(container.registry, factory, settings.fake_model_delay_ms / 1000)
+
+
+def _key_validator(settings: ApiSettings) -> KeyValidator:
+    if settings.model_backend == "fake":
+        return FakeKeyValidator()
+    return HttpKeyValidator(
+        timeout_seconds=10, max_response_bytes=settings.provider_max_response_bytes
+    )
+
+
+def _prompts(settings: Settings) -> AgentPrompts:
+    return AgentPrompts(
+        version_prompts=settings.prompt_version,
+        version_juez=settings.judge_version,
+        prompts={
+            rol: load_prompt(
+                settings.prompts_dir,
+                settings.judge_version if rol == "evaluador" else settings.prompt_version,
+                rol,
+            )
+            for rol in ROLES
+        },
+    )
+
+
 def build_api_services(settings: ApiSettings, overrides: ApiOverrides | None = None) -> ApiServices:
     overrides = overrides or ApiOverrides()
     clock = overrides.clock or SystemClock()
@@ -111,32 +155,30 @@ def build_api_services(settings: ApiSettings, overrides: ApiOverrides | None = N
     credentials = CredentialService(
         store=PostgresCredentialStore(engine),
         cipher=AesGcmCipher(settings.credential_keys(), settings.credentials_active_key),
-        validator=overrides.key_validator
-        or HttpKeyValidator(
-            timeout_seconds=10, max_response_bytes=settings.provider_max_response_bytes
-        ),
+        validator=overrides.key_validator or _key_validator(settings),
         clock=clock,
         checks_per_hour=settings.credential_checks_per_hour,
     )
     user_settings = PostgresSettingsStore(engine)
     history = PostgresHistoryStore(engine)
     default_provider = settings.provider or "groq"
+    usage = PostgresUsageGuard(
+        engine,
+        UsageLimits(
+            user_runs_per_hour=settings.user_runs_per_hour,
+            user_runs_per_day=settings.user_runs_per_day,
+            global_daily_runs=settings.global_daily_runs,
+            global_daily_budget_usd=settings.global_daily_budget_usd,
+        ),
+    )
     runs = RunApplication(
         runs=PostgresRunStore(engine),
-        usage=PostgresUsageGuard(
-            engine,
-            UsageLimits(
-                user_runs_per_hour=settings.user_runs_per_hour,
-                user_runs_per_day=settings.user_runs_per_day,
-                global_daily_runs=settings.global_daily_runs,
-                global_daily_budget_usd=settings.global_daily_budget_usd,
-            ),
-        ),
+        usage=usage,
         credentials=credentials,
         settings=user_settings,
         history=history,
         router=registry,
-        build_agents=overrides.agent_builder or container.agents,
+        build_agents=overrides.agent_builder or _agent_builder(settings, container),
         service=container.service,
         checkpointer=checkpointer,
         clock=clock,
@@ -181,8 +223,12 @@ def build_api_services(settings: ApiSettings, overrides: ApiOverrides | None = N
             credentials=credentials,
             router=registry,
             default_provider=default_provider,
+            usage=usage,
+            clock=clock,
+            prompts=_prompts(settings),
         ),
         evaluation=PostgresEvaluationReader(engine),
+        require_verified_email=settings.auth_require_verified_email,
         startup=startup,
         shutdown=shutdown,
     )

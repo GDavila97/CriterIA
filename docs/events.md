@@ -21,7 +21,7 @@ Los eventos son modelos Pydantic (`services/api/src/criteria/domain/events.py`) 
 | `agente_progreso` | el agente | `mensaje` (máximo 80 caracteres) |
 | `agente_entrega` | el agente | `ronda`, `artefactos`, `uso` |
 | `en_espera_humano` | `analista` | `solicitud` (`aprobar_historias`), `historias` |
-| `humano_responde` | `analista` | `decision` (`aprobado` o `editado`), `cambios` (`agregadas`, `modificadas`, `eliminadas`: listas de ids) |
+| `humano_responde` | `analista` | `decision` (`aprobado`, `editado` u `otra_version`), `cambios` (`agregadas`, `modificadas`, `eliminadas`: listas de ids; vacías con `otra_version`) |
 | `revisor_observa` | `revisor` | `ronda`, `observaciones`, `se_corrige` (falso cuando ya no quedan rondas) |
 | `agente_error` | el agente | `codigo`, `mensaje` (seguro, máximo 200 caracteres), `respaldo_sugerido` |
 | `corrida_fin` | `sistema` | `estado` (`completada` o `error`), `puntajes`, `totales`, `respaldo_sugerido`, `codigo` y `mensaje` (solo con `error_interno`; si no, `null`) |
@@ -61,6 +61,8 @@ Unión discriminada por `tipo`, según el agente que entrega:
 ## Secuencias típicas
 
 Flujo feliz: `corrida_inicia` → (`agente_inicia`, `agente_progreso`, `agente_entrega`) del Analista → `en_espera_humano` → *pausa* → `humano_responde` → QA → Revisor → Evaluador → `corrida_fin`.
+
+Con otra versión: tras `en_espera_humano`, `humano_responde` con `decision: "otra_version"`, otra vez `agente_inicia`, `agente_progreso` y `agente_entrega` del Analista (ronda 0) y un nuevo `en_espera_humano`. Puede pasar dos veces por corrida.
 
 Con observaciones: después de la entrega del Revisor llega `revisor_observa`. Si `se_corrige` es verdadero, siguen el agente destino (y QA, si el destino fue el Analista) y otra revisión con la ronda aumentada.
 

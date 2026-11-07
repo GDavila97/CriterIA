@@ -18,6 +18,16 @@ USER_KEY_PROVIDERS: frozenset[ProveedorId] = frozenset(
     {"openai", "anthropic", "groq", "openai_compatible"}
 )
 
+RolAgente = Literal["analista", "qa", "revisor", "evaluador"]
+ROLES: tuple[RolAgente, ...] = ("analista", "qa", "revisor", "evaluador")
+GENERATION_ROLES: tuple[RolAgente, ...] = ("analista", "qa", "revisor")
+
+# Limits for what a person can tune per agent before a run.
+TEMPERATURA_MAXIMA = 1.0
+MAX_TOKENS_MINIMO = 256
+MAX_TOKENS_MAXIMO = 8192
+MAX_RONDAS = 3
+
 NombreModelo = Annotated[str, StringConstraints(pattern=r"^[A-Za-z0-9][A-Za-z0-9._:/-]{0,99}$")]
 Nivel = Literal["economico", "equilibrado", "maximo"]
 # How a model returns structured output: a tool call, or JSON constrained to the schema.
@@ -59,6 +69,25 @@ class ProviderSelection(BaseModel):
     @property
     def usa_clave_propia(self) -> bool:
         return self.api_key is not None
+
+
+class AgentSelections(BaseModel):
+    """One model selection per agent: the first three share the generation provider."""
+
+    model_config = ConfigDict(frozen=True)
+
+    analista: ProviderSelection
+    qa: ProviderSelection
+    revisor: ProviderSelection
+    evaluador: ProviderSelection
+
+    @classmethod
+    def uniforme(cls, generacion: ProviderSelection, juez: ProviderSelection) -> Self:
+        return cls(analista=generacion, qa=generacion, revisor=generacion, evaluador=juez)
+
+    def de(self, rol: RolAgente) -> ProviderSelection:
+        selection: ProviderSelection = getattr(self, rol)
+        return selection
 
 
 class SelectionError(ValueError):

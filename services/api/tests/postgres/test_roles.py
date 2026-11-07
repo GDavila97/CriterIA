@@ -39,6 +39,7 @@ def test_api_role_cannot_change_the_schema_or_read_auth(database: Database, stat
 
 
 def test_api_role_reads_and_writes_its_own_tables(database: Database) -> None:
+    database.ensure_user("u-roles")
     with psycopg.connect(database.api, autocommit=True) as conn:
         conn.execute("INSERT INTO app.user_settings (user_id) VALUES ('u-roles')")
         conn.execute("UPDATE app.user_settings SET save_history = true WHERE user_id = 'u-roles'")

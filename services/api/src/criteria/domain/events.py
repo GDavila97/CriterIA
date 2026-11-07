@@ -114,7 +114,7 @@ class EnEsperaHumano(EventoBase):
 
 class HumanoResponde(EventoBase):
     type: Literal["humano_responde"] = "humano_responde"
-    decision: Literal["aprobado", "editado"]
+    decision: Literal["aprobado", "editado", "otra_version"]
     cambios: CambiosHistorias
 
 

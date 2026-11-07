@@ -35,5 +35,10 @@ ALTER DEFAULT PRIVILEGES FOR ROLE migrator_role IN SCHEMA app, graph
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA app, graph TO api_role;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA app, graph TO api_role;
 
+-- Migrations tie app rows to auth."user" with foreign keys; references allow that and nothing else.
+GRANT USAGE ON SCHEMA auth TO migrator_role;
+ALTER DEFAULT PRIVILEGES FOR ROLE web_role IN SCHEMA auth
+  GRANT REFERENCES ON TABLES TO migrator_role;
+
 -- The evaluation CLI only inserts results; its table grants come with the migration that creates them.
 GRANT USAGE ON SCHEMA app TO eval_writer;

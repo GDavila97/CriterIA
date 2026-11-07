@@ -18,6 +18,10 @@ class ConflictError(ApplicationError):
     codigo = "estado_invalido"
 
 
+class VersionsExhaustedError(ApplicationError):
+    codigo = "versiones_agotadas"
+
+
 class InvalidInputError(ApplicationError):
     codigo = "entrada_invalida"
 

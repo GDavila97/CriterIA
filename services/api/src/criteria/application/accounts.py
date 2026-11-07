@@ -1,3 +1,4 @@
+from collections.abc import Mapping
 from dataclasses import dataclass
 from uuid import UUID
 
@@ -5,7 +6,17 @@ from criteria.application.credentials import CredentialService
 from criteria.application.errors import InvalidInputError, NotFoundError
 from criteria.domain.events import ProveedorId
 from criteria.domain.judge import elegir_juez
-from criteria.domain.run_config import USER_KEY_PROVIDERS, Nivel, ProviderSelection
+from criteria.domain.run_config import (
+    MAX_RONDAS,
+    MAX_TOKENS_MAXIMO,
+    MAX_TOKENS_MINIMO,
+    TEMPERATURA_MAXIMA,
+    USER_KEY_PROVIDERS,
+    Nivel,
+    ProviderSelection,
+    RolAgente,
+)
+from criteria.ports.clock import Clock
 from criteria.ports.models import ModelRouter
 from criteria.ports.stores import (
     HistoryStore,
@@ -13,6 +24,8 @@ from criteria.ports.stores import (
     SavedRun,
     SavedRunSummary,
     SettingsStore,
+    UsageGuard,
+    UsageSummary,
     UserSettings,
 )
 
@@ -44,8 +57,26 @@ class Catalog:
     juez_predeterminado: ProveedorId
 
 
+@dataclass(frozen=True)
+class AgentPrompts:
+    """The system prompts shown read-only in the agent panel, with their versions."""
+
+    version_prompts: str
+    version_juez: str
+    prompts: Mapping[RolAgente, str]
+
+
+@dataclass(frozen=True)
+class AgentGuide:
+    prompts: AgentPrompts
+    temperatura_maxima: float = TEMPERATURA_MAXIMA
+    max_tokens_minimo: int = MAX_TOKENS_MINIMO
+    max_tokens_maximo: int = MAX_TOKENS_MAXIMO
+    rondas_maximas: int = MAX_RONDAS
+
+
 class AccountService:
-    def __init__(
+    def __init__(  # noqa: PLR0913  composition point of the account use cases
         self,
         *,
         settings: SettingsStore,
@@ -53,12 +84,24 @@ class AccountService:
         credentials: CredentialService,
         router: ModelRouter,
         default_provider: ProveedorId,
+        usage: UsageGuard,
+        clock: Clock,
+        prompts: AgentPrompts,
     ) -> None:
         self._settings = settings
         self._history = history
         self._credentials = credentials
         self._router = router
         self._default_provider = default_provider
+        self._usage = usage
+        self._clock = clock
+        self._guide = AgentGuide(prompts)
+
+    async def usage(self, user_id: str) -> UsageSummary:
+        return await self._usage.summary(user_id, self._clock.now())
+
+    def agents(self) -> AgentGuide:
+        return self._guide
 
     async def settings(self, user_id: str) -> UserSettings:
         return await self._settings.get(user_id)

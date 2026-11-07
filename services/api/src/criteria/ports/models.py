@@ -2,7 +2,7 @@ from collections.abc import Collection
 from typing import Protocol
 
 from criteria.domain.events import ProveedorId
-from criteria.domain.run_config import Nivel, ProviderSelection
+from criteria.domain.run_config import Nivel, ProviderSelection, RolAgente
 
 
 class ProviderNotAllowedError(ValueError):
@@ -36,4 +36,8 @@ class ModelRouter(Protocol):
         self, generacion: ProviderSelection, juez: ProviderSelection
     ) -> tuple[float | None, float | None]:
         """Typical cost of the generation agents and of the judge for one run."""
+        ...
+
+    def estimate_agent(self, rol: RolAgente, selection: ProviderSelection) -> float | None:
+        """Typical cost of one agent in a run; null when the model has no price."""
         ...

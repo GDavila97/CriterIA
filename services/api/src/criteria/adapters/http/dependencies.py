@@ -24,8 +24,11 @@ async def current_user(
     return principal
 
 
-async def verified_user(user: Annotated[Principal, Depends(current_user)]) -> Principal:
-    if not user.email_verified:
+async def verified_user(
+    request: Request, user: Annotated[Principal, Depends(current_user)]
+) -> Principal:
+    required: bool = request.app.state.services.require_verified_email
+    if required and not user.email_verified:
         raise ForbiddenError("correo_no_verificado")
     return user
 

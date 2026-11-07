@@ -22,6 +22,7 @@ from criteria.ports.stores import (
     SavedRunSummary,
     StreamBusyError,
     UsageLimits,
+    UsageSummary,
     UserSettings,
 )
 
@@ -229,6 +230,51 @@ class PostgresUsageGuard:
         if booked is None:
             raise LimitExceededError("cupo_gratuito_agotado")
 
+    async def reserve_extra(self, run_id: UUID, user_id: str, day: date, cost_usd: float) -> None:
+        g, u, r = t.global_usage_daily, t.usage_daily, t.run
+        async with self._engine.begin() as conn:
+            booked = await conn.scalar(
+                sa.update(g)
+                .where(
+                    g.c.day == day,
+                    g.c.cost_usd + cost_usd <= self._limits.global_daily_budget_usd,
+                )
+                .values(cost_usd=g.c.cost_usd + cost_usd)
+                .returning(g.c.day)
+            )
+            if booked is None:
+                raise LimitExceededError("cupo_gratuito_agotado")
+            await conn.execute(
+                sa.update(u)
+                .where(u.c.user_id == user_id, u.c.day == day)
+                .values(cost_usd=u.c.cost_usd + cost_usd)
+            )
+            await conn.execute(
+                sa.update(r)
+                .where(r.c.id == run_id)
+                .values(server_cost_reserved_usd=r.c.server_cost_reserved_usd + cost_usd)
+            )
+
+    async def summary(self, user_id: str, at: datetime) -> UsageSummary:
+        async with self._engine.connect() as conn:
+            last_hour = await conn.scalar(
+                sa.select(sa.func.count()).where(
+                    t.run_start.c.user_id == user_id,
+                    t.run_start.c.started_at > at - timedelta(hours=1),
+                )
+            )
+            today = await conn.scalar(
+                sa.select(t.usage_daily.c.runs).where(
+                    t.usage_daily.c.user_id == user_id, t.usage_daily.c.day == at.date()
+                )
+            )
+        return UsageSummary(
+            runs_last_hour=int(last_hour or 0),
+            runs_per_hour=self._limits.user_runs_per_hour,
+            runs_today=int(today or 0),
+            runs_per_day=self._limits.user_runs_per_day,
+        )
+
     async def settle(
         self, run_id: UUID, user_id: str, day: date, reserved_usd: float, actual_usd: float | None
     ) -> None:
@@ -282,6 +328,8 @@ def _run_record(row: Any) -> RunRecord:
         else float(row["estimated_cost_usd"]),
         created_at=row["created_at"],
         approval=row["approval"],
+        agent_plans={rol: _plan(data) for rol, data in (row["agent_plans"] or {}).items()},
+        save_history=row["save_history"],
     )
 
 
@@ -309,6 +357,8 @@ class PostgresRunStore:
                     approval=record.approval,
                     created_at=record.created_at,
                     updated_at=record.created_at,
+                    agent_plans={rol: _plan_json(p) for rol, p in record.agent_plans.items()},
+                    save_history=record.save_history,
                 )
             )
 

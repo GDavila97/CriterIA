@@ -24,6 +24,28 @@ export interface CriteriaContract {
   [k: string]: unknown;
 }
 /**
+ * One agent's tuning; the model stays within the provider of its group.
+ *
+ * This interface was referenced by `CriteriaContract`'s JSON-Schema
+ * via the `definition` "AgentParamsBody".
+ */
+export interface AgentParamsBody {
+  nivel?: ('economico' | 'equilibrado' | 'maximo') | null;
+  modelo?: string | null;
+  temperatura?: number | null;
+  max_tokens?: number | null;
+}
+/**
+ * This interface was referenced by `CriteriaContract`'s JSON-Schema
+ * via the `definition` "AgentPromptsBody".
+ */
+export interface AgentPromptsBody {
+  analista: string;
+  qa: string;
+  revisor: string;
+  evaluador: string;
+}
+/**
  * This interface was referenced by `CriteriaContract`'s JSON-Schema
  * via the `definition` "AgenteEntrega".
  */
@@ -225,6 +247,50 @@ export interface AgenteProgreso {
 }
 /**
  * This interface was referenced by `CriteriaContract`'s JSON-Schema
+ * via the `definition` "AgentsBody".
+ */
+export interface AgentsBody {
+  version_prompts: string;
+  version_juez: string;
+  prompts: AgentPromptsBody;
+  temperatura_maxima: number;
+  max_tokens_minimo: number;
+  max_tokens_maximo: number;
+  rondas_maximas: number;
+}
+/**
+ * This interface was referenced by `CriteriaContract`'s JSON-Schema
+ * via the `definition` "AgentsParamsBody".
+ */
+export interface AgentsParamsBody {
+  analista?: AgentParamsBody | null;
+  qa?: AgentParamsBody | null;
+  revisor?: AgentParamsBody | null;
+  evaluador?: AgentParamsBody | null;
+}
+/**
+ * This interface was referenced by `CriteriaContract`'s JSON-Schema
+ * via the `definition` "AgentsPlanBody".
+ */
+export interface AgentsPlanBody {
+  analista: ModelPlanBody;
+  qa: ModelPlanBody;
+  revisor: ModelPlanBody;
+  evaluador: ModelPlanBody;
+}
+/**
+ * This interface was referenced by `CriteriaContract`'s JSON-Schema
+ * via the `definition` "ModelPlanBody".
+ */
+export interface ModelPlanBody {
+  proveedor: 'openai' | 'anthropic' | 'groq' | 'ollama' | 'openai_compatible';
+  modelo: string;
+  clave: 'usuario' | 'servidor';
+  temperatura: number;
+  max_tokens: number;
+}
+/**
+ * This interface was referenced by `CriteriaContract`'s JSON-Schema
  * via the `definition` "CambiosHistorias".
  */
 export interface CambiosHistorias {
@@ -400,7 +466,7 @@ export interface HumanoResponde {
   ts: string;
   agent: 'analista' | 'qa' | 'revisor' | 'evaluador' | 'sistema';
   type: 'humano_responde';
-  decision: 'aprobado' | 'editado';
+  decision: 'aprobado' | 'editado' | 'otra_version';
   cambios: CambiosHistorias;
 }
 /**
@@ -502,20 +568,12 @@ export interface HistorySummaryBody {
 }
 /**
  * This interface was referenced by `CriteriaContract`'s JSON-Schema
- * via the `definition` "ModelPlanBody".
- */
-export interface ModelPlanBody {
-  proveedor: 'openai' | 'anthropic' | 'groq' | 'ollama' | 'openai_compatible';
-  modelo: string;
-  clave: 'usuario' | 'servidor';
-}
-/**
- * This interface was referenced by `CriteriaContract`'s JSON-Schema
  * via the `definition` "RespuestaHumana".
  */
 export interface RespuestaHumana {
-  decision: 'aprobado' | 'editado';
+  decision: 'aprobado' | 'editado' | 'otra_version';
   historias?: Historias | null;
+  nota?: string | null;
 }
 /**
  * This interface was referenced by `CriteriaContract`'s JSON-Schema
@@ -528,6 +586,8 @@ export interface RunCreateBody {
   modelo?: string | null;
   juez?: ('openai' | 'anthropic' | 'groq' | 'ollama' | 'openai_compatible') | null;
   max_rondas?: number | null;
+  agentes?: AgentsParamsBody | null;
+  guardar_historial?: boolean | null;
 }
 /**
  * This interface was referenced by `CriteriaContract`'s JSON-Schema
@@ -540,6 +600,9 @@ export interface RunCreatedBody {
   juez_mismo_proveedor: boolean;
   costo_estimado_usd: number | null;
   costo_servidor_usd: number;
+  agentes: AgentsPlanBody;
+  max_rondas: number;
+  guardar_historial: boolean;
 }
 /**
  * This interface was referenced by `CriteriaContract`'s JSON-Schema
@@ -560,4 +623,14 @@ export interface SettingsBodyInput {
   default_provider?: ('openai' | 'anthropic' | 'groq' | 'ollama' | 'openai_compatible') | null;
   default_tier?: ('economico' | 'equilibrado' | 'maximo') | null;
   judge_provider?: ('openai' | 'anthropic' | 'groq' | 'ollama' | 'openai_compatible') | null;
+}
+/**
+ * This interface was referenced by `CriteriaContract`'s JSON-Schema
+ * via the `definition` "UsageBody".
+ */
+export interface UsageBody {
+  corridas_hora: number;
+  limite_hora: number;
+  corridas_dia: number;
+  limite_dia: number;
 }

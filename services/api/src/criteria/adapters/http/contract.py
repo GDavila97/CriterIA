@@ -55,6 +55,8 @@ RESPONSES: tuple[type[BaseModel], ...] = (
     schemas.HistoryItemBody,
     schemas.HistoryDeletedBody,
     schemas.EvaluationBody,
+    schemas.UsageBody,
+    schemas.AgentsBody,
 )
 
 

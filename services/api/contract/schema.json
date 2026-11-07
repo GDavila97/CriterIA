@@ -3,6 +3,93 @@
   "title": "CriteriaContract",
   "description": "HTTP bodies and SSE events of the CriterIA API.",
   "$defs": {
+    "AgentParamsBody": {
+      "additionalProperties": false,
+      "description": "One agent's tuning; the model stays within the provider of its group.",
+      "properties": {
+        "nivel": {
+          "anyOf": [
+            {
+              "enum": [
+                "economico",
+                "equilibrado",
+                "maximo"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "modelo": {
+          "anyOf": [
+            {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,99}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "temperatura": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "max_tokens": {
+          "anyOf": [
+            {
+              "maximum": 8192,
+              "minimum": 256,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "title": "AgentParamsBody",
+      "type": "object"
+    },
+    "AgentPromptsBody": {
+      "additionalProperties": false,
+      "properties": {
+        "analista": {
+          "type": "string"
+        },
+        "qa": {
+          "type": "string"
+        },
+        "revisor": {
+          "type": "string"
+        },
+        "evaluador": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "analista",
+        "qa",
+        "revisor",
+        "evaluador"
+      ],
+      "title": "AgentPromptsBody",
+      "type": "object"
+    },
     "AgenteEntrega": {
       "additionalProperties": false,
       "properties": {
@@ -243,6 +330,119 @@
         "mensaje"
       ],
       "title": "AgenteProgreso",
+      "type": "object"
+    },
+    "AgentsBody": {
+      "additionalProperties": false,
+      "properties": {
+        "version_prompts": {
+          "type": "string"
+        },
+        "version_juez": {
+          "type": "string"
+        },
+        "prompts": {
+          "$ref": "#/$defs/AgentPromptsBody"
+        },
+        "temperatura_maxima": {
+          "type": "number"
+        },
+        "max_tokens_minimo": {
+          "type": "integer"
+        },
+        "max_tokens_maximo": {
+          "type": "integer"
+        },
+        "rondas_maximas": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "version_prompts",
+        "version_juez",
+        "prompts",
+        "temperatura_maxima",
+        "max_tokens_minimo",
+        "max_tokens_maximo",
+        "rondas_maximas"
+      ],
+      "title": "AgentsBody",
+      "type": "object"
+    },
+    "AgentsParamsBody": {
+      "additionalProperties": false,
+      "properties": {
+        "analista": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AgentParamsBody"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "qa": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AgentParamsBody"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "revisor": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AgentParamsBody"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "evaluador": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AgentParamsBody"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "title": "AgentsParamsBody",
+      "type": "object"
+    },
+    "AgentsPlanBody": {
+      "additionalProperties": false,
+      "properties": {
+        "analista": {
+          "$ref": "#/$defs/ModelPlanBody"
+        },
+        "qa": {
+          "$ref": "#/$defs/ModelPlanBody"
+        },
+        "revisor": {
+          "$ref": "#/$defs/ModelPlanBody"
+        },
+        "evaluador": {
+          "$ref": "#/$defs/ModelPlanBody"
+        }
+      },
+      "required": [
+        "analista",
+        "qa",
+        "revisor",
+        "evaluador"
+      ],
+      "title": "AgentsPlanBody",
       "type": "object"
     },
     "ArtefactosHistorias": {
@@ -1407,7 +1607,8 @@
         "decision": {
           "enum": [
             "aprobado",
-            "editado"
+            "editado",
+            "otra_version"
           ],
           "type": "string"
         },
@@ -1449,12 +1650,20 @@
             "servidor"
           ],
           "type": "string"
+        },
+        "temperatura": {
+          "type": "number"
+        },
+        "max_tokens": {
+          "type": "integer"
         }
       },
       "required": [
         "proveedor",
         "modelo",
-        "clave"
+        "clave",
+        "temperatura",
+        "max_tokens"
       ],
       "title": "ModelPlanBody",
       "type": "object"
@@ -1564,7 +1773,8 @@
         "decision": {
           "enum": [
             "aprobado",
-            "editado"
+            "editado",
+            "otra_version"
           ],
           "type": "string"
         },
@@ -1572,6 +1782,19 @@
           "anyOf": [
             {
               "$ref": "#/$defs/Historias"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "nota": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "minLength": 1,
+              "type": "string"
             },
             {
               "type": "null"
@@ -1718,9 +1941,31 @@
         "max_rondas": {
           "anyOf": [
             {
-              "maximum": 5,
+              "maximum": 3,
               "minimum": 0,
               "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "agentes": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AgentsParamsBody"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "guardar_historial": {
+          "anyOf": [
+            {
+              "type": "boolean"
             },
             {
               "type": "null"
@@ -1763,6 +2008,15 @@
         },
         "costo_servidor_usd": {
           "type": "number"
+        },
+        "agentes": {
+          "$ref": "#/$defs/AgentsPlanBody"
+        },
+        "max_rondas": {
+          "type": "integer"
+        },
+        "guardar_historial": {
+          "type": "boolean"
         }
       },
       "required": [
@@ -1771,7 +2025,10 @@
         "juez",
         "juez_mismo_proveedor",
         "costo_estimado_usd",
-        "costo_servidor_usd"
+        "costo_servidor_usd",
+        "agentes",
+        "max_rondas",
+        "guardar_historial"
       ],
       "title": "RunCreatedBody",
       "type": "object"
@@ -1943,6 +2200,31 @@
         "costo_usd"
       ],
       "title": "Totales",
+      "type": "object"
+    },
+    "UsageBody": {
+      "additionalProperties": false,
+      "properties": {
+        "corridas_hora": {
+          "type": "integer"
+        },
+        "limite_hora": {
+          "type": "integer"
+        },
+        "corridas_dia": {
+          "type": "integer"
+        },
+        "limite_dia": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "corridas_hora",
+        "limite_hora",
+        "corridas_dia",
+        "limite_dia"
+      ],
+      "title": "UsageBody",
       "type": "object"
     },
     "Uso": {

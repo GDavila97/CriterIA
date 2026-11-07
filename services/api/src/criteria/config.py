@@ -143,6 +143,8 @@ class ApiSettings(Settings):
     auth_audience: Annotated[str, StringConstraints(min_length=1)]
     auth_algorithms: Annotated[list[str], NoDecode] = Field(default_factory=lambda: ["EdDSA"])
     auth_verified_claim: str = "email_verified"
+    # False only while the web cannot send verification emails (EMAIL_PROVIDER=none).
+    auth_require_verified_email: bool = True
     auth_jwks_cache_seconds: int = Field(default=300, ge=10, le=86400)
     auth_leeway_seconds: int = Field(default=30, ge=0, le=300)
     credentials_keys: SecretStr
@@ -156,6 +158,8 @@ class ApiSettings(Settings):
     sse_heartbeat_seconds: float = Field(default=15.0, gt=0, le=60)
     max_request_bytes: int = Field(default=65536, ge=1024, le=1_048_576)
     database_pool_size: int = Field(default=10, ge=2, le=50)
+    model_backend: Literal["real", "fake"] = "real"
+    fake_model_delay_ms: int = Field(default=300, ge=0, le=10_000)
 
     @field_validator("auth_algorithms", mode="before")
     @classmethod
@@ -176,6 +180,12 @@ class ApiSettings(Settings):
     def _valid_keys(cls, value: SecretStr) -> SecretStr:
         parse_credential_keys(value.get_secret_value())
         return value
+
+    @model_validator(mode="after")
+    def _fake_models_only_in_tests(self) -> Self:
+        if self.model_backend == "fake" and self.app_env != "test":
+            raise ValueError("MODEL_BACKEND=fake is only allowed with APP_ENV=test")
+        return self
 
     @model_validator(mode="after")
     def _active_key_exists(self) -> Self:

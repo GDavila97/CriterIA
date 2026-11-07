@@ -17,6 +17,9 @@ class EntradaAnalista:
     requerimiento: Requerimiento
     historias_previas: Historias | None = None
     observaciones: tuple[Observacion, ...] = ()
+    otra_version: bool = False
+    # The person's note when asking for another version; it is data, never an instruction.
+    nota_usuario: str | None = None
 
 
 @dataclass(frozen=True)

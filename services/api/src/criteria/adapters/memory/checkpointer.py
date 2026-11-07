@@ -13,3 +13,7 @@ class MemoryCheckpointer:
 
     async def discard(self, run_id: UUID) -> None:
         await self._saver.adelete_thread(str(run_id))
+
+    async def discard_orphans(self) -> int:
+        # Runs only live in this process, so nothing outlives them.
+        return 0

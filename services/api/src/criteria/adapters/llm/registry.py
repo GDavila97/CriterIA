@@ -21,7 +21,13 @@ from criteria.adapters.llm.retry import legacy_provider_client, provider_client
 from criteria.adapters.llm.ssrf import guarded_client, validate_endpoint_url
 from criteria.config import Settings
 from criteria.domain.events import ProveedorId
-from criteria.domain.run_config import USER_KEY_PROVIDERS, Nivel, OutputMode, ProviderSelection
+from criteria.domain.run_config import (
+    USER_KEY_PROVIDERS,
+    Nivel,
+    OutputMode,
+    ProviderSelection,
+    RolAgente,
+)
 from criteria.ports.models import KeyRequiredError, ProviderNotAllowedError
 
 PROVIDER_ORDER: tuple[ProveedorId, ...] = (
@@ -124,6 +130,10 @@ class ProviderRegistry:
         return self._catalog.estimate_parts(
             (gen.proveedor, _model_name(gen)), (judge.proveedor, _model_name(judge))
         )
+
+    def estimate_agent(self, rol: RolAgente, selection: ProviderSelection) -> float | None:
+        resolved = self.resolve(selection)
+        return self._catalog.estimate_agent(rol, (resolved.proveedor, _model_name(resolved)))
 
     def tiers(self, provider: ProveedorId) -> dict[Nivel, str]:
         return self._catalog.tiers(provider)

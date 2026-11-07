@@ -232,6 +232,17 @@ def test_logs_are_json_and_identify_users_only_by_a_pseudonym() -> None:
 
 
 class TestApiSettings:
+    def test_fake_models_are_refused_outside_tests(self) -> None:
+        with pytest.raises(ValidationError, match="MODEL_BACKEND=fake"):
+            api_settings(model_backend="fake", app_env="production")
+        with pytest.raises(ValidationError, match="MODEL_BACKEND=fake"):
+            api_settings(model_backend="fake", app_env="development")
+
+        assert api_settings(model_backend="fake").model_backend == "fake"
+
+    def test_verified_email_is_required_by_default(self) -> None:
+        assert api_settings().auth_require_verified_email is True
+
     def test_requires_the_server_settings(self) -> None:
         with pytest.raises(ConfigError) as error:
             load_api_settings()

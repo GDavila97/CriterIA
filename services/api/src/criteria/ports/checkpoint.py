@@ -12,3 +12,7 @@ class Checkpointer(Protocol):
     async def discard(self, run_id: UUID) -> None:
         """Deletes the checkpoints of a finished run; unsaved runs must not linger."""
         ...
+
+    async def discard_orphans(self) -> int:
+        """Deletes checkpoints whose run no longer exists, such as after an account deletion."""
+        ...

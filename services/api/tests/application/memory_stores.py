@@ -16,6 +16,7 @@ from criteria.ports.stores import (
     SavedRun,
     SavedRunSummary,
     StreamBusyError,
+    UsageSummary,
     UserSettings,
 )
 
@@ -123,6 +124,7 @@ class MemoryUsage:
     reserved: list[tuple[str, bool, float]] = field(default_factory=list)
     settled: list[tuple[str, date, float, float | None]] = field(default_factory=list)
     settled_runs: set[UUID] = field(default_factory=set)
+    extra: list[tuple[UUID, float]] = field(default_factory=list)
     refuse: LimitExceededError | None = None
 
     async def reserve(
@@ -139,6 +141,15 @@ class MemoryUsage:
             return
         self.settled_runs.add(run_id)
         self.settled.append((user_id, day, reserved_usd, actual_usd))
+
+    async def reserve_extra(self, run_id: UUID, user_id: str, day: date, cost_usd: float) -> None:
+        if self.refuse is not None:
+            raise self.refuse
+        self.extra.append((run_id, cost_usd))
+
+    async def summary(self, user_id: str, at: datetime) -> UsageSummary:
+        mine = sum(1 for owner, _, _ in self.reserved if owner == user_id)
+        return UsageSummary(runs_last_hour=mine, runs_per_hour=5, runs_today=mine, runs_per_day=20)
 
 
 class MemoryHistory:

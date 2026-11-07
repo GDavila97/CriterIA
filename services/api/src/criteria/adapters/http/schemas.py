@@ -7,7 +7,14 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl, SecretStr, StringConstraints
 
 from criteria.domain.events import ProveedorId
-from criteria.domain.run_config import Nivel, NombreModelo
+from criteria.domain.run_config import (
+    MAX_RONDAS,
+    MAX_TOKENS_MAXIMO,
+    MAX_TOKENS_MINIMO,
+    TEMPERATURA_MAXIMA,
+    Nivel,
+    NombreModelo,
+)
 
 KeySource = Literal["usuario", "servidor"]
 
@@ -26,19 +33,47 @@ class HealthBody(Body):
     version: str
 
 
+class AgentParamsBody(Body):
+    """One agent's tuning; the model stays within the provider of its group."""
+
+    nivel: Nivel | None = None
+    modelo: NombreModelo | None = None
+    temperatura: float | None = Field(default=None, ge=0, le=TEMPERATURA_MAXIMA)
+    max_tokens: int | None = Field(default=None, ge=MAX_TOKENS_MINIMO, le=MAX_TOKENS_MAXIMO)
+
+
+class AgentsParamsBody(Body):
+    analista: AgentParamsBody | None = None
+    qa: AgentParamsBody | None = None
+    revisor: AgentParamsBody | None = None
+    evaluador: AgentParamsBody | None = None
+
+
 class RunCreateBody(Body):
     requerimiento: Annotated[str, StringConstraints(max_length=2000)]
     proveedor: ProveedorId | None = None
     nivel: Nivel | None = None
     modelo: NombreModelo | None = None
     juez: ProveedorId | None = None
-    max_rondas: int | None = Field(default=None, ge=0, le=5)
+    max_rondas: int | None = Field(default=None, ge=0, le=MAX_RONDAS)
+    agentes: AgentsParamsBody | None = None
+    # Fixed when the run is created; null takes the account setting.
+    guardar_historial: bool | None = None
 
 
 class ModelPlanBody(Body):
     proveedor: ProveedorId
     modelo: str
     clave: KeySource
+    temperatura: float
+    max_tokens: int
+
+
+class AgentsPlanBody(Body):
+    analista: ModelPlanBody
+    qa: ModelPlanBody
+    revisor: ModelPlanBody
+    evaluador: ModelPlanBody
 
 
 class RunCreatedBody(Body):
@@ -48,6 +83,33 @@ class RunCreatedBody(Body):
     juez_mismo_proveedor: bool
     costo_estimado_usd: float | None
     costo_servidor_usd: float
+    agentes: AgentsPlanBody
+    max_rondas: int
+    guardar_historial: bool
+
+
+class UsageBody(Body):
+    corridas_hora: int
+    limite_hora: int
+    corridas_dia: int
+    limite_dia: int
+
+
+class AgentPromptsBody(Body):
+    analista: str
+    qa: str
+    revisor: str
+    evaluador: str
+
+
+class AgentsBody(Body):
+    version_prompts: str
+    version_juez: str
+    prompts: AgentPromptsBody
+    temperatura_maxima: float
+    max_tokens_minimo: int
+    max_tokens_maximo: int
+    rondas_maximas: int
 
 
 class CredentialPutBody(Body):

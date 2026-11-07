@@ -9,7 +9,7 @@ from pydantic import SecretStr
 from criteria.adapters.crypto.aesgcm import AesGcmCipher
 from criteria.adapters.llm.catalog import ModelCatalog
 from criteria.adapters.llm.registry import ProviderRegistry
-from criteria.application.accounts import AccountService
+from criteria.application.accounts import AccountService, AgentPrompts
 from criteria.application.credentials import CredentialService
 from criteria.application.errors import (
     CredentialRejectedError,
@@ -17,9 +17,15 @@ from criteria.application.errors import (
     NotFoundError,
 )
 from criteria.config import SERVICE_ROOT, Settings
+from criteria.domain.run_config import ROLES
 from criteria.ports.stores import LimitExceededError, SavedRun, UserSettings
 from tests import factories as f
-from tests.application.memory_stores import MemoryCredentials, MemoryHistory, MemorySettings
+from tests.application.memory_stores import (
+    MemoryCredentials,
+    MemoryHistory,
+    MemorySettings,
+    MemoryUsage,
+)
 from tests.fakes import FakeClock, FakeKeyValidator
 
 CATALOG = ModelCatalog.load(SERVICE_ROOT / "config" / "models.toml")
@@ -141,6 +147,13 @@ def account_service(**settings: object) -> tuple[AccountService, CredentialServi
         credentials=credentials,
         router=registry,
         default_provider="groq",
+        usage=MemoryUsage(),
+        clock=FakeClock(),
+        prompts=AgentPrompts(
+            version_prompts="v1",
+            version_juez="v1",
+            prompts={rol: f"prompt de {rol}" for rol in ROLES},
+        ),
     )
     return service, credentials, history
 

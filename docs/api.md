@@ -8,7 +8,7 @@ Fuera de producción, el esquema OpenAPI está en `/openapi.json` y la documenta
 
 - Todas las rutas, salvo `GET /healthz` y `GET /evaluation`, exigen `Authorization: Bearer <jwt>`.
 - El JWT lo emite la web (Better Auth) y dura cinco minutos ([ADR 0008](adr/0008-better-auth-and-api-jwt.md)). La API lo verifica con el JWKS de la web (`AUTH_JWKS_URL`): firma con un algoritmo asimétrico de `AUTH_ALGORITHMS` (EdDSA por defecto), `kid` presente en el JWKS, y `iss`, `aud`, `exp` y `sub` obligatorios, con `AUTH_LEEWAY_SECONDS` de tolerancia. Un `kid` desconocido fuerza una recarga del JWKS, como mucho una cada 30 s.
-- `sub` es el `user_id`. Crear corridas y guardar claves exige además que el claim `AUTH_VERIFIED_CLAIM` (`email_verified`) sea `true`; Better Auth debe incluirlo en el payload del JWT.
+- `sub` es el `user_id`, el `id` de `auth."user"`. Crear corridas y guardar claves exige además que el claim `AUTH_VERIFIED_CLAIM` (`email_verified`) sea `true`; Better Auth lo incluye en el payload del JWT. Mientras la web no pueda enviar correos (`EMAIL_PROVIDER=none`), `AUTH_REQUIRE_VERIFIED_EMAIL=false` desactiva esa exigencia ([ADR 0020](adr/0020-github-first-sign-in-without-email.md)).
 - Las claves de proveedor nunca viajan en cabeceras: solo en el cuerpo de `PUT /me/credentials/{provider}`.
 - Un token ausente, vencido o inválido recibe siempre el mismo `401` con `WWW-Authenticate: Bearer`.
 
@@ -25,6 +25,8 @@ Fuera de producción, el esquema OpenAPI está en `/openapi.json` y la documenta
 | `DELETE /me/credentials/{provider}` | sesión | `204` | Borra la clave; `404` si no había |
 | `GET /me/settings` / `PUT /me/settings` | sesión | `200 SettingsBody` | Historial activado, proveedor, nivel y juez por defecto |
 | `GET /catalog` | sesión | `200 CatalogBody` | Proveedores, disponibilidad y origen de la clave, niveles con modelo y costo estimado, proveedor y juez por defecto |
+| `GET /agents` | sesión | `200 AgentsBody` | Prompts de sistema de los cuatro agentes con su versión (solo lectura) y los rangos de los parámetros por agente |
+| `GET /me/usage` | sesión | `200 UsageBody` | Corridas iniciadas en la última hora y en el día, con sus límites |
 | `GET /me/runs` | sesión | `200 HistorySummaryBody[]` | Historial guardado (solo si `save_history` estaba activo al terminar) |
 | `GET /me/runs/{id}` | sesión | `200 HistoryItemBody` | Una corrida guardada con artefactos, puntajes, versiones y totales |
 | `DELETE /me/runs` | sesión | `200 HistoryDeletedBody` | Borra todo el historial del usuario |
@@ -35,16 +37,34 @@ Fuera de producción, el esquema OpenAPI está en `/openapi.json` y la documenta
 ### `POST /runs`
 
 ```json
-{ "requerimiento": "texto de 20 a 2,000 caracteres", "proveedor": "groq", "nivel": "economico", "juez": "groq", "max_rondas": 2 }
+{
+  "requerimiento": "texto de 20 a 2,000 caracteres",
+  "proveedor": "groq",
+  "nivel": "economico",
+  "juez": "groq",
+  "max_rondas": 2,
+  "guardar_historial": false,
+  "agentes": { "qa": { "modelo": "llama-3.3-70b-versatile", "temperatura": 0.4, "max_tokens": 4096 } }
+}
 ```
 
-Todo es opcional salvo `requerimiento`. Sin `proveedor` se usa el de los ajustes y, si no hay, el del servidor. `modelo` gana sobre `nivel`. Sin `juez` se usa el de los ajustes o, si no, `elegir_juez` sobre los proveedores disponibles para el usuario ([ADR 0016](adr/0016-claves-por-usuario.md)).
+Todo es opcional salvo `requerimiento`. `max_rondas` va de 0 a 3.
+
+- `agentes` ajusta a cada agente por separado: `nivel` o `modelo` (de la lista permitida), `temperatura` de 0 a 1 y `max_tokens` de 256 a 8,192. El modelo se elige solo dentro del proveedor de su grupo: Analista, QA y Revisor usan el de generación y el Evaluador el del juez, así que el aviso de proveedor sigue siendo exacto. Lo que no se ajusta toma el valor de la corrida.
+- `guardar_historial` decide si esa corrida se copia al historial al terminar. Sin él se usa el ajuste "Guardar mis corridas" de la cuenta. Queda fijo al crear la corrida: cambiar el ajuste después no la afecta.
+- El costo estimado suma el de cada agente con su propio modelo, y `costo_servidor_usd` solo el de los agentes que usan la clave del servidor. Sin `proveedor` se usa el de los ajustes y, si no hay, el del servidor. `modelo` gana sobre `nivel`. Sin `juez` se usa el de los ajustes o, si no, `elegir_juez` sobre los proveedores disponibles para el usuario ([ADR 0016](adr/0016-claves-por-usuario.md)).
 
 La clave sale de la clave propia del usuario para ese proveedor; si no tiene, de la del servidor cuando el proveedor está en `SERVER_KEY_PROVIDERS`; si tampoco, `422 clave_requerida`. La respuesta dice qué clave usará cada parte (`"usuario"` o `"servidor"`), el costo estimado total y la parte que paga el servidor (`costo_servidor_usd`), que es lo que se reserva del cupo global.
 
 ### Aprobación
 
-`POST /runs/{id}/approval` acepta `{"decision": "aprobado"}` o `{"decision": "editado", "historias": {...}}`. Solo vale mientras la corrida está en `esperando_aprobacion`; si no, `409 estado_invalido`. La corrida pasa a ese estado antes de que el cliente reciba `en_espera_humano`, así que se puede aprobar en cuanto llega el evento.
+`POST /runs/{id}/approval` acepta:
+
+- `{"decision": "aprobado"}`
+- `{"decision": "editado", "historias": {...}}`
+- `{"decision": "otra_version", "nota": "texto opcional de hasta 500 caracteres"}`: el Analista vuelve a redactar las historias y la corrida pausa de nuevo. La nota llega al modelo como dato, dentro de `<nota_usuario>` y con el mismo escape que el requerimiento, así que no puede cerrar la etiqueta. Se puede pedir dos veces por corrida; la tercera responde `409 versiones_agotadas`. No consume otra corrida del cupo, pero el costo estimado de la llamada extra se reserva del tope global en dólares (si no cabe, `429 cupo_gratuito_agotado`) y al terminar se ajusta al real.
+
+Solo vale mientras la corrida está en `esperando_aprobacion`; si no, `409 estado_invalido`. La corrida pasa a ese estado antes de que el cliente reciba `en_espera_humano`, así que se puede aprobar en cuanto llega el evento.
 
 ## Stream SSE
 
@@ -99,6 +119,7 @@ Todas las respuestas de error tienen la forma `{"code": "...", "message": "..."}
 | `metodo_no_permitido` | 405 | Método no soportado en la ruta |
 | `estado_invalido` | 409 | La corrida no está en un estado que permita la acción |
 | `stream_activo` | 409 | Ya hay un stream abierto para la corrida |
+| `versiones_agotadas` | 409 | Ya se pidieron dos versiones nuevas de las historias en la corrida |
 | `cuerpo_demasiado_grande` | 413 | El cuerpo supera `MAX_REQUEST_BYTES` |
 | `entrada_invalida` | 422 | El cuerpo no cumple el esquema o la regla de negocio |
 | `clave_requerida` | 422 | El proveedor necesita la clave del usuario |
@@ -109,6 +130,14 @@ Todas las respuestas de error tienen la forma `{"code": "...", "message": "..."}
 | `error_interno` | 500 | Error no previsto; el log registra solo su tipo |
 
 Los fallos de los agentes durante el stream no son errores HTTP: llegan como eventos `agente_error` y `corrida_fin` con `estado: "error"`.
+
+## Cuentas
+
+Cada `user_id` de `app` tiene una llave foránea hacia `auth."user"` con borrado en cascada (migración 0004). Cuando la web borra una cuenta, Postgres borra sus ajustes, claves, validaciones, uso, corridas en curso con sus eventos e historial. Los checkpoints de `graph` no tienen llave foránea: la limpieza oportunista borra los que ya no tienen corrida.
+
+## Modelos simulados
+
+Con `MODEL_BACKEND=fake` la API responde con modelos deterministas y valida las claves sin red, para las pruebas de punta a punta. Pasan por los agentes, los prompts, los validadores y el grafo reales: el Revisor pide una corrección la primera vez, y una clave que contiene `nosaldo` falla como una cuenta sin saldo. `FAKE_MODEL_DELAY_MS` fija la espera de cada llamada. La API se niega a arrancar con `MODEL_BACKEND=fake` si `APP_ENV` no es `test`.
 
 ## Endurecimiento HTTP
 

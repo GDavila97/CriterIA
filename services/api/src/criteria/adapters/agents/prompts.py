@@ -1,8 +1,8 @@
 import re
 from pathlib import Path
-from typing import Literal
 
-RolAgente = Literal["analista", "qa", "revisor", "evaluador"]
+from criteria.domain.run_config import RolAgente
+
 _VERSION = re.compile(r"^v\d+$")
 # The judge has its own versions so improving the agents never changes how they are scored.
 JUDGE_DIR = "juez"

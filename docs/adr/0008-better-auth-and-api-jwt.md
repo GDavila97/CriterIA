@@ -1,6 +1,6 @@
 # 0008. Autenticación con Better Auth y JWT para la API
 
-**Estado:** aceptada.
+**Estado:** aceptada; ajustada por la [0020](0020-github-first-sign-in-without-email.md) (GitHub como acceso principal mientras no se envían correos).
 
 **Contexto:** se necesitan cuentas para límites por usuario (en la entrevista todos comparten la IP de Cimat) e historial. Los datos de usuarios deben quedar en la base propia.
 

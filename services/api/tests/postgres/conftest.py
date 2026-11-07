@@ -18,7 +18,7 @@ from sqlalchemy.engine import make_url
 
 from criteria.config import SERVICE_ROOT
 from tests.postgres.api_support import api
-from tests.postgres.database import Database
+from tests.postgres.database import AUTH_USER_TABLE, Database
 
 ADMIN_URL = os.environ.get("TEST_DATABASE_ADMIN_URL")
 # Local and CI clusters only; never a real password.
@@ -60,6 +60,10 @@ def database() -> Iterator[Database]:
                     sql.Identifier(role), sql.Literal(ROLE_PASSWORD)
                 )
             )
+        # Better Auth creates its tables as web_role before the API migrations run.
+        conn.execute("SET ROLE web_role")
+        conn.execute(AUTH_USER_TABLE)
+        conn.execute("RESET ROLE")
     db = Database(
         name=name,
         admin=admin,

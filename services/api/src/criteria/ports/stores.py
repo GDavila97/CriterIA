@@ -1,3 +1,4 @@
+from collections.abc import Mapping
 from contextlib import AbstractAsyncContextManager
 from dataclasses import dataclass, field
 from datetime import date, datetime
@@ -5,7 +6,7 @@ from typing import Any, Literal, Protocol
 from uuid import UUID
 
 from criteria.domain.events import ProveedorId
-from criteria.domain.run_config import Nivel
+from criteria.domain.run_config import Nivel, RolAgente
 
 RunStatus = Literal["creada", "en_curso", "esperando_aprobacion", "fallida"]
 KeySource = Literal["usuario", "servidor"]
@@ -50,6 +51,12 @@ class RunRecord:
     estimated_cost_usd: float | None
     created_at: datetime
     approval: dict[str, Any] | None = None
+    # One plan per agent; runs created before F4 only have the generation and judge plans.
+    agent_plans: Mapping[RolAgente, ModelPlan] = field(default_factory=dict)
+    save_history: bool = False
+
+    def plan_for(self, rol: RolAgente) -> ModelPlan:
+        return self.agent_plans.get(rol) or (self.judge if rol == "evaluador" else self.generation)
 
 
 class StreamBusyError(Exception):
@@ -112,6 +119,22 @@ class UsageGuard(Protocol):
     ) -> None:
         """Replaces the reserved server cost with the real one, once per run even if retried."""
         ...
+
+    async def reserve_extra(self, run_id: UUID, user_id: str, day: date, cost_usd: float) -> None:
+        """Books more server cost for a running run within the global budget; raises when full."""
+        ...
+
+    async def summary(self, user_id: str, at: datetime) -> "UsageSummary":
+        """How many runs the user started in the last hour and today, with their limits."""
+        ...
+
+
+@dataclass(frozen=True)
+class UsageSummary:
+    runs_last_hour: int
+    runs_per_hour: int
+    runs_today: int
+    runs_per_day: int
 
 
 @dataclass(frozen=True)

@@ -30,6 +30,9 @@ TextoLargo = Annotated[
 Justificacion = Annotated[
     str, StringConstraints(strip_whitespace=True, min_length=1, max_length=280), _PRINTABLE
 ]
+NotaUsuario = Annotated[
+    str, StringConstraints(strip_whitespace=True, min_length=1, max_length=500), _PRINTABLE
+]
 TextoRequerimiento = Annotated[
     str, StringConstraints(strip_whitespace=True, min_length=20, max_length=2000), _PRINTABLE
 ]
