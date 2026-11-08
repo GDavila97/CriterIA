@@ -15,6 +15,13 @@ export const catalog = (withOwnKeys = false): CatalogBody => ({
         { nivel: 'maximo', modelo: 'gpt-6-astra', costo_estimado_usd: 0.4 },
       ],
       modelos: ['gpt-6-luna', 'gpt-6.1-sol', 'gpt-6-astra', 'gpt-5.4-mini'],
+      costos_generacion: [
+        { modelo: 'gpt-6-luna', costo_usd: 0.003 },
+        { modelo: 'gpt-6.1-sol', costo_usd: 0.07 },
+        { modelo: 'gpt-6-astra', costo_usd: 0.35 },
+        { modelo: 'gpt-5.4-mini', costo_usd: null },
+      ],
+      costo_juez_usd: 0.001,
     },
     {
       proveedor: 'anthropic',
@@ -27,6 +34,12 @@ export const catalog = (withOwnKeys = false): CatalogBody => ({
         { nivel: 'maximo', modelo: 'claude-opus-5-5', costo_estimado_usd: 0.18 },
       ],
       modelos: ['claude-haiku-5-5', 'claude-sonnet-5-5', 'claude-opus-5-5'],
+      costos_generacion: [
+        { modelo: 'claude-haiku-5-5', costo_usd: 0.003 },
+        { modelo: 'claude-sonnet-5-5', costo_usd: 0.07 },
+        { modelo: 'claude-opus-5-5', costo_usd: 0.14 },
+      ],
+      costo_juez_usd: 0.001,
     },
     {
       proveedor: 'groq',
@@ -35,6 +48,11 @@ export const catalog = (withOwnKeys = false): CatalogBody => ({
       acepta_clave_propia: true,
       niveles: [{ nivel: 'economico', modelo: 'openai/gpt-oss-20b', costo_estimado_usd: 0.004 }],
       modelos: ['openai/gpt-oss-20b', 'llama-3.3-70b-versatile'],
+      costos_generacion: [
+        { modelo: 'openai/gpt-oss-20b', costo_usd: 0.003 },
+        { modelo: 'llama-3.3-70b-versatile', costo_usd: 0.02 },
+      ],
+      costo_juez_usd: 0.001,
     },
     {
       proveedor: 'ollama',
@@ -43,6 +61,8 @@ export const catalog = (withOwnKeys = false): CatalogBody => ({
       acepta_clave_propia: false,
       niveles: [],
       modelos: ['llama3.1:8b'],
+      costos_generacion: [{ modelo: 'llama3.1:8b', costo_usd: 0 }],
+      costo_juez_usd: null,
     },
     {
       proveedor: 'openai_compatible',
@@ -51,6 +71,8 @@ export const catalog = (withOwnKeys = false): CatalogBody => ({
       acepta_clave_propia: true,
       niveles: [],
       modelos: [],
+      costos_generacion: [],
+      costo_juez_usd: null,
     },
   ],
 });

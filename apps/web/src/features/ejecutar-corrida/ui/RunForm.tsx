@@ -16,6 +16,7 @@ import {
   recipients,
 } from '../model/choices';
 import { EXAMPLES } from '../model/examples';
+import { costText, keyKind, providerNotice } from '../model/notice';
 
 import styles from './RunForm.module.css';
 
@@ -74,7 +75,11 @@ export function RunForm({
   const length = requerimiento.trim().length;
   const invalid = length < MIN_REQUIREMENT || length > MAX_REQUIREMENT;
   const needsModel = selected.value === COMPATIBLE_MODEL && !compatibleModel.trim();
-  const serverPays = sendTo.some((r) => r.clave === 'servidor');
+  const notice = providerNotice(
+    sendTo.map((r) => ({ provider: r.provider, kind: keyKind(r.provider, r.clave) })),
+    judgeProvider === selected.provider,
+  );
+  const judgeClave = sendTo.find((r) => r.provider === judgeProvider)?.clave ?? null;
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
@@ -164,25 +169,12 @@ export function RunForm({
           />
         )}
         <Notice>
-          Tu texto se enviará a{' '}
-          {sendTo.map((r, i) => (
-            <span key={r.provider}>
-              {i > 0 && ' y a '}
-              <strong>{r.nombre}</strong>{' '}
-              {r.clave === 'servidor' ? 'con la clave de CriterIA' : 'con tu clave'}
-            </span>
-          ))}
-          . No incluyas datos personales ni confidenciales.
-          {judgeProvider === selected.provider && (
-            <> El juez es del mismo proveedor y su calificación puede favorecerlo.</>
+          {notice.map((part, i) =>
+            part.strong ? <strong key={i}>{part.text}</strong> : <span key={i}>{part.text}</span>,
           )}
         </Notice>
         <p className={styles.cost}>
-          {selected.costo === null
-            ? 'Costo estimado: sin precio para este modelo.'
-            : `Costo estimado: ≈ USD ${selected.costo.toFixed(4)} por corrida, ${
-                serverPays ? 'cubierto por CriterIA' : 'cobrado a tu cuenta del proveedor'
-              }.`}
+          {costText(catalog, selected, judgeProvider, keyKind(judgeProvider, judgeClave))}
         </p>
         <CheckboxField
           label="Guardar esta corrida en mi historial"

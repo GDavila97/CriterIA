@@ -7,6 +7,8 @@ import { autoJudge, defaultChoice, generationChoices } from '../model/choices';
 import { EXAMPLES } from '../model/examples';
 import { RunForm } from './RunForm';
 
+const notice = () => screen.getByText(/No incluyas datos/).parentElement;
+
 describe('RunForm', () => {
   it('runs the free mode by default and tells where the text goes', async () => {
     const onSubmit = vi.fn();
@@ -21,7 +23,7 @@ describe('RunForm', () => {
       />,
     );
 
-    expect(screen.getByText(/Tu texto se enviará a/)).toHaveTextContent(
+    expect(notice()).toHaveTextContent(
       'Tu texto se enviará a Groq con la clave de CriterIA. No incluyas datos personales ni confidenciales. El juez es del mismo proveedor',
     );
     expect(screen.getByText(/Costo estimado/)).toHaveTextContent(
@@ -83,7 +85,7 @@ describe('RunForm', () => {
     );
 
     expect(screen.getByLabelText('Generación')).toHaveValue('openai|equilibrado');
-    expect(screen.getByText(/Tu texto se enviará a/)).toHaveTextContent(
+    expect(notice()).toHaveTextContent(
       'Tu texto se enviará a OpenAI con tu clave y a Anthropic con tu clave.',
     );
     expect(screen.getByText(/Costo estimado/)).toHaveTextContent(
