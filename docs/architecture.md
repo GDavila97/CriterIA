@@ -181,7 +181,7 @@ Las dos vistas de la corrida (clásica y, en F9, oficina) son widgets sobre la m
 - Los formularios con secretos (contraseña, clave de API, requerimiento) usan `method="post"` y no se pueden enviar antes de la hidratación, para que el navegador nunca los mande en una URL.
 - Eliminar la cuenta borra `auth.user`; las llaves foráneas de `app` borran en cascada los datos de la API.
 
-Los tokens de diseño viven en `src/shared/ui/tokens.css` (claro y oscuro con `prefers-color-scheme`), y las fuentes Plus Jakarta Sans y JetBrains Mono se sirven desde el propio origen con `next/font`. La `Ficha` tiene insignia de rol, patas, parpadeo ocasional y balanceo al trabajar, sin animación con `prefers-reduced-motion`.
+Los tokens de diseño viven en `src/shared/ui/tokens.css` (claro y oscuro con `prefers-color-scheme`), y las fuentes Plus Jakarta Sans y JetBrains Mono se sirven desde el propio origen con `next/font`. La `Ficha` tiene insignia de rol, patas, parpadeo ocasional y balanceo al trabajar, sin animación con `prefers-reduced-motion`. La escala de espaciado, los tokens de movimiento y sus reglas están en [ui.md](ui.md).
 
 ## Contrato
 
