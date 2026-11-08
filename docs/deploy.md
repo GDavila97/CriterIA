@@ -46,6 +46,29 @@ Parten de `services/api/.env.example` y `apps/web/.env.example`. Lo que falta de
 | `SERVER_KEY_PROVIDERS=groq`, `APP_ENV=production` | Variables de Cloud Run | |
 | `USER_RUNS_PER_HOUR`, `USER_RUNS_PER_DAY`, `GLOBAL_DAILY_RUNS`, `GLOBAL_DAILY_BUDGET_USD` | Variables de Cloud Run | Los topes globales se fijan con los precios verificados de Groq (F5) |
 | `RUN_TTL_MINUTES`, `SSE_HEARTBEAT_SECONDS`, `MAX_REQUEST_BYTES`, `PROVIDER_TIMEOUTS` | Variables de Cloud Run | Valores por defecto salvo motivo |
+| `AUTH_REQUIRE_VERIFIED_EMAIL` | Variable de Cloud Run | `false` mientras la web tenga `EMAIL_PROVIDER=none` ([ADR 0020](adr/0020-github-first-sign-in-without-email.md)); `true` al tener dominio y envío |
+| `MODEL_BACKEND` | — | Siempre `real` (el valor por defecto); `fake` solo existe para las pruebas y la API no arranca con él fuera de `APP_ENV=test` |
+
+Web (Vercel):
+
+| Variable | Dónde vive | Nota |
+| --- | --- | --- |
+| `NEXT_PUBLIC_APP_ENV`, `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_OFFICE_VIEW` | Variables de Vercel | Se incrustan en el build; la URL de la API en `https` |
+| `BETTER_AUTH_SECRET` | Variable secreta de Vercel | 32 o más caracteres aleatorios; también cifra la llave privada del JWKS, así que cambiarlo obliga a regenerarla |
+| `BETTER_AUTH_URL` | Variable de Vercel | Origen público de la web; con `https` en producción |
+| `AUTH_DATABASE_URL` | Variable secreta de Vercel | `web_role`, URL con pooler de Neon (Better Auth no usa locks de sesión) |
+| `AUTH_JWT_ISSUER`, `AUTH_JWT_AUDIENCE` | Variables de Vercel | Vacías usan `BETTER_AUTH_URL`; deben coincidir con `AUTH_ISSUER` y `AUTH_AUDIENCE` de la API |
+| `EMAIL_PROVIDER`, `EMAIL_FROM`, `RESEND_API_KEY` | Variables de Vercel | `none` hasta tener dominio; después `resend` con la clave como secreto |
+| `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` | Variables de Vercel (el secreto como secreto) | De la OAuth App de producción |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | — | Vacías: Google queda preparado sin botón |
+
+### OAuth App de GitHub (F6)
+
+En GitHub, Settings > Developer settings > OAuth Apps, una app distinta para producción (la de desarrollo apunta a `localhost`):
+
+- Homepage URL: el origen de la web en Vercel.
+- Authorization callback URL: `https://<origen de la web>/api/auth/callback/github`.
+- No pide permisos más allá de `user:email`; los tokens de GitHub no se guardan.
 
 ### Rotación de la llave de las claves
 
@@ -55,13 +78,23 @@ Parten de `services/api/.env.example` y `apps/web/.env.example`. Lo que falta de
 
 ## Migraciones
 
-Siempre antes de desplegar la API, con la imagen del mismo SHA y `MIGRATION_DATABASE_URL`:
+El orden importa: primero las de Better Auth (crean `auth."user"`) y después las de la API, porque la migración 0004 agrega llaves foráneas hacia esa tabla.
+
+1. Better Auth, desde `apps/web` con el mismo SHA y como `web_role`:
+
+   ```bash
+   AUTH_DATABASE_URL=... BETTER_AUTH_SECRET=... BETTER_AUTH_URL=... NEXT_PUBLIC_APP_ENV=production pnpm auth:migrate
+   ```
+
+   Las tablas quedan a nombre de `web_role`, y los privilegios por defecto de `roles.sql` dan a `migrator_role` solo `REFERENCES` sobre ellas, nunca lectura.
+
+2. API, siempre antes de desplegarla, con la imagen del mismo SHA y `MIGRATION_DATABASE_URL`:
 
 ```bash
 docker run --rm -e MIGRATION_DATABASE_URL="$MIGRATION_DATABASE_URL" <imagen> alembic upgrade head
 ```
 
-La primera migración crea las tablas de `app`, la segunda aplica las migraciones del checkpointer de LangGraph en `graph` y la tercera agrega `app.run.settled`, que evita ajustar dos veces el cupo de una corrida. La API no ejecuta DDL: si los checkpoints no están en la última versión, se niega a arrancar. Al actualizar `langgraph-checkpoint-postgres` hay que agregar una migración de Alembic que vuelva a correr sus migraciones. En F6 este paso se vuelve un job manual de Cloud Run con environment protegido, junto con las migraciones de Better Auth (esquema `auth`).
+La primera migración crea las tablas de `app`, la segunda aplica las migraciones del checkpointer de LangGraph en `graph` la tercera agrega `app.run.settled`, que evita ajustar dos veces el cupo de una corrida, y la cuarta liga cada `user_id` de `app` a `auth."user"` con borrado en cascada y guarda los planes por agente y la decisión de historial de cada corrida. La API no ejecuta DDL: si los checkpoints no están en la última versión, se niega a arrancar. Al actualizar `langgraph-checkpoint-postgres` hay que agregar una migración de Alembic que vuelva a correr sus migraciones. En F6 este paso se vuelve un job manual de Cloud Run con environment protegido, junto con las migraciones de Better Auth (esquema `auth`).
 
 ## API en Cloud Run
 

@@ -8,7 +8,9 @@ El uso gratuito por defecto corre sobre Groq con la clave del servidor. Para usa
 
 **App desplegada:** pendiente (F6).
 
-**Captura:** pendiente. Se agregará en `docs/media/` cuando la vista clásica esté lista (F7).
+![Vista clásica con una corrida terminada: flujo de los cuatro agentes, casos de prueba con su origen, rúbrica y registro](docs/media/vista-clasica.webp)
+
+Capturas de las pruebas de punta a punta, con modelos simulados. También en [modo oscuro durante la pausa humana](docs/media/pausa-humana-oscuro.webp) y [a 390 px](docs/media/vista-clasica-390.webp).
 
 ## Para quién
 
@@ -28,13 +30,13 @@ Flujo: Analista → pausa para que la persona apruebe o edite → QA → Revisor
 
 ## Estado
 
-Fase F3 (API): el núcleo de agentes está expuesto por HTTP con autenticación por JWT, corridas transmitidas por SSE con reconexión, aprobación humana, claves propias cifradas, límites por usuario y cupo global, historial y tablero de evaluación, sobre Postgres. La web todavía muestra una página de inicio provisional; el registro, la sesión y las pantallas de corrida llegan en F4.
+Fase F4 (web y autenticación): la web en Next.js está conectada a la API real. Incluye registro con GitHub o con correo y contraseña, la vista clásica con la pausa humana en línea, el panel del agente con parámetros por agente, el historial, "Modelos y claves", "Privacidad y datos" y el tablero de evaluación. La vista oficina llega en F9 y el despliegue en F6.
 
 ## Stack
 
 | Parte | Tecnología |
 | --- | --- |
-| Web (`apps/web`) | Next.js 16 con App Router, React 19, TypeScript estricto, zod, CSS Modules, Sentry |
+| Web (`apps/web`) | Next.js 16 con App Router, React 19, TypeScript estricto, Better Auth, zod, CSS Modules, Sentry |
 | API (`services/api`) | Python 3.13, Pydantic AI, LangGraph, FastAPI, SQLAlchemy con psycopg, Alembic, PyJWT, pydantic-settings, Sentry |
 | Datos | Neon Postgres (Postgres 16 en Docker en local y en el CI) |
 | Nube | GCP Cloud Run (API) y Vercel (web) |
@@ -96,10 +98,13 @@ La CLI (`uv run criteria run …`) no necesita base de datos ni las variables de
 
 ```bash
 cd apps/web
-cp .env.example .env.local   # NEXT_PUBLIC_APP_ENV y NEXT_PUBLIC_API_URL son obligatorias
+cp .env.example .env.local   # completa BETTER_AUTH_SECRET; GitHub es opcional
 pnpm install --frozen-lockfile
+set -a && . ./.env.local && set +a && pnpm auth:migrate   # tablas de Better Auth en auth
 pnpm dev                     # http://localhost:3000
 ```
+
+Orden con la base local: `make db-up` y `make db-setup` en `services/api`, luego `pnpm auth:migrate` aquí y al final `make migrate` en la API (su migración 0004 apunta a `auth."user"`). Mientras `EMAIL_PROVIDER=none`, la API debe correr con `AUTH_REQUIRE_VERIFIED_EMAIL=false`. Para probar la verificación por correo, `EMAIL_PROVIDER=smtp` con `SMTP_URL=smtp://127.0.0.1:1025` y los correos en Mailpit (http://127.0.0.1:8025).
 
 Si falta una variable obligatoria, la API y la web se niegan a arrancar y el mensaje dice cuál falta.
 
@@ -187,7 +192,9 @@ Web (`apps/web`, con `pnpm`):
 | `pnpm typecheck` | genera los tipos de Next.js y corre `tsc --noEmit` |
 | `pnpm gen:api` | genera `src/shared/api/types.gen.ts` desde el contrato de la API |
 | `pnpm test` | Vitest con cobertura mínima del 90 % |
-| `pnpm e2e` | Playwright en escritorio y a 390 px, claro y oscuro, con axe y verificación de CSP (requiere `pnpm build`) |
+| `pnpm auth:migrate` | migraciones de Better Auth en el esquema `auth` |
+| `pnpm e2e:build` | build para las pruebas de punta a punta (API en `127.0.0.1:8090`) |
+| `pnpm e2e` | prepara una base `criteria_e2e` y corre Playwright: flujos, correo con Mailpit y pantallas en escritorio y 390 px, claro y oscuro, con axe y CSP. Levanta la API con `MODEL_BACKEND=fake`, dos servidores de la web y un sustituto local de GitHub; necesita Postgres y Mailpit del `docker compose` |
 | `pnpm audit` | `pnpm audit --audit-level=moderate` |
 
 ## Variables de entorno
@@ -224,6 +231,15 @@ Las listas completas, con la fase en que se usa cada variable, están en [servic
 | `NEXT_PUBLIC_APP_ENV` | Web | Sí | Entorno de la web |
 | `NEXT_PUBLIC_API_URL` | Web | Sí | URL de la API; también entra en `connect-src` de la CSP. En producción debe ser `https` |
 | `NEXT_PUBLIC_SENTRY_DSN` | Web | No | Sentry se activa solo con DSN |
+| `NEXT_PUBLIC_OFFICE_VIEW` | Web | No | Muestra el cambio de vista; `false` hasta F9 |
+| `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL` | Web | Sí (servidor) | Secreto de sesión (32+ caracteres) y origen público de la web |
+| `AUTH_DATABASE_URL` | Web | Sí (servidor) | Postgres como `web_role` (solo el esquema `auth`) |
+| `AUTH_JWT_ISSUER`, `AUTH_JWT_AUDIENCE` | Web | No | `iss` y `aud` del JWT para la API; vacías usan `BETTER_AUTH_URL` |
+| `EMAIL_PROVIDER`, `EMAIL_FROM`, `SMTP_URL`, `RESEND_API_KEY` | Web | No | `none` (sin verificación ni recuperación), `smtp` o `resend` ([ADR 0020](docs/adr/0020-github-first-sign-in-without-email.md)) |
+| `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` | Web | No | "Continuar con GitHub"; sin ellas no aparece el botón |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Web | No | Google preparado, sin botón |
+| `AUTH_REQUIRE_VERIFIED_EMAIL` | API | No | `true` por defecto; `false` mientras la web no envíe correos |
+| `MODEL_BACKEND`, `FAKE_MODEL_DELAY_MS` | API | No | `fake` solo para pruebas (exige `APP_ENV=test`) |
 
 ## Documentación
 

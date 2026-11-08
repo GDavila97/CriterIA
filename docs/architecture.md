@@ -46,7 +46,7 @@ Relacional: Neon Postgres en capa gratuita, con esquemas separados y roles de m�
 
 | Esquema | Dueño | Migraciones | Contenido |
 | --- | --- | --- | --- |
-| `auth` | web (`web_role`) | CLI de Better Auth | Usuarios, sesiones, cuentas, verificaciones, JWKS |
+| `auth` | web (`web_role`) | CLI de Better Auth (`pnpm auth:migrate`) | Usuarios, sesiones, cuentas, verificaciones, JWKS (llave privada cifrada) y rate limit |
 | `app` | `migrator_role` (la API lee y escribe con `api_role`) | Alembic | Ajustes, claves cifradas, uso y cupos, corridas en curso y sus eventos, historial, evaluación |
 | `graph` | `migrator_role` (la API lee y escribe con `api_role`) | Migraciones de LangGraph, aplicadas por Alembic | Checkpoints de las corridas en curso |
 
@@ -138,17 +138,23 @@ Estado en F3: la API expone las corridas por HTTP con el ciclo ligado al stream 
 
 ```
 apps/web/
-  app/           rutas del App Router de Next.js; delgadas: solo reexportan src/app y src/pages
+  app/           rutas del App Router; delgadas: reexportan las rutas de src/pages y el handler
+                 de Better Auth (app/api/auth/[...all])
   pages/         vacía a propósito, para que Next.js no tome src/pages como Pages Router
-  proxy.ts       CSP con nonce por petición (ADR 0014)
-  instrumentation.ts, instrumentation-client.ts   Sentry en servidor y navegador
+  proxy.ts       CSP con nonce por petición (ADR 0014) y redirección de las páginas privadas
+                 sin cookie de sesión
+  e2e/           Playwright: flujos, correo (Mailpit) y pantallas con axe y CSP
   src/
-    app/         layout raíz, fuentes, estilos globales y providers
-    pages/       inicio, auth, corrida, historial, evaluación
-    widgets/     vista-clasica, vista-oficina, panel-agente, tablero-evaluacion
-    features/    ejecutar-corrida, aprobar-historias, cambiar-vista, elegir-proveedor, exportar
-    entities/    agente, corrida, artefacto, puntaje
-    shared/      api (tipos generados del contrato), config (entorno validado con zod), lib, ui
+    app/         layout raíz, fuentes y estilos globales
+    pages/       home, run, history, history-detail, evaluation, settings, privacy, recovery;
+                 cada una con su componente de ruta en el servidor (sesión y redirecciones)
+    widgets/     encabezado, vista-clasica, panel-agente, tablero-evaluacion
+    features/    autenticacion, ejecutar-corrida, aprobar-historias, exportar, cambiar-vista,
+                 gestionar-claves, controles-datos
+    entities/    corrida (agentes, reductor de eventos a estado y textos derivados)
+    shared/      api (cliente, token en memoria, stream SSE, tipos generados), config (entorno
+                 público y del servidor, proveedores), lib (auth, email, sse, security, react,
+                 testing), ui (Ficha, botones, campos, pestañas, cajón, avisos)
 ```
 
 Reglas, verificadas con `eslint-plugin-boundaries`:
@@ -159,9 +165,23 @@ Reglas, verificadas con `eslint-plugin-boundaries`:
 - Nada en `src/` importa desde `app/` (las rutas de Next.js).
 - El alias `@/` apunta a `src/`.
 
-Las dos vistas de la corrida (clásica y oficina) serán widgets sobre la misma entidad `corrida`, que reduce los eventos SSE a estado; ninguna vista interpreta eventos por su cuenta.
+Las dos vistas de la corrida (clásica y, en F9, oficina) son widgets sobre la misma entidad `corrida`: `runReducer` es una función pura que reduce los eventos SSE a estado (descarta los `seq` repetidos tras una reconexión) y ninguna vista interpreta eventos por su cuenta. El control de vista y `?vista=` ya existen, pero quedan ocultos con `NEXT_PUBLIC_OFFICE_VIEW=false`.
 
-Estado en F1: existe la página de inicio provisional (`src/pages/home`) con el logotipo, que es la `Ficha` de `shared/ui` en color de acento. Los tokens de diseño viven en `src/shared/ui/tokens.css` (claro y oscuro con `prefers-color-scheme`), y las fuentes Plus Jakarta Sans y JetBrains Mono se sirven desde el propio origen con `next/font`.
+### Autenticación y sesión
+
+[ADR 0008](adr/0008-better-auth-and-api-jwt.md), ajustado por el [ADR 0020](adr/0020-github-first-sign-in-without-email.md).
+
+- Better Auth vive en `src/shared/lib/auth`: `options.ts` arma la configuración (pura y probada), `server.ts` la instancia con un pool de `pg` sobre el esquema `auth` como `web_role`, y `client.ts` es el cliente del navegador. Se construye al primer uso, así que `next build` no necesita los secretos del servidor.
+- "Continuar con GitHub" con el scope `user:email`; los tokens de GitHub se descartan antes de llegar a la base. Correo y contraseña con 12 caracteres como mínimo. Nunca se vincula GitHub con una cuenta local cuyo correo no esté verificado.
+- `EMAIL_PROVIDER` (`none`, `smtp` o `resend`) decide si hay verificación y recuperación; el envío está en `src/shared/lib/email`.
+- Rate limit de Better Auth guardado en la tabla `auth.rateLimit` (sirve entre instancias serverless): registro por IP (20 por hora), inicio de sesión por IP y además por cuenta (10 cada 15 minutos, con el correo guardado solo como hash).
+- Sesión en cookie httpOnly y SameSite=Lax, con `Secure` y prefijo `__Secure-` en producción.
+- El plugin JWT emite tokens EdDSA de 5 minutos con `iss`, `aud` y `email_verified`. En el navegador, `shared/api/token.ts` los guarda solo en memoria (un closure), los renueva un minuto antes de que expiren y los envía como `Authorization: Bearer`.
+- El stream usa `fetch` con un parser SSE propio (`shared/lib/sse`), porque `EventSource` no envía cabeceras: reconecta con `Last-Event-ID`, espera ante `409 stream_activo`, muestra los latidos como conexión viva y se cancela al salir de la página.
+- Los formularios con secretos (contraseña, clave de API, requerimiento) usan `method="post"` y no se pueden enviar antes de la hidratación, para que el navegador nunca los mande en una URL.
+- Eliminar la cuenta borra `auth.user`; las llaves foráneas de `app` borran en cascada los datos de la API.
+
+Los tokens de diseño viven en `src/shared/ui/tokens.css` (claro y oscuro con `prefers-color-scheme`), y las fuentes Plus Jakarta Sans y JetBrains Mono se sirven desde el propio origen con `next/font`. La `Ficha` tiene insignia de rol, patas, parpadeo ocasional y balanceo al trabajar, sin animación con `prefers-reduced-motion`.
 
 ## Contrato
 
@@ -209,12 +229,12 @@ Eventos SSE: todos llevan `run_id`, `seq` (entero creciente), `ts` y `agent`. El
 
 | Parte | Tecnología |
 | --- | --- |
-| Web | Next.js 16 (App Router, Turbopack), React 19, TypeScript 6 estricto, zod 4, CSS Modules, `@sentry/nextjs` |
-| Calidad web | ESLint 9 (`eslint-config-next`, `eslint-plugin-boundaries`), Prettier, Vitest con Testing Library, Playwright con `@axe-core/playwright` |
+| Web | Next.js 16 (App Router, Turbopack), React 19, TypeScript 6 estricto, zod 4, CSS Modules, Better Auth 1.7 con `pg`, nodemailer (SMTP), `@sentry/nextjs` |
+| Calidad web | ESLint 9 (`eslint-config-next`, `eslint-plugin-boundaries`), Prettier, Vitest con Testing Library, Playwright con `@axe-core/playwright` contra la API real con modelos simulados, Postgres y Mailpit |
 | Runtime web | Node.js 26 LTS, pnpm 12 |
 | API | Python 3.13, FastAPI, pydantic-settings, uvicorn, `sentry-sdk`, Pydantic AI 2, LangGraph 1, httpx2, SQLAlchemy 2 (Core, async) con psycopg 3, Alembic, `langgraph-checkpoint-postgres`, PyJWT, `cryptography` |
 | Calidad API | Ruff (lint y formato), mypy estricto, pytest con pytest-asyncio y cobertura, pruebas de integración contra Postgres 16, pip-audit |
 | Entorno API | uv con `.venv` local y `uv.lock` versionado ([ADR 0010](adr/0010-python-environment-uv.md)) |
-| Datos | Neon Postgres en producción y Postgres 16 en Docker en local y en el CI; Better Auth desde F4 |
+| Datos | Neon Postgres en producción y Postgres 16 en Docker en local y en el CI; Mailpit en local y en el CI |
 | Nube | GCP Cloud Run para la API y Vercel para la web, con despliegue manual ([ADR 0009](adr/0009-cloud-run-and-vercel.md)) |
 | CI | GitHub Actions en cada push a `main`; Dependabot semanal agrupado |

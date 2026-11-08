@@ -21,7 +21,7 @@ Los eventos son modelos Pydantic (`services/api/src/criteria/domain/events.py`) 
 | `agente_progreso` | el agente | `mensaje` (máximo 80 caracteres) |
 | `agente_entrega` | el agente | `ronda`, `artefactos`, `uso` |
 | `en_espera_humano` | `analista` | `solicitud` (`aprobar_historias`), `historias` |
-| `humano_responde` | `analista` | `decision` (`aprobado`, `editado` u `otra_version`), `cambios` (`agregadas`, `modificadas`, `eliminadas`: listas de ids; vacías con `otra_version`) |
+| `humano_responde` | `analista` | `decision` (`aprobado`, `editado` u `otra_version`), `cambios` (`agregadas`, `modificadas`, `eliminadas`: listas de ids; vacías con `otra_version`), `historias` (las aprobadas, con las que trabaja QA; `null` con `otra_version`) |
 | `revisor_observa` | `revisor` | `ronda`, `observaciones`, `se_corrige` (falso cuando ya no quedan rondas) |
 | `agente_error` | el agente | `codigo`, `mensaje` (seguro, máximo 200 caracteres), `respaldo_sugerido` |
 | `corrida_fin` | `sistema` | `estado` (`completada` o `error`), `puntajes`, `totales`, `respaldo_sugerido`, `codigo` y `mensaje` (solo con `error_interno`; si no, `null`) |
