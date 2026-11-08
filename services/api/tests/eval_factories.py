@@ -3,7 +3,14 @@
 from datetime import UTC, datetime
 from uuid import UUID, uuid5
 
-from criteria.domain.artifacts import CRITERIOS, Observacion, Puntaje
+from criteria.domain.artifacts import (
+    CRITERIOS,
+    CasoPrueba,
+    CriterioAceptacion,
+    HistoriaUsuario,
+    Observacion,
+    Puntaje,
+)
 from criteria.domain.evaluation import (
     ROLES,
     AgentStats,
@@ -17,9 +24,11 @@ from criteria.domain.evaluation import (
     ProblemaSembrado,
 )
 from criteria.domain.events import ProveedorId
+from tests import factories as f
 
 WHEN = datetime(2026, 11, 8, 12, tzinfo=UTC)
 TEXT = "Un sistema de ejemplo para la evaluación. " * 6
+ENTREGA = f.entrega_qa(1)
 TIPOS = ("ambiguedad", "inconsistencia", "faltante")
 
 
@@ -79,10 +88,13 @@ def result(  # noqa: PLR0913  one knob per field the tests vary
         costo_usd=costo,
         agentes=agentes,
         artefactos=ArtefactosCaso(
+            historias=[HistoriaUsuario.model_validate(f.historia(1))],
+            criterios=[CriterioAceptacion.model_validate(c) for c in ENTREGA["criterios"]],
+            casos=[CasoPrueba.model_validate(c) for c in ENTREGA["casos"]],
             observaciones=[
                 ObservacionEnRonda(ronda=0, observacion=observacion(f"Observación {i}"))
                 for i in range(observaciones)
-            ]
+            ],
         ),
         puntajes=[]
         if scores is None

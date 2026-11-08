@@ -10,7 +10,7 @@ from pydantic_ai import ModelHTTPError
 
 from criteria.adapters.cli import evaluation as cli_eval
 from criteria.adapters.cli.main import EXIT_OK, EXIT_USAGE, Terminal, main
-from criteria.adapters.eval.files import JsonBatchStore, JsonSessionStore
+from criteria.adapters.eval.files import JsonBatchStore, JsonSessionStore, JsonStabilityStore
 from criteria.adapters.eval.ollama import OllamaProbeError, OllamaStatus
 from criteria.application.analysis import MatchOutcome
 from criteria.bootstrap import Container
@@ -363,6 +363,61 @@ class TestEvalScore:
 
         assert code == EXIT_OK
         assert "Respuesta no válida." in err
+
+
+class TestEvalReportAndStability:
+    def test_writes_tables_json_and_the_chart(self, eval_dir: Path) -> None:
+        TestEvalScore().seed_batches(eval_dir)
+        chart_dir = eval_dir / "grafica"
+
+        code, err, _ = run(["eval", "report", "--chart", str(chart_dir)])
+
+        assert code == EXIT_OK
+        results = eval_dir / "results" / "v1"
+        assert "## Resultados por modelo" in (results / "tablas.md").read_text(encoding="utf-8")
+        assert '"modelos"' in (results / "reporte.json").read_text(encoding="utf-8")
+        assert (chart_dir / "criterios-v1.svg").read_text(encoding="utf-8").startswith("<svg")
+        assert "Reporte en" in err
+
+    def test_a_report_needs_batches(self, eval_dir: Path) -> None:
+        code, err, _ = run(["eval", "report", "--chart", str(eval_dir / "g")])
+        assert code == EXIT_USAGE
+        assert "Todavía no hay lotes." in err
+
+    def test_stability_asks_the_judge_and_the_matcher_again_and_resumes(
+        self, eval_dir: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(cli_eval, "ModelMatcher", FakeMatcher)
+        TestEvalScore().seed_batches(eval_dir)
+        store = stored(eval_dir, "openai.json")
+        full = store.load()
+        assert full is not None
+        store.save(
+            full.model_copy(
+                update={
+                    "deteccion": batch(
+                        detections={f"dificil-0{i}": [True] * 5 for i in range(1, 6)}
+                    ).deteccion
+                }
+            )
+        )
+
+        code, err, _ = run(["eval", "stability"])
+
+        assert code == EXIT_OK
+        record = JsonStabilityStore(eval_dir / "results" / "v1" / "estabilidad.json").load()
+        assert record is not None
+        assert (len(record.juez), len(record.emparejador)) == (10, 5)
+        assert "Estabilidad medida" in err
+        code, _, _ = run(["eval", "stability"])
+        assert code == EXIT_OK
+        assert JsonStabilityStore(eval_dir / "results" / "v1" / "estabilidad.json").load() == record
+
+        code, _, _ = run(["eval", "report", "--chart", str(eval_dir / "g")])
+        assert code == EXIT_OK
+        assert "Juez (puntaje por criterio" in (
+            eval_dir / "results" / "v1" / "tablas.md"
+        ).read_text(encoding="utf-8")
 
 
 class TestEvalPublish:

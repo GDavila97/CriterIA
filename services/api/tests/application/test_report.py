@@ -1,0 +1,82 @@
+import pytest
+
+from criteria.application.report import (
+    judge_agreement,
+    judge_pairs,
+    matcher_agreement,
+    summarize_batch,
+)
+from criteria.domain.evaluation import HumanScore, HumanSession, MatchCheck
+from tests.eval_factories import all_cases, batch, result
+
+
+def test_a_batch_summary_counts_runs_scores_operation_and_detection() -> None:
+    summary = summarize_batch(
+        batch(
+            results=[
+                result("facil-01", scores=(4, 4, 4, 4), latencia_ms=10_000, costo=0.002),
+                result("medio-01", scores=(2, 2, 2, 2), latencia_ms=30_000, costo=0.004, rondas=2),
+                result(
+                    "dificil-01", estado="error", scores=None, validas=2, llamadas=4, costo=None
+                ),
+            ],
+            detections={"dificil-02": [True, False]},
+        ),
+        all_cases(),
+    )
+
+    assert (summary.corridas, summary.completas) == (3, 2)
+    assert summary.errores == {"salida_invalida": 1}
+    assert summary.puntaje_global == pytest.approx(3.0)
+    assert summary.puntajes["claridad"] == pytest.approx(3.0)
+    assert (summary.validas, summary.llamadas) == (10, 12)
+    assert summary.tasa_validas == pytest.approx(10 / 12)
+    assert summary.rondas_media == pytest.approx(1.5)
+    assert summary.latencia_p50_ms == pytest.approx(20_000)
+    assert summary.costo_por_corrida == pytest.approx(0.003)
+    assert summary.tokens_por_corrida == pytest.approx(1200)
+    assert summary.por_dificultad["dificil"].completas == 0
+    assert summary.por_dificultad["facil"].puntaje_global == pytest.approx(4.0)
+    assert summary.deteccion.total.detected == 1
+
+
+def test_an_unpriced_completed_run_leaves_the_cost_per_run_unknown() -> None:
+    summary = summarize_batch(batch(results=[result("facil-01", costo=None)]), all_cases())
+    assert summary.costo_por_corrida is None
+
+
+def test_judge_agreement_pairs_the_person_with_the_judge_per_criterion() -> None:
+    b = batch(results=[result("facil-01", scores=(4, 4, 3, 5))])
+    session = HumanSession(
+        semilla=1,
+        puntajes=[
+            HumanScore(batch_id=b.batch_id, case_id="facil-01", criterio="claridad", valor=4),
+            HumanScore(batch_id=b.batch_id, case_id="facil-01", criterio="completitud", valor=2),
+            HumanScore(batch_id=b.batch_id, case_id="medio-09", criterio="claridad", valor=2),
+        ],
+    )
+
+    pairs = judge_pairs(session, [b])
+
+    assert pairs == [("claridad", 4, 4), ("completitud", 3, 2)]
+    agreement = judge_agreement(pairs)
+    assert agreement is not None
+    assert agreement.total.pairs == 2
+    assert agreement.total.exact.value == pytest.approx(0.5)
+    assert agreement.total.judge_minus_human.value == pytest.approx(0.5)
+    assert agreement.por_criterio["claridad"].pairs == 1
+    assert judge_agreement([]) is None
+
+
+def test_matcher_agreement_is_the_share_the_person_confirmed() -> None:
+    b = batch()
+    checks = [
+        MatchCheck(batch_id=b.batch_id, case_id="dificil-01", problema=i, acierta=i != 0)
+        for i in range(4)
+    ]
+
+    estimate = matcher_agreement(HumanSession(semilla=1, emparejamientos=checks))
+
+    assert estimate is not None
+    assert estimate.value == pytest.approx(0.75)
+    assert matcher_agreement(HumanSession(semilla=1)) is None
