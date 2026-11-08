@@ -10,6 +10,8 @@ from criteria.domain.evaluation import DIFICULTADES, Dificultad, EvalBatch, Eval
 
 RUNS_PER_MODEL = 2
 MATCH_CHECKS = 10
+STABILITY_RUNS = 10
+CASES_PER_DIFFICULTY = 5
 
 
 def _difficulty(case_id: str) -> Dificultad:
@@ -110,3 +112,31 @@ def never_detected(batches: Sequence[EvalBatch]) -> list[tuple[str, int]]:
             for d in deteccion.detecciones:
                 seen.setdefault((case_id, d.problema), []).append(d.detectado)
     return sorted(key for key, found in seen.items() if not any(found))
+
+
+def stability_sample(
+    batches: Sequence[EvalBatch], seed: int, size: int = STABILITY_RUNS
+) -> list[tuple[UUID, str]]:
+    """Graded runs to score again, taken from each batch in turn so every model is represented."""
+    rng = random.Random(seed)  # noqa: S311  reproducible sample, not security
+    pools: list[tuple[UUID, list[str]]] = []
+    for batch in sorted(batches, key=lambda b: b.clave):
+        graded = sorted(cid for cid, r in batch.resultados.items() if r.calificada)
+        rng.shuffle(graded)
+        pools.append((batch.batch_id, graded))
+    sample: list[tuple[UUID, str]] = []
+    while len(sample) < size and any(pool for _, pool in pools):
+        for batch_id, pool in pools:
+            if pool and len(sample) < size:
+                sample.append((batch_id, pool.pop()))
+    return sample
+
+
+def matcher_batch(batches: Sequence[EvalBatch], seed: int) -> UUID | None:
+    """A batch whose five hard runs were all matched, chosen with the seed."""
+    complete = sorted(
+        (b for b in batches if len(b.deteccion) == CASES_PER_DIFFICULTY), key=lambda b: b.clave
+    )
+    if not complete:
+        return None
+    return random.Random(seed).choice(complete).batch_id  # noqa: S311  reproducible choice

@@ -11,7 +11,7 @@ from pathlib import Path
 
 from pydantic import BaseModel, ValidationError
 
-from criteria.domain.evaluation import EvalBatch, EvalCase, HumanSession
+from criteria.domain.evaluation import EvalBatch, EvalCase, HumanSession, StabilityRecord
 
 CASES_PER_DIFFICULTY = 5
 
@@ -79,11 +79,28 @@ class JsonSessionStore:
         _write_atomically(self.path, session)
 
 
+class JsonStabilityStore:
+    def __init__(self, path: Path) -> None:
+        self.path = path
+
+    def load(self) -> StabilityRecord | None:
+        if not self.path.exists():
+            return None
+        return StabilityRecord.model_validate_json(self.path.read_text(encoding="utf-8"))
+
+    def save(self, record: StabilityRecord) -> None:
+        _write_atomically(self.path, record)
+
+
+# Files next to the batches that are not batches.
+NOT_BATCHES = frozenset({"human.json", "estabilidad.json", "reporte.json"})
+
+
 def load_batches(folder: Path) -> list[EvalBatch]:
     return [
         EvalBatch.model_validate_json(path.read_text(encoding="utf-8"))
         for path in sorted(folder.glob("*.json"))
-        if path.name != "human.json"
+        if path.name not in NOT_BATCHES
     ]
 
 

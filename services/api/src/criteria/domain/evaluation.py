@@ -203,3 +203,27 @@ class HumanSession(Esquema):
     revisiones_emparejador: list[tuple[UUID, CaseId, int]] = Field(default_factory=list)
     puntajes: list[HumanScore] = Field(default_factory=list)
     emparejamientos: list[MatchCheck] = Field(default_factory=list)
+
+
+class RepeticionJuez(Esquema):
+    batch_id: UUID
+    case_id: CaseId
+    original: list[Puntaje]
+    repetida: list[Puntaje]
+
+
+class RepeticionEmparejador(Esquema):
+    case_id: CaseId
+    original: list[Deteccion]
+    repetida: list[Deteccion]
+
+
+class StabilityRecord(Esquema):
+    """The judge and the matcher asked again on the same input, to measure their own agreement."""
+
+    semilla: int
+    muestra_juez: list[tuple[UUID, CaseId]]
+    lote_emparejador: UUID | None
+    juez: list[RepeticionJuez] = Field(default_factory=list)
+    emparejador: list[RepeticionEmparejador] = Field(default_factory=list)
+    costo_usd: float = Field(default=0.0, ge=0)

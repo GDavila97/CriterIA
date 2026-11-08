@@ -18,15 +18,18 @@ from criteria.adapters.cli.eval_view import (
     page,
 )
 from criteria.adapters.eval.files import (
+    NOT_BATCHES,
     EvalFileError,
     JsonBatchStore,
     JsonSessionStore,
+    JsonStabilityStore,
     batch_slug,
     git_sha,
     load_batches,
     load_cases,
 )
 from criteria.adapters.eval.ollama import FULL_GPU, OllamaProbeError, probe
+from criteria.adapters.eval.report import chart_svg, markdown, summary_json
 from criteria.adapters.llm.registry import KeyRequiredError, ProviderNotAllowedError
 from criteria.adapters.postgres.database import create_engine
 from criteria.adapters.postgres.evaluation import PostgresEvalPublisher
@@ -39,7 +42,20 @@ from criteria.application.analysis import (
     with_score,
 )
 from criteria.application.evaluation import BatchStoppedError, EvalRunner
+from criteria.application.report import (
+    judge_agreement,
+    judge_pairs,
+    matcher_agreement,
+    summarize_batch,
+)
+from criteria.application.stability import (
+    judge_self_agreement,
+    matcher_self_agreement,
+    measure,
+    new_record,
+)
 from criteria.config import SERVICE_ROOT
+from criteria.domain.eval_sampling import never_detected
 from criteria.domain.evaluation import EvalBatch, EvalCase, HumanSession, OllamaConfig
 from criteria.domain.run_config import (
     DEFAULT_MAX_TOKENS,
@@ -59,6 +75,7 @@ JUDGE = ("anthropic", "claude-haiku-5-5")
 DEFAULT_SEED = 20261108
 MATCHER_VERSION = "v1"
 HUMAN_FILE = "human.json"
+STABILITY_FILE = "estabilidad.json"
 # pydantic-ai warns with this text when a provider drops a sampling setting.
 IGNORED_SETTING = "will be ignored"
 PAUSE = "p"
@@ -85,6 +102,16 @@ def add_eval_commands(commands: "argparse._SubParsersAction[argparse.ArgumentPar
 
     score = sub.add_parser("score", help="Calificación humana a ciegas (pausable).")
     score.add_argument("--seed", type=int, default=DEFAULT_SEED)
+
+    stability = sub.add_parser(
+        "stability", help="Pregunta otra vez al juez y al emparejador para medir su estabilidad."
+    )
+    stability.add_argument("--seed", type=int, default=DEFAULT_SEED)
+
+    report = sub.add_parser("report", help="Calcula las métricas y escribe tablas y gráfica.")
+    report.add_argument(
+        "--chart", type=Path, default=SERVICE_ROOT.parent.parent / "docs" / "evaluation"
+    )
 
     publish = sub.add_parser("publish", help="Inserta un lote o la sesión humana en la base.")
     target = publish.add_mutually_exclusive_group(required=True)
@@ -283,19 +310,13 @@ async def _run(args: argparse.Namespace, container: "Container", terminal: "Term
 
 
 async def _match(args: argparse.Namespace, container: "Container", terminal: "Terminal") -> int:
-    registry = container.registry
     juez = _judge(container)
-    matcher = ModelMatcher(
-        registry.model(juez),
-        registry.model_settings(juez),
-        load_matcher_prompt(container.settings.prompts_dir, MATCHER_VERSION),
-        lambda tokens_in, tokens_out: registry.cost_usd(juez, tokens_in, tokens_out),
-    )
+    matcher = _matcher(container)
     cases = _cases(container)
     folder = _results_dir(container)
     paths = [args.file] if args.file else sorted(folder.glob("*.json"))
     for path in paths:
-        if path.name == HUMAN_FILE:
+        if path.name in NOT_BATCHES:
             continue
         store = JsonBatchStore(path)
         batch = store.load()
@@ -383,6 +404,83 @@ async def _score(args: argparse.Namespace, container: "Container", terminal: "Te
     return 0
 
 
+def _matcher(container: "Container") -> ModelMatcher:
+    registry = container.registry
+    juez = _judge(container)
+    return ModelMatcher(
+        registry.model(juez),
+        registry.model_settings(juez),
+        load_matcher_prompt(container.settings.prompts_dir, MATCHER_VERSION),
+        lambda tokens_in, tokens_out: registry.cost_usd(juez, tokens_in, tokens_out),
+    )
+
+
+async def _stability(args: argparse.Namespace, container: "Container", terminal: "Terminal") -> int:
+    folder = _results_dir(container)
+    batches = load_batches(folder)
+    store = JsonStabilityStore(folder / STABILITY_FILE)
+    record = store.load() or new_record(batches, args.seed)
+    store.save(record)
+    juez = _judge(container)
+    record = await measure(
+        record,
+        batches,
+        _cases(container),
+        judge=container.agents(juez, juez).evaluador,
+        matcher=_matcher(container),
+        store=store,
+        progress=lambda message: print(message, file=terminal.err),
+    )
+    print(f"Estabilidad medida; costo US$ {record.costo_usd:.4f}.", file=terminal.err)
+    return 0
+
+
+async def _report(args: argparse.Namespace, container: "Container", terminal: "Terminal") -> int:
+    folder = _results_dir(container)
+    cases = _cases(container)
+    batches = sorted(load_batches(folder), key=lambda b: b.clave)
+    if not batches:
+        raise EvalUsageError("Todavía no hay lotes.")
+    summaries = [summarize_batch(b, cases) for b in batches]
+    session = JsonSessionStore(folder / HUMAN_FILE).load()
+    judge = None if session is None else judge_agreement(judge_pairs(session, batches))
+    matcher = None if session is None else matcher_agreement(session)
+    checks = 0 if session is None else len(session.emparejamientos)
+    stability = JsonStabilityStore(folder / STABILITY_FILE).load()
+    judge_self = None if stability is None else judge_self_agreement(stability)
+    matcher_self = None if stability is None else matcher_self_agreement(stability)
+    undetected = never_detected(batches)
+    (folder / "tablas.md").write_text(
+        markdown(
+            summaries,
+            cases,
+            judge=judge,
+            matcher=matcher,
+            matcher_checks=checks,
+            undetected=undetected,
+            judge_self=judge_self,
+            matcher_self=matcher_self,
+        ),
+        encoding="utf-8",
+    )
+    (folder / "reporte.json").write_text(
+        summary_json(
+            summaries,
+            judge=judge,
+            matcher=matcher,
+            undetected=undetected,
+            judge_self=judge_self,
+            matcher_self=matcher_self,
+        ),
+        encoding="utf-8",
+    )
+    args.chart.mkdir(parents=True, exist_ok=True)
+    chart = args.chart / f"criterios-{container.settings.prompt_version}.svg"
+    chart.write_text(chart_svg(summaries), encoding="utf-8")
+    print(f"Reporte en {folder / 'tablas.md'} y gráfica en {chart}.", file=terminal.err)
+    return 0
+
+
 async def _publish(args: argparse.Namespace, container: "Container", terminal: "Terminal") -> int:
     url = container.settings.eval_database_url
     if url is None:
@@ -414,7 +512,14 @@ async def _publish(args: argparse.Namespace, container: "Container", terminal: "
 async def execute_eval(
     args: argparse.Namespace, container: "Container", terminal: "Terminal"
 ) -> int:
-    handlers = {"run": _run, "match": _match, "score": _score, "publish": _publish}
+    handlers = {
+        "run": _run,
+        "match": _match,
+        "score": _score,
+        "stability": _stability,
+        "report": _report,
+        "publish": _publish,
+    }
     try:
         return await handlers[args.eval_command](args, container, terminal)
     except (EvalUsageError, EvalFileError) as error:
