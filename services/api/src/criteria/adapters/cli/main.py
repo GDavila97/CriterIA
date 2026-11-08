@@ -30,6 +30,7 @@ from criteria.domain.approval import RespuestaHumana
 from criteria.domain.artifacts import Historias, Requerimiento
 from criteria.domain.judge import elegir_juez
 from criteria.domain.run_config import (
+    DEFAULT_MAX_TOKENS,
     USER_KEY_PROVIDERS,
     ProviderSelection,
     SelectionError,
@@ -94,7 +95,7 @@ def build_parser() -> argparse.ArgumentParser:
         help=f"Usa la clave de {USER_KEY_ENV} para el proveedor de generación.",
     )
     run.add_argument("--temperatura", type=float, default=0.2)
-    run.add_argument("--max-tokens", type=int, default=4096)
+    run.add_argument("--max-tokens", type=int, default=DEFAULT_MAX_TOKENS)
     source = run.add_mutually_exclusive_group(required=True)
     source.add_argument("--text", help="Requerimiento en línea.")
     source.add_argument("--file", type=Path, help="Archivo de texto con el requerimiento.")

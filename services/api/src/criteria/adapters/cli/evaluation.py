@@ -40,7 +40,12 @@ from criteria.application.analysis import (
 from criteria.application.evaluation import BatchStoppedError, EvalRunner
 from criteria.config import SERVICE_ROOT
 from criteria.domain.evaluation import EvalBatch, EvalCase, HumanSession, OllamaConfig
-from criteria.domain.run_config import ProviderSelection, SelectionError, parse_selection
+from criteria.domain.run_config import (
+    DEFAULT_MAX_TOKENS,
+    ProviderSelection,
+    SelectionError,
+    parse_selection,
+)
 
 if TYPE_CHECKING:
     from criteria.adapters.cli.main import Terminal
@@ -48,7 +53,7 @@ if TYPE_CHECKING:
 
 GENERATION_TEMPERATURE = 0.2
 JUDGE_TEMPERATURE = 0.0
-MAX_TOKENS = 4096
+MAX_TOKENS = DEFAULT_MAX_TOKENS
 JUDGE = ("anthropic", "claude-haiku-5-5")
 DEFAULT_SEED = 20261108
 MATCHER_VERSION = "v1"

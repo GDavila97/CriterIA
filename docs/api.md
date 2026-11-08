@@ -44,7 +44,7 @@ Fuera de producción, el esquema OpenAPI está en `/openapi.json` y la documenta
   "juez": "groq",
   "max_rondas": 2,
   "guardar_historial": false,
-  "agentes": { "qa": { "modelo": "openai/gpt-oss-20b", "temperatura": 0.4, "max_tokens": 4096 } }
+  "agentes": { "qa": { "modelo": "openai/gpt-oss-20b", "temperatura": 0.4, "max_tokens": 8192 } }
 }
 ```
 

@@ -28,7 +28,8 @@ export interface AgentPanelProps {
 }
 
 const DEFAULT_TEMPERATURE = 0.2;
-const DEFAULT_TOKENS = 4096;
+// Same default as the API: reasoning models spend part of the cap thinking.
+const DEFAULT_TOKENS = 8192;
 
 function modelOptions(provider: CatalogProviderBody | null) {
   if (!provider) return [{ value: '', label: 'El de la corrida' }];

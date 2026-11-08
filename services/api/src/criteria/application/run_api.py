@@ -27,6 +27,7 @@ from criteria.domain.events import (
 )
 from criteria.domain.judge import elegir_juez
 from criteria.domain.run_config import (
+    DEFAULT_MAX_TOKENS,
     MAX_RONDAS,
     MAX_TOKENS_MAXIMO,
     MAX_TOKENS_MINIMO,
@@ -71,7 +72,7 @@ class RunDefaults:
     abandoned_after: timedelta
     heartbeat_seconds: float
     temperature: float = 0.2
-    max_tokens: int = 4096
+    max_tokens: int = DEFAULT_MAX_TOKENS
 
 
 @dataclass(frozen=True)

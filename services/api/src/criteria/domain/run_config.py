@@ -26,6 +26,9 @@ GENERATION_ROLES: tuple[RolAgente, ...] = ("analista", "qa", "revisor")
 TEMPERATURA_MAXIMA = 1.0
 MAX_TOKENS_MINIMO = 256
 MAX_TOKENS_MAXIMO = 8192
+# The ceiling by default: reasoning models (gpt-oss) spend part of it thinking. It is only a cap,
+# so the cost follows the tokens actually used.
+DEFAULT_MAX_TOKENS = MAX_TOKENS_MAXIMO
 MAX_RONDAS = 3
 
 NombreModelo = Annotated[str, StringConstraints(pattern=r"^[A-Za-z0-9][A-Za-z0-9._:/-]{0,99}$")]
@@ -43,7 +46,7 @@ class ProviderSelection(BaseModel):
     modelo: NombreModelo | None = None
     nivel: Nivel | None = None
     temperatura: float = Field(default=0.2, ge=0.0, le=2.0)
-    max_tokens: int = Field(default=4096, ge=256, le=16384)
+    max_tokens: int = Field(default=DEFAULT_MAX_TOKENS, ge=256, le=16384)
     api_key: SecretStr | None = Field(default=None, repr=False)
     base_url: HttpUrl | None = None
 
