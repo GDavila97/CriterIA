@@ -5,17 +5,17 @@
 .hero {
   display: grid;
   grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
-  gap: 48px;
+  gap: var(--space-48);
   align-items: start;
   max-width: 1200px;
   margin: 0 auto;
-  padding: 56px 24px 64px;
+  padding: var(--space-48) var(--space-24) var(--space-48);
 }
 
 .fichas {
   display: flex;
-  gap: 24px;
-  margin-bottom: 28px;
+  gap: var(--space-24);
+  margin-bottom: var(--space-32);
 }
 
 .title {
@@ -28,7 +28,7 @@
 
 .lead {
   max-width: 34rem;
-  margin: 24px 0;
+  margin: var(--space-24) 0;
   font-size: 1.15rem;
   line-height: 1.55;
   color: var(--color-muted);
@@ -37,8 +37,8 @@
 .chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  margin: 0 0 24px;
+  gap: var(--space-12);
+  margin: 0 0 var(--space-24);
   padding: 0;
   list-style: none;
 }
@@ -46,8 +46,8 @@
 .chip {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 14px;
+  gap: var(--space-8);
+  padding: var(--space-8) var(--space-16);
   border: 1px solid var(--color-line);
   border-radius: var(--radius-pill);
   background: var(--color-surface);
@@ -64,18 +64,18 @@
 .side {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--space-16);
   align-items: center;
 }
 
 @media (max-width: 899px) {
   .hero {
     grid-template-columns: minmax(0, 1fr);
-    gap: 32px;
-    padding: 32px 16px 48px;
+    gap: var(--space-32);
+    padding: var(--space-32) var(--space-16) var(--space-48);
   }
 
   .fichas {
-    gap: 14px;
+    gap: var(--space-16);
   }
 }

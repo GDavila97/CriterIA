@@ -5,10 +5,10 @@
 .main {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: var(--space-20);
   max-width: 860px;
   margin: 0 auto;
-  padding: 40px 24px 64px;
+  padding: var(--space-40) var(--space-24) var(--space-48);
 }
 
 .title {
@@ -24,7 +24,7 @@
 }
 
 .card {
-  padding: 24px;
+  padding: var(--space-24);
   border: 1px solid var(--color-card-border);
   border-radius: var(--radius-card);
   background: var(--color-surface);
@@ -33,17 +33,17 @@
 }
 
 .card h2 {
-  margin: 0 0 12px;
+  margin: 0 0 var(--space-12);
   font-size: 1.2rem;
 }
 
 .card p {
-  margin: 0 0 10px;
+  margin: 0 0 var(--space-12);
 }
 
 .card ul {
-  margin: 0 0 10px;
-  padding-left: 18px;
+  margin: 0 0 var(--space-12);
+  padding-left: var(--space-20);
 }
 
 .scroll {
@@ -57,7 +57,7 @@
 }
 
 .table th {
-  padding: 8px 10px;
+  padding: var(--space-8) var(--space-12);
   border-bottom: 1px solid var(--color-line);
   text-align: left;
   font-size: 0.75rem;
@@ -67,25 +67,25 @@
 }
 
 .table td {
-  padding: 12px 10px;
+  padding: var(--space-12) var(--space-12);
   border-bottom: 1px solid var(--color-line);
   vertical-align: top;
 }
 
 .soft {
-  padding: 24px;
+  padding: var(--space-24);
   border-radius: var(--radius-card);
   background: var(--color-accent-soft);
   line-height: 1.6;
 }
 
 .soft h2 {
-  margin: 0 0 8px;
+  margin: 0 0 var(--space-8);
   font-size: 1.1rem;
 }
 
 .soft p {
-  margin: 0 0 8px;
+  margin: 0 0 var(--space-8);
 }
 
 .back {
@@ -94,6 +94,6 @@
 
 @media (max-width: 639px) {
   .main {
-    padding: 24px 16px 48px;
+    padding: var(--space-24) var(--space-16) var(--space-48);
   }
 }

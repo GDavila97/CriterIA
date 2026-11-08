@@ -6,6 +6,8 @@ import {
   type TextareaHTMLAttributes,
 } from 'react';
 
+import { Icon } from '../icon/Icon';
+
 import styles from './Field.module.css';
 
 interface FieldFrame {
@@ -102,18 +104,23 @@ export function SelectField({
   const id = useId();
   return (
     <Frame id={id} label={label} hint={hint} error={error}>
-      <select
-        id={id}
-        className={styles.input}
-        aria-describedby={describedBy(id, { label, hint, error })}
-        {...props}
-      >
-        {options.map((option) => (
-          <option key={option.value} value={option.value} disabled={option.disabled}>
-            {option.label}
-          </option>
-        ))}
-      </select>
+      <span className={styles.selectWrap}>
+        <select
+          id={id}
+          className={styles.input}
+          aria-describedby={describedBy(id, { label, hint, error })}
+          {...props}
+        >
+          {options.map((option) => (
+            <option key={option.value} value={option.value} disabled={option.disabled}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+        <span className={styles.fieldIcon} aria-hidden="true">
+          <Icon name="abajo" size={16} />
+        </span>
+      </span>
     </Frame>
   );
 }

@@ -1,20 +1,20 @@
 .panel {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: var(--space-20);
 }
 
 .hero {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-8);
 }
 
 .status {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-8);
   color: var(--color-ok);
   font-size: 0.9rem;
 }
@@ -29,19 +29,19 @@
 .facts {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: var(--space-16);
   margin: 0;
 }
 
 .facts dt {
-  margin-bottom: 6px;
+  margin-bottom: var(--space-8);
   font-size: 0.9rem;
   color: var(--color-muted);
 }
 
 .facts dd {
   margin: 0;
-  padding: 12px 14px;
+  padding: var(--space-12) var(--space-16);
   border: 1px solid var(--color-line);
   border-radius: var(--radius-field);
   background: var(--color-surface-2);
@@ -51,8 +51,8 @@
 .box {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding: 18px;
+  gap: var(--space-16);
+  padding: var(--space-20);
   border: 1px solid var(--color-line);
   border-radius: 20px;
   background: var(--color-surface);
@@ -71,7 +71,7 @@
 }
 
 .version {
-  padding: 2px 8px;
+  padding: var(--space-4) var(--space-8);
   border-radius: 8px;
   background: var(--color-surface-2);
   color: var(--color-ink);
@@ -83,13 +83,13 @@
 .pair {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  gap: var(--space-12);
 }
 
 .range {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--space-8);
 }
 
 .rangeHead {
@@ -114,14 +114,24 @@
 .prompt {
   max-height: 220px;
   margin: 0;
-  padding: 14px;
+  padding: var(--space-16);
   overflow: auto;
-  border-radius: 14px;
+  border-radius: var(--radius-field);
   background: var(--color-bg);
   font-family: var(--font-mono);
   font-size: 0.8rem;
   line-height: 1.55;
   white-space: pre-wrap;
+}
+
+.promptLoading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  min-height: 220px;
+  padding: var(--space-16);
+  border-radius: var(--radius-field);
+  background: var(--color-bg);
 }
 
 .prompt:focus-visible {
@@ -131,12 +141,12 @@
 .metrics {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
+  gap: var(--space-12);
   margin: 0;
 }
 
 .metrics div {
-  padding: 10px;
+  padding: var(--space-12);
   border-radius: 12px;
   background: var(--color-surface-2);
 }
@@ -147,6 +157,6 @@
 }
 
 .metrics dd {
-  margin: 4px 0 0;
+  margin: var(--space-4) 0 0;
   font-family: var(--font-mono);
 }

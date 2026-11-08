@@ -1,14 +1,14 @@
 .page {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: var(--space-20);
 }
 
 .card {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding: 24px 20px;
+  gap: var(--space-16);
+  padding: var(--space-24) var(--space-20);
   border: 1px solid var(--color-card-border);
   border-radius: var(--radius-card);
   background: var(--color-surface);
@@ -25,7 +25,7 @@
 .options {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 12px;
+  gap: var(--space-12);
   margin: 0;
   padding: 0;
   border: 0;
@@ -34,8 +34,8 @@
 .option {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 14px 16px;
+  gap: var(--space-4);
+  padding: var(--space-16) var(--space-16);
   border: 1px solid var(--color-line);
   border-radius: 16px;
   cursor: pointer;
@@ -58,7 +58,7 @@
 .optionTitle {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-8);
   font-weight: 700;
 }
 
@@ -94,8 +94,8 @@
 .key {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 18px;
+  gap: var(--space-12);
+  padding: var(--space-20);
   border-radius: 18px;
   background: var(--color-surface-2);
 }
@@ -104,7 +104,7 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 10px 14px;
+  gap: var(--space-12) var(--space-16);
 }
 
 .keyName {
@@ -115,35 +115,35 @@
 
 .keyActions {
   display: flex;
-  gap: 8px;
+  gap: var(--space-8);
   margin-left: auto;
 }
 
 .keyForm {
   display: grid;
   grid-template-columns: 1fr auto;
-  gap: 10px;
+  gap: var(--space-12);
   align-items: end;
 }
 
 .pair {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 12px;
+  gap: var(--space-12);
 }
 
 .care {
   display: grid;
   grid-template-columns: auto 1fr;
-  gap: 12px;
-  padding: 24px 20px;
+  gap: var(--space-12);
+  padding: var(--space-24) var(--space-20);
   border-radius: var(--radius-card);
   background: var(--color-accent-soft);
 }
 
 .care ul {
-  margin: 8px 0;
-  padding-left: 18px;
+  margin: var(--space-8) 0;
+  padding-left: var(--space-20);
   line-height: 1.7;
 }
 

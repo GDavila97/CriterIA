@@ -1,10 +1,10 @@
 .card {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: var(--space-20);
   width: 100%;
   max-width: 420px;
-  padding: 28px;
+  padding: var(--space-32);
   border: 1px solid var(--color-card-border);
   border-radius: 28px;
   background: var(--color-surface);
@@ -32,13 +32,13 @@
 .form {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--space-16);
 }
 
 .separator {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-12);
   color: var(--color-muted);
   font-size: 0.85rem;
 }

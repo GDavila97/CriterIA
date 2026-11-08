@@ -1,13 +1,13 @@
 .group {
   display: inline-flex;
-  padding: 4px;
+  padding: var(--space-4);
   border-radius: var(--radius-pill);
   background: var(--color-surface-2);
 }
 
 .option {
   min-height: 36px;
-  padding: 0 16px;
+  padding: 0 var(--space-16);
   border: 0;
   border-radius: var(--radius-pill);
   background: transparent;

@@ -1,13 +1,13 @@
 .view {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: var(--space-20);
   min-width: 0;
 }
 
 .card {
   min-width: 0;
-  padding: 24px 20px;
+  padding: var(--space-24) var(--space-20);
   border: 1px solid var(--color-card-border);
   border-radius: var(--radius-card);
   background: var(--color-surface);
@@ -19,8 +19,8 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 8px 16px;
-  margin-bottom: 16px;
+  gap: var(--space-8) var(--space-16);
+  margin-bottom: var(--space-16);
 }
 
 .cardTitle {
@@ -38,7 +38,7 @@
 .live {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-8);
   font-size: 0.8rem;
   color: var(--color-muted);
 }
@@ -57,7 +57,7 @@
 .agents {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
+  gap: var(--space-12);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -66,15 +66,15 @@
 .agent {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 16px;
+  gap: var(--space-8);
+  padding: var(--space-16);
   border-radius: 18px;
   background: var(--color-surface-2);
 }
 
 .agentHead {
   display: flex;
-  gap: 12px;
+  gap: var(--space-12);
   align-items: center;
 }
 
@@ -93,7 +93,7 @@
 .status {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-8);
   font-size: 0.9rem;
   font-weight: 600;
 }
@@ -133,19 +133,19 @@
 .main {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 280px;
-  gap: 20px;
+  gap: var(--space-20);
   align-items: start;
 }
 
 .aside {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: var(--space-20);
 }
 
 .exports {
   display: flex;
-  gap: 8px;
+  gap: var(--space-8);
 }
 
 .table {
@@ -155,7 +155,7 @@
 }
 
 .table th {
-  padding: 8px 10px;
+  padding: var(--space-8) var(--space-12);
   border-bottom: 1px solid var(--color-line);
   text-align: left;
   font-size: 0.75rem;
@@ -165,7 +165,7 @@
 }
 
 .table td {
-  padding: 12px 10px;
+  padding: var(--space-12) var(--space-12);
   border-bottom: 1px solid var(--color-line);
   vertical-align: top;
 }
@@ -178,14 +178,14 @@
 .stack {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--space-12);
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
 .item {
-  padding: 14px 16px;
+  padding: var(--space-16) var(--space-16);
   border: 1px solid var(--color-line);
   border-radius: 16px;
 }
@@ -193,12 +193,12 @@
 .itemHead {
   display: flex;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--space-8);
   align-items: center;
 }
 
 .itemTitle {
-  margin: 6px 0 2px;
+  margin: var(--space-8) 0 var(--space-4);
   font-weight: 600;
 }
 
@@ -210,7 +210,7 @@
 
 .gherkin {
   margin: 0;
-  padding: 14px 16px;
+  padding: var(--space-16) var(--space-16);
   overflow-x: auto;
   border-radius: 14px;
   background: var(--color-surface-2);
@@ -240,14 +240,14 @@
 .bars {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--space-12);
   margin: 0;
 }
 
 .bar {
   display: grid;
   grid-template-columns: 1fr auto;
-  gap: 6px 12px;
+  gap: var(--space-8) var(--space-12);
 }
 
 .bar dt {
@@ -275,7 +275,7 @@
 .log {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--space-12);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -285,7 +285,7 @@
 .logEntry {
   display: grid;
   grid-template-columns: auto auto 1fr;
-  gap: 10px;
+  gap: var(--space-12);
   align-items: baseline;
 }
 
@@ -294,7 +294,7 @@
 }
 
 .footnote {
-  margin: 12px 0 0;
+  margin: var(--space-12) 0 0;
   font-size: 0.8rem;
   color: var(--color-muted);
 }
@@ -302,8 +302,8 @@
 .fallback {
   display: grid;
   grid-template-columns: auto 1fr;
-  gap: 12px 16px;
-  padding: 20px;
+  gap: var(--space-12) var(--space-16);
+  padding: var(--space-20);
   border: 1px solid var(--color-danger-line);
   border-radius: 24px;
   background: var(--color-surface);
@@ -329,23 +329,23 @@
 .fallbackActions {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  margin: 12px 0 8px;
+  gap: var(--space-12);
+  margin: var(--space-12) 0 var(--space-8);
 }
 
 .progress {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--space-8);
   align-items: center;
-  margin: 0 0 16px;
+  margin: 0 0 var(--space-16);
   padding: 0;
   list-style: none;
   font-size: 0.9rem;
 }
 
 .step {
-  padding: 6px 12px;
+  padding: var(--space-8) var(--space-12);
   border: 1px dashed var(--color-line);
   border-radius: 999px;
   color: var(--color-muted);

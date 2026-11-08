@@ -1,7 +1,7 @@
 .board {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: var(--space-20);
 }
 
 .head {
@@ -9,7 +9,7 @@
   flex-wrap: wrap;
   align-items: flex-end;
   justify-content: space-between;
-  gap: 16px;
+  gap: var(--space-16);
 }
 
 .title {
@@ -20,18 +20,18 @@
 }
 
 .lead {
-  margin: 6px 0 0;
+  margin: var(--space-8) 0 0;
   color: var(--color-muted);
 }
 
 .kpis {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px;
+  gap: var(--space-16);
 }
 
 .card {
-  padding: 20px;
+  padding: var(--space-20);
   border: 1px solid var(--color-card-border);
   border-radius: var(--radius-card);
   background: var(--color-surface);
@@ -46,13 +46,13 @@
 }
 
 .kpiValue {
-  margin: 8px 0 4px;
+  margin: var(--space-8) 0 var(--space-4);
   font-family: var(--font-mono);
   font-size: 1.9rem;
 }
 
 .cardTitle {
-  margin: 0 0 12px;
+  margin: 0 0 var(--space-12);
   font-size: 1.15rem;
   font-weight: 700;
 }
@@ -68,7 +68,7 @@
 }
 
 .table th {
-  padding: 8px 10px;
+  padding: var(--space-8) var(--space-12);
   border-bottom: 1px solid var(--color-line);
   text-align: right;
   font-size: 0.75rem;
@@ -84,7 +84,7 @@
 }
 
 .table td {
-  padding: 12px 10px;
+  padding: var(--space-12) var(--space-12);
   border-bottom: 1px solid var(--color-line);
   text-align: right;
   font-family: var(--font-mono);
@@ -100,19 +100,19 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
-  padding: 48px 20px;
+  gap: var(--space-12);
+  padding: var(--space-48) var(--space-20);
   text-align: center;
 }
 
 .method {
   margin: 0;
-  padding-left: 18px;
+  padding-left: var(--space-20);
   line-height: 1.6;
 }
 
 .note {
-  margin: 12px 0 0;
+  margin: var(--space-12) 0 0;
   font-size: 0.85rem;
   color: var(--color-muted);
 }

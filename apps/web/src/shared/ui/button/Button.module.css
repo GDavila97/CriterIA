@@ -2,9 +2,9 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  min-height: var(--size-control-min);
-  padding: 0 20px;
+  gap: var(--space-8);
+  height: var(--size-control-min);
+  padding: 0 var(--space-20);
   border: 1px solid transparent;
   border-radius: var(--radius-pill);
   font: inherit;
@@ -12,9 +12,16 @@
   font-size: 0.95rem;
   text-decoration: none;
   cursor: pointer;
-  transition:
-    background-color 120ms ease,
-    border-color 120ms ease;
+  white-space: nowrap;
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+
+.button:hover:not(:disabled) {
+  transform: translateY(var(--motion-lift));
+}
+
+.button:active:not(:disabled) {
+  transform: scale(var(--motion-press));
 }
 
 .button:focus-visible {
@@ -67,7 +74,7 @@
 }
 
 .small {
-  min-height: 36px;
-  padding: 0 14px;
+  height: 36px;
+  padding: 0 var(--space-16);
   font-size: 0.875rem;
 }

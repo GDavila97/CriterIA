@@ -8,6 +8,7 @@ const PATHS = {
   candado: 'M7 11V8a5 5 0 0 1 10 0v3M6 11h12v9H6v-9Z',
   cerrar: 'm6 6 12 12M18 6 6 18',
   atras: 'M15 5 8 12l7 7',
+  abajo: 'm6 9 6 6 6-6',
   derecha: 'm9 5 7 7-7 7',
   flecha: 'M5 12h14m-5-5 5 5-5 5',
   menu: 'M4 7h16M4 12h16M4 17h16',

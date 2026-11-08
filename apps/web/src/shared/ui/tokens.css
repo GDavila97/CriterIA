@@ -40,11 +40,43 @@
   --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
   --tracking-title: -0.03em;
 
+  /* Spacing scale: every padding, margin and gap uses one of these. */
+  --space-4: 4px;
+  --space-8: 8px;
+  --space-12: 12px;
+  --space-16: 16px;
+  --space-20: 20px;
+  --space-24: 24px;
+  --space-32: 32px;
+  --space-40: 40px;
+  --space-48: 48px;
+
+  /* Motion: only transform and opacity are animated. */
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --duration-slow: 320ms;
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --motion-shift: 4px;
+  --motion-lift: -1px;
+  --motion-press: 0.98;
+  --motion-slide: 100%;
+
   --radius-card: 24px;
   --radius-field: 14px;
   --radius-pill: 999px;
   --shadow-card: 0 1px 2px rgba(16, 24, 40, 0.04), 0 10px 30px rgba(16, 24, 40, 0.06);
   --size-control-min: 44px;
+}
+
+/* With reduced motion nothing travels or scales: entrances keep only their fade. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-shift: 0px;
+    --motion-lift: 0px;
+    --motion-press: 1;
+    --motion-slide: 0px;
+  }
 }
 
 @media (prefers-color-scheme: dark) {

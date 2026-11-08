@@ -14,7 +14,9 @@ export interface NoticeProps {
 export function Notice({ tone = 'info', children, live = tone === 'error' }: NoticeProps) {
   return (
     <div className={`${styles.notice} ${styles[tone]}`} role={live ? 'alert' : undefined}>
-      <Icon name={tone === 'error' ? 'alerta' : tone === 'ok' ? 'palomita' : 'info'} size={18} />
+      <span className={styles.iconBox}>
+        <Icon name={tone === 'error' ? 'alerta' : tone === 'ok' ? 'palomita' : 'info'} size={18} />
+      </span>
       <div>{children}</div>
     </div>
   );
