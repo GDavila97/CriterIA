@@ -327,8 +327,7 @@ class TestTiers:
             ("openai", "gpt-5.4-mini", (0.75, 4.50)),
             ("anthropic", "claude-sonnet-5-5", (2.0, 10.0)),
             ("anthropic", "claude-opus-5-5", (4.0, 20.0)),
-            ("groq", "openai/gpt-oss-20b", (0.07, 0.30)),
-            ("groq", "llama-3.3-70b-versatile", (0.59, 0.79)),
+            ("groq", "openai/gpt-oss-20b", (0.075, 0.30)),
         ],
     )
     def test_shipped_prices(
@@ -342,7 +341,7 @@ class TestTiers:
     def test_untiered_models_stay_selectable_by_name(self) -> None:
         assert SHIPPED.entry("openai", "gpt-5.4-mini") is not None
         assert SHIPPED.entry("openai", "gpt-5.4-mini").nivel is None  # type: ignore[union-attr]
-        assert SHIPPED.entry("groq", "llama-3.3-70b-versatile").nivel is None  # type: ignore[union-attr]
+        assert SHIPPED.allowed_models("groq") == ["openai/gpt-oss-20b"]
         assert SHIPPED.entry("openai", "gpt-5.5") is None
         assert SHIPPED.entry("openai", "gpt-5.5-pro") is None
 
@@ -375,15 +374,23 @@ class TestTiers:
             _ = ProviderSelection(proveedor="groq", nivel="economico").etiqueta
 
     def test_registry_resolves_tiers_and_an_explicit_model_wins(self) -> None:
-        reg = ProviderRegistry(settings(server_key_providers="groq", groq_api_key="g"), SHIPPED)
+        catalog = SHIPPED.model_copy(
+            update={
+                "models": [
+                    *SHIPPED.models,
+                    CatalogEntry(provider="groq", name="sin-nivel", display_name="Sin nivel"),
+                ]
+            }
+        )
+        reg = ProviderRegistry(settings(server_key_providers="groq", groq_api_key="g"), catalog)
 
         by_tier = reg.validate(ProviderSelection(proveedor="groq", nivel="economico"))
         explicit = reg.validate(
-            ProviderSelection(proveedor="groq", nivel="economico", modelo="llama-3.3-70b-versatile")
+            ProviderSelection(proveedor="groq", nivel="economico", modelo="sin-nivel")
         )
 
         assert by_tier.etiqueta == "groq:openai/gpt-oss-20b"
-        assert explicit.etiqueta == "groq:llama-3.3-70b-versatile"
+        assert explicit.etiqueta == "groq:sin-nivel"
         assert reg.model(ProviderSelection(proveedor="groq", nivel="economico")).model_name == (
             "openai/gpt-oss-20b"
         )

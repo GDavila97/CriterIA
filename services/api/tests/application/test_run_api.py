@@ -12,7 +12,7 @@ from pydantic_ai.models.function import AgentInfo, FunctionModel
 
 from criteria.adapters.agents.factory import AgentBindings, AgentFactory
 from criteria.adapters.crypto.aesgcm import AesGcmCipher
-from criteria.adapters.llm.catalog import ModelCatalog
+from criteria.adapters.llm.catalog import CatalogEntry, ModelCatalog
 from criteria.adapters.llm.registry import ProviderRegistry
 from criteria.adapters.memory.checkpointer import MemoryCheckpointer
 from criteria.application.credentials import CredentialService
@@ -56,7 +56,23 @@ from tests.application.memory_stores import (
 )
 from tests.fakes import FakeClock, FakeKeyValidator, FakeReporter
 
-CATALOG = ModelCatalog.load(SERVICE_ROOT / "config" / "models.toml")
+SHIPPED = ModelCatalog.load(SERVICE_ROOT / "config" / "models.toml")
+# A second, pricier Groq model without a tier, so explicit models can be told apart.
+GROQ_EXTRA = "groq-sin-nivel"
+CATALOG = SHIPPED.model_copy(
+    update={
+        "models": [
+            *SHIPPED.models,
+            CatalogEntry(
+                provider="groq",
+                name=GROQ_EXTRA,
+                display_name="Groq sin nivel",
+                input_usd_per_million=0.59,
+                output_usd_per_million=0.79,
+            ),
+        ]
+    }
+)
 USER = "user-1"
 
 
@@ -240,11 +256,9 @@ class TestCreate:
         assert created.juez.proveedor == "groq"
 
     async def test_an_explicit_model_wins_over_the_tier(self) -> None:
-        created = await harness().app.create(
-            USER, request(modelo="llama-3.3-70b-versatile", nivel="economico")
-        )
+        created = await harness().app.create(USER, request(modelo=GROQ_EXTRA, nivel="economico"))
 
-        assert created.generacion.modelo == "llama-3.3-70b-versatile"
+        assert created.generacion.modelo == GROQ_EXTRA
 
     async def test_unknown_models_are_refused(self) -> None:
         with pytest.raises(ProviderNotAllowedError):
@@ -452,7 +466,7 @@ class TestAgentParams:
             USER,
             request(
                 agentes={
-                    "qa": AgentParams(modelo="llama-3.3-70b-versatile", temperatura=0.9),
+                    "qa": AgentParams(modelo=GROQ_EXTRA, temperatura=0.9),
                     "revisor": AgentParams(max_tokens=2048),
                 }
             ),
@@ -460,18 +474,16 @@ class TestAgentParams:
         await h.collect(created.run_id)
 
         [selections] = h.built
-        assert selections.qa.modelo == "llama-3.3-70b-versatile"
+        assert selections.qa.modelo == GROQ_EXTRA
         assert selections.qa.temperatura == 0.9
         assert selections.revisor.max_tokens == 2048
         assert selections.analista.modelo == "openai/gpt-oss-20b"
-        assert created.agentes["qa"].modelo == "llama-3.3-70b-versatile"
+        assert created.agentes["qa"].modelo == GROQ_EXTRA
 
     async def test_the_estimate_adds_each_agents_own_price(self) -> None:
         h = harness()
         cheap = await h.app.create(USER, request())
-        bigger = await h.app.create(
-            USER, request(agentes={"qa": AgentParams(modelo="llama-3.3-70b-versatile")})
-        )
+        bigger = await h.app.create(USER, request(agentes={"qa": AgentParams(modelo=GROQ_EXTRA)}))
 
         assert bigger.costo_estimado_usd is not None
         assert cheap.costo_estimado_usd is not None

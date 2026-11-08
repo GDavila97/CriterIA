@@ -119,12 +119,12 @@ async def test_notes_only_travel_with_a_request_for_another_version(api: Api) ->
 async def test_per_agent_options_and_the_history_choice_are_kept(api: Api) -> None:
     created = await _created(
         api,
-        agentes={"qa": {"modelo": "llama-3.3-70b-versatile", "temperatura": 0.7}},
+        agentes={"qa": {"modelo": "openai/gpt-oss-20b", "temperatura": 0.7}},
         max_rondas=3,
         guardar_historial=True,
     )
 
-    assert created["agentes"]["qa"]["modelo"] == "llama-3.3-70b-versatile"
+    assert created["agentes"]["qa"]["modelo"] == "openai/gpt-oss-20b"
     assert created["agentes"]["qa"]["temperatura"] == 0.7
     assert created["agentes"]["analista"]["modelo"] == "openai/gpt-oss-20b"
     assert (created["max_rondas"], created["guardar_historial"]) == (3, True)
