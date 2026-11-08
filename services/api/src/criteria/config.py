@@ -85,6 +85,9 @@ class Settings(BaseSettings):
     max_review_rounds: int = Field(default=2, ge=0, le=5)
     prompts_dir: Path = SERVICE_ROOT / "prompts"
     models_file: Path = SERVICE_ROOT / "config" / "models.toml"
+    eval_dir: Path = SERVICE_ROOT / "eval"
+    # The eval_writer role; only `criteria eval publish` uses it.
+    eval_database_url: SecretStr | None = None
 
     @field_validator("provider_timeouts", mode="before")
     @classmethod

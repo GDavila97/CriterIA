@@ -14,6 +14,7 @@ from uuid import uuid4
 
 from pydantic import ValidationError
 
+from criteria.adapters.cli.evaluation import add_eval_commands, execute_eval
 from criteria.adapters.cli.output import PrintingEventSink, format_historia
 from criteria.adapters.llm.catalog import CatalogError
 from criteria.adapters.llm.registry import (
@@ -102,6 +103,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     run.add_argument("--max-rondas", type=int, help="Rondas de corrección del Revisor (0 a 5).")
     run.add_argument("--json", action="store_true", help="Un evento JSON por línea.")
+    add_eval_commands(commands)
     return parser
 
 
@@ -256,6 +258,8 @@ def main(
     terminal = terminal or default_terminal()
     try:
         container = container_factory(load_settings())
+        if args.command == "eval":
+            return asyncio.run(execute_eval(args, container, terminal))
         return asyncio.run(execute(args, container, terminal))
     except (ConfigError, CatalogError, UsageError, OSError) as error:
         print(f"criteria: {error}", file=terminal.err)
