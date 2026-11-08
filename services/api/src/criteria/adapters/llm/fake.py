@@ -2,7 +2,8 @@
 
 They answer through the real agents, prompts, validators and graph, so the web sees the same
 events as with a provider, but nothing leaves the process. A key containing "nosaldo" behaves
-like an account without balance, so the "Usar el gratuito" flow can be exercised.
+like an account without balance, so the "Usar el gratuito" flow can be exercised. A requirement
+that mentions "muchas historias" gets the most stories, so long lists and pagination show up.
 """
 
 import asyncio
@@ -18,13 +19,14 @@ from pydantic_ai.models.function import AgentInfo, FunctionModel
 from criteria.adapters.agents.factory import AgentBindings, AgentFactory
 from criteria.adapters.agents.runner import ModelBinding
 from criteria.adapters.llm.registry import ProviderRegistry
-from criteria.domain.artifacts import CRITERIOS
+from criteria.domain.artifacts import CRITERIOS, MAX_HISTORIAS
 from criteria.domain.events import ProveedorId
 from criteria.domain.run_config import AgentSelections, ProviderSelection
 from criteria.ports.agents import AgentSet
 from criteria.ports.keys import KeyCheck
 
 NO_BALANCE_MARKER = "nosaldo"
+MANY_STORIES_MARKER = "muchas historias"
 CORRECTION_CASE = "CP-90"
 ROLE_BY_OUTPUT_FIELD = {
     "historias": "analista",
@@ -42,10 +44,13 @@ def _prompt(messages: list[ModelMessage]) -> str:
     return ""
 
 
-def _subject(prompt: str) -> str:
+def _requirement(prompt: str) -> str:
     match = _REQUIREMENT.search(prompt)
-    text = json.loads(match.group(1)) if match else "el sistema"
-    words = re.sub(r"[^\w\s]", "", str(text)).split()
+    return str(json.loads(match.group(1))) if match else "el sistema"
+
+
+def _subject(prompt: str) -> str:
+    words = re.sub(r"[^\w\s]", "", _requirement(prompt)).split()
     return " ".join(words[:6]).lower() or "el sistema"
 
 
@@ -67,6 +72,13 @@ def _historias(prompt: str) -> dict[str, Any]:
             "historias": [
                 _historia(1, f"resolver en un solo paso: {subject}"),
                 _historia(2, "consultar el estado de mi solicitud", "media"),
+            ]
+        }
+    if MANY_STORIES_MARKER in _requirement(prompt).lower():
+        return {
+            "historias": [
+                _historia(n, f"completar el paso {n} de {subject}", "media")
+                for n in range(1, MAX_HISTORIAS + 1)
             ]
         }
     return {

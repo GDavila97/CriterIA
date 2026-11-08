@@ -12,7 +12,7 @@ from criteria.adapters.memory.events import ListEventSink
 from criteria.application.runs import EsperandoAprobacion, RunService, Terminada
 from criteria.config import SERVICE_ROOT, Settings
 from criteria.domain.approval import RespuestaHumana
-from criteria.domain.artifacts import Requerimiento
+from criteria.domain.artifacts import MAX_HISTORIAS, Requerimiento
 from criteria.domain.events import AgenteError, CorridaFin, EnEsperaHumano, RevisorObserva
 from criteria.domain.run_config import AgentSelections, ProviderSelection
 from criteria.ports.agents import AgentSet
@@ -67,6 +67,26 @@ async def test_a_fake_run_goes_through_the_real_graph_with_one_correction() -> N
     assert isinstance(fin, CorridaFin)
     assert fin.totales.costo_usd is not None
     assert len([e for e in events.events if isinstance(e, EnEsperaHumano)]) == 2
+
+
+async def test_a_requirement_asking_for_many_stories_fills_long_lists() -> None:
+    service, events, agents = build(ProviderSelection(proveedor="groq", nivel="economico"))
+
+    waiting = await service.iniciar(
+        requerimiento=Requerimiento(texto="Un portal con muchas historias para probar listas"),
+        agents=agents,
+        events=events,
+        max_rondas=2,
+    )
+    assert isinstance(waiting, EsperandoAprobacion)
+    assert len(waiting.historias.historias) == MAX_HISTORIAS
+    done = await service.reanudar(
+        respuesta=RespuestaHumana(decision="aprobado"), agents=agents, events=events
+    )
+
+    assert isinstance(done, Terminada)
+    assert done.estado == "completada"
+    assert len(events.events) > 5
 
 
 async def test_a_key_marked_without_balance_fails_like_a_provider_would() -> None:
