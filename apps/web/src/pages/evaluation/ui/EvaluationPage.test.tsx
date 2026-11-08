@@ -11,7 +11,10 @@ import { EvaluationPage } from './EvaluationPage';
 describe('EvaluationPage', () => {
   it('evaluation loads the public results, its empty state and errors', async () => {
     const { unmount } = render(
-      <EvaluationPage user={null} client={{ evaluation: vi.fn(async () => ({ lotes: [], acuerdo_juez: null })) }} />,
+      <EvaluationPage
+        user={null}
+        client={{ evaluation: vi.fn(async () => ({ lotes: [], acuerdo_juez: null })) }}
+      />,
     );
     expect(
       await screen.findByText('Los resultados se publicarán tras la primera evaluación.'),

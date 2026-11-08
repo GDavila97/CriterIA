@@ -46,6 +46,9 @@ describe('EvaluationBoard', () => {
             provider: 'anthropic',
             model: 'claude-haiku-5-5',
             model_display_name: 'Claude Haiku 5.5',
+            judge_same_provider: true,
+            score_mean: 3.85,
+            completed: 14,
             valid_rate: 1,
             latency_p50_ms: 33_000,
           }),
@@ -67,14 +70,72 @@ describe('EvaluationBoard', () => {
     await userEvent.selectOptions(screen.getByLabelText('Versión de prompts'), 'v1');
     const table = screen.getByRole('table');
     expect(within(table).getAllByRole('row')).toHaveLength(4);
-    expect(within(table).getByText('Anthropic · Claude Haiku 5.5 *')).toBeInTheDocument();
+    const haiku = within(table)
+      .getByText(/Anthropic · Claude Haiku 5\.5/)
+      .closest('tr');
+    expect(haiku).toHaveTextContent('Anthropic · Claude Haiku 5.5 *salida tool14 de 153.85100%');
+    expect(
+      within(screen.getByRole('region', { name: 'Mejor puntaje' })).getByText(
+        'Anthropic · Claude Haiku 5.5',
+      ),
+    ).toBeInTheDocument();
     expect(
       within(screen.getByRole('region', { name: 'Más rápido' })).getByText('14 s'),
     ).toBeInTheDocument();
     expect(
-      within(screen.getByRole('region', { name: 'Más salidas válidas' })).getByText('100%'),
+      within(screen.getByRole('region', { name: 'Más salidas válidas a la primera' })).getByText(
+        '100%',
+      ),
     ).toBeInTheDocument();
     expect(within(table).getAllByText('—').length).toBeGreaterThan(0);
+  });
+
+  it('shows the judge agreement with its interval and direction, or that it is pending', () => {
+    const value = (valor: number, bajo: number, alto: number) => ({ valor, bajo, alto });
+    const { unmount } = render(
+      <EvaluationBoard
+        lotes={[batch({})]}
+        acuerdo={{
+          pares: 32,
+          kappa: value(0.62, 0.41, 0.79),
+          spearman: value(0.58, 0.33, 0.77),
+          exacto: value(0.5, 0.34, 0.66),
+          mas_menos_uno: value(0.91, 0.81, 1),
+          juez_menos_humano: { valor: -0.25, bajo: null, alto: null },
+        }}
+      />,
+    );
+
+    const section = screen.getByRole('region', { name: 'Acuerdo del juez con una persona' });
+    expect(within(section).getByText('0.62 (0.41 a 0.79)')).toBeInTheDocument();
+    expect(within(section).getByText('50% (34% a 66%)')).toBeInTheDocument();
+    expect(section).toHaveTextContent('32 pares');
+    expect(section).toHaveTextContent('califica 0.25 puntos más bajo que la persona');
+    unmount();
+
+    render(<EvaluationBoard lotes={[batch({})]} />);
+    expect(screen.getByText(/Pendiente: se publica cuando termine/)).toBeInTheDocument();
+  });
+
+  it('a value without an interval shows alone', () => {
+    render(
+      <EvaluationBoard
+        lotes={[batch({})]}
+        acuerdo={{
+          pares: 2,
+          kappa: { valor: null, bajo: null, alto: null },
+          spearman: { valor: 1, bajo: null, alto: null },
+          exacto: { valor: 1, bajo: 1, alto: 1 },
+          mas_menos_uno: { valor: 1, bajo: 1, alto: 1 },
+          juez_menos_humano: { valor: 0.5, bajo: 0, alto: 1 },
+        }}
+      />,
+    );
+
+    const section = screen.getByRole('region', { name: 'Acuerdo del juez con una persona' });
+    expect(within(section).getByText('—')).toBeInTheDocument();
+    expect(within(section).getByText('1.00')).toBeInTheDocument();
+    expect(section).toHaveTextContent('0.50 puntos más alto');
   });
 
   it('shows dashes when no batch has numbers', () => {

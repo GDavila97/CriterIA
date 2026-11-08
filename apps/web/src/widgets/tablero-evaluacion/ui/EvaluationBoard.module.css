@@ -116,3 +116,27 @@
   font-size: 0.85rem;
   color: var(--color-muted);
 }
+
+.mode {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--color-muted);
+}
+
+.agreement {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-16);
+  margin: 0 0 var(--space-12);
+}
+
+.agreement dt {
+  font-size: 0.85rem;
+  color: var(--color-muted);
+}
+
+.agreement dd {
+  margin: var(--space-4) 0 0;
+  font-family: var(--font-mono);
+  font-size: 1rem;
+}
