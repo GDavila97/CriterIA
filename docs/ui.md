@@ -44,6 +44,17 @@ Reglas:
 - El panel del agente se desliza desde el borde derecho; al cerrar, incluido con Escape, el diálogo espera a que termine la salida antes de cerrarse.
 - Con `prefers-reduced-motion: reduce`, los tokens de distancia valen cero y la escala vale 1: las entradas quedan en un fundido, el panel aparece sin deslizarse, y los bucles (pulso de los esqueletos, parpadeo y balanceo de la Ficha) se detienen.
 
+## Listas largas en la vista de corrida
+
+La página no crece sin límite:
+
+- **Registro.** La tarjeta muestra los últimos 5 eventos y el botón "Ver registro completo (N)" abre un panel lateral (`Drawer`, con el mismo movimiento que el panel del agente) con la línea de tiempo completa y un filtro por agente. El panel lee el mismo estado en vivo, así que la corrida sigue avanzando con el panel abierto: el stream pertenece a la página ([ADR 0018](adr/0018-run-lifecycle-bound-to-the-stream.md)) y abrirlo no abre otra conexión.
+- **Artefactos.** Historias, Casos de prueba, Gherkin y Observaciones se paginan dentro de la tarjeta, 10 por página, con `Paged` (`shared/ui/paged`): "Anterior", "Siguiente" (con `aria-disabled` en los extremos, para no perder el foco) y "Página X de Y" anunciado con `aria-live`. Todas las páginas ocupan la misma celda de la cuadrícula y solo la actual es visible (las demás con `visibility: hidden` e `inert`), de modo que la tarjeta conserva la altura de su página más alta y cambiar de página no mueve nada. La exportación siempre incluye todo.
+
+## Nombres de modelos
+
+La interfaz nunca muestra identificadores como `groq:openai/gpt-oss-20b`. Usa "Proveedor · display_name" ("Groq · GPT-OSS 20B") con el `display_name` del catálogo (`services/api/config/models.toml`), que la API entrega en `GET /catalog`, en el historial y en la evaluación. Los selectores de modelo muestran proveedor y nivel, y el modelo va en una línea secundaria debajo, enlazada con `aria-describedby`, para que la opción nunca se corte.
+
 ## Verificación
 
 Las pruebas de pantallas de Playwright (`apps/web/e2e/screens`) corren en escritorio y 390 px, en claro y oscuro. En cada captura esperan a que terminen las animaciones finitas, pasan axe, verifican que no haya violaciones de CSP y, a 390 px, fallan si la página se desborda a lo ancho. Otra prueba confirma que con movimiento reducido los tokens de distancia valen cero.
