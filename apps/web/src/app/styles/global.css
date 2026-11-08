@@ -18,6 +18,10 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+a {
+  color: var(--color-accent);
+}
+
 .sr-only {
   position: absolute;
   width: 1px;

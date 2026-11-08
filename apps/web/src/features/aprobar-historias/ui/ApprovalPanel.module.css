@@ -38,7 +38,7 @@
 .story input[type='checkbox'] {
   width: 22px;
   height: 22px;
-  margin-top: var(--space-4);
+  margin: var(--space-4) 0 0;
   accent-color: var(--color-accent-strong);
 }
 

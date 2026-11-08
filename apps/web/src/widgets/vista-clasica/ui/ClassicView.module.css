@@ -384,6 +384,11 @@
     align-items: center;
   }
 
+  .agentLink {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+
   .table {
     display: none;
   }
