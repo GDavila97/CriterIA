@@ -468,6 +468,7 @@ export interface HumanoResponde {
   type: 'humano_responde';
   decision: 'aprobado' | 'editado' | 'otra_version';
   cambios: CambiosHistorias;
+  historias: HistoriaUsuario[] | null;
 }
 /**
  * This interface was referenced by `CriteriaContract`'s JSON-Schema

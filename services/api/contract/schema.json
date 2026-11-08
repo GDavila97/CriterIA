@@ -1614,6 +1614,20 @@
         },
         "cambios": {
           "$ref": "#/$defs/CambiosHistorias"
+        },
+        "historias": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/HistoriaUsuario"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         }
       },
       "required": [
@@ -1623,7 +1637,8 @@
         "agent",
         "type",
         "decision",
-        "cambios"
+        "cambios",
+        "historias"
       ],
       "title": "HumanoResponde",
       "type": "object"

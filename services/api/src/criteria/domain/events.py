@@ -116,6 +116,8 @@ class HumanoResponde(EventoBase):
     type: Literal["humano_responde"] = "humano_responde"
     decision: Literal["aprobado", "editado", "otra_version"]
     cambios: CambiosHistorias
+    # The stories QA will work with; null when the person asked for another version.
+    historias: list[HistoriaUsuario] | None = None
 
 
 class RevisorObserva(EventoBase):

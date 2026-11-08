@@ -166,6 +166,9 @@ def _saved_run(record: RunRecord, events: Sequence[EventoBase]) -> SavedRun | No
         return None
     artifacts: dict[str, Any] = {}
     for event in dumped:
+        # The approved stories replace the proposal; a later correction replaces them again.
+        if event["type"] == "humano_responde" and event.get("historias"):
+            artifacts["historias"] = {"historias": event["historias"]}
         if event["type"] == "agente_entrega":
             entrega = event["artefactos"]
             artifacts[entrega["tipo"]] = {k: v for k, v in entrega.items() if k != "tipo"}

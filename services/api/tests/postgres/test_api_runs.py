@@ -176,6 +176,7 @@ async def test_edited_stories_reach_qa(api: Api) -> None:
     _, events = await api.stream(run_id, last_event_id=before[-1]["seq"])
 
     assert events[0]["decision"] == "editado"
+    assert events[0]["historias"][0]["quiero"] == "pagar en línea"
     assert "pagar en línea" in api.team.prompts["qa"][0]
 
 
@@ -219,3 +220,23 @@ async def test_a_failing_agent_ends_the_run_with_its_code_and_suggestion(api: Ap
     assert events[-2]["respaldo_sugerido"] is None
     assert events[-1]["estado"] == "error"
     assert api.sql("SELECT count(*) FROM app.run")[0][0] == 0
+
+
+async def test_history_keeps_the_stories_the_person_approved(api: Api) -> None:
+    await api.client.put("/me/settings", json={"save_history": True}, headers=api.headers())
+    run_id = (await api.create_run()).json()["run_id"]
+    _, before = await api.stream(run_id)
+    edited = RespuestaHumana.model_validate(
+        {
+            "decision": "editado",
+            "historias": {"historias": [f.historia(1, quiero="pagar en línea")]},
+        }
+    )
+    await api.client.post(
+        f"/runs/{run_id}/approval", json=edited.model_dump(mode="json"), headers=api.headers()
+    )
+    await api.stream(run_id, last_event_id=before[-1]["seq"])
+
+    item = (await api.client.get(f"/me/runs/{run_id}", headers=api.headers())).json()
+
+    assert [h["quiero"] for h in item["artifacts"]["historias"]["historias"]] == ["pagar en línea"]

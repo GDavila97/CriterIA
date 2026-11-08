@@ -347,6 +347,7 @@ class TestHumanPause:
             "modificadas": ["HU-1"],
             "eliminadas": ["HU-2"],
         }
+        assert [h.id for h in respuesta.historias or []] == ["HU-1", "HU-3"]
         qa_prompt = harness.team.prompts["qa"][0]
         assert "reservar con fecha límite" in qa_prompt
         assert '"HU-2"' not in qa_prompt

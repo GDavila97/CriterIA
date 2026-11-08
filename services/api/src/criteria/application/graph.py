@@ -204,6 +204,7 @@ async def aprobacion(state: RunState, runtime: Runtime[GraphDeps]) -> RunState:
         agent="analista",
         decision="editado" if cambios.hay_cambios() else "aprobado",
         cambios=cambios,
+        historias=nuevas.historias,
     )
     return {"historias": nuevas.model_dump(mode="json"), "pide_otra_version": False}
 
