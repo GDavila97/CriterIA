@@ -1,0 +1,6 @@
+# Evaluation case v1. Only `texto` reaches the agents; the rest is metadata for the analysis.
+id = "medio-01"
+titulo = "Licencia de funcionamiento para comercios"
+dificultad = "medio"
+dominio = "trámites de gobierno"
+texto = "El ayuntamiento de un municipio mediano quiere que los dueños de comercios pequeños soliciten en línea la licencia de funcionamiento. El solicitante crea una cuenta, captura los datos del negocio (giro, dirección, superficie en metros cuadrados y horario) y sube tres documentos en PDF: identificación, comprobante de domicilio del local y croquis. Un revisor de la ventanilla valida los documentos; si alguno no es correcto, lo rechaza con un motivo y el solicitante lo corrige sin repetir toda la solicitud. Con los documentos completos, el sistema calcula el pago según el giro y la superficie con la tabla de tarifas vigente y genera una línea de captura. Al confirmarse el pago, la licencia se emite en PDF con un código QR para verificar su autenticidad. El solicitante consulta el estado de su trámite en todo momento."

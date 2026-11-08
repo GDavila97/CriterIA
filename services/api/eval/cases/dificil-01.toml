@@ -1,0 +1,26 @@
+# Evaluation case v1. Only `texto` reaches the agents; the rest is metadata for the analysis.
+id = "dificil-01"
+titulo = "Rutas de reparto de una distribuidora"
+dificultad = "dificil"
+dominio = "logística"
+texto = "Una distribuidora de abarrotes que surte a tiendas de barrio necesita un sistema para planear y seguir sus rutas de reparto. Cada mañana, el coordinador carga los pedidos del día y el sistema arma rutas óptimas para los camiones disponibles. Cada camión tiene un repartidor y una capacidad máxima en kilos. Un repartidor atiende como máximo 30 paradas por día. El repartidor ve su ruta en el celular, en orden, con la dirección y el contenido de cada pedido, y marca cada entrega como realizada con una foto de la nota firmada. Las tiendas deben recibir su pedido lo antes posible. El coordinador ve en un mapa dónde está cada camión y cuántas entregas lleva. Para aprovechar mejor los camiones, una ruta puede llevar hasta 40 entregas. Al final del día, el sistema genera un reporte de entregas realizadas por repartidor."
+
+[[problemas]]
+tipo = "ambiguedad"
+descripcion = "\"Rutas óptimas\" no dice qué se optimiza: distancia, tiempo, costo o número de camiones."
+
+[[problemas]]
+tipo = "ambiguedad"
+descripcion = "\"Lo antes posible\" no fija una ventana ni un horario de entrega."
+
+[[problemas]]
+tipo = "inconsistencia"
+descripcion = "Un repartidor atiende como máximo 30 paradas por día, pero una ruta puede llevar hasta 40 entregas."
+
+[[problemas]]
+tipo = "faltante"
+descripcion = "No dice qué pasa con una entrega fallida (tienda cerrada, pedido rechazado o devolución)."
+
+[[problemas]]
+tipo = "faltante"
+descripcion = "No dice qué hacer si los pedidos del día exceden la capacidad de los camiones disponibles."

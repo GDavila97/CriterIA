@@ -1,0 +1,26 @@
+# Evaluation case v1. Only `texto` reaches the agents; the rest is metadata for the analysis.
+id = "dificil-03"
+titulo = "Préstamos de una caja de ahorro"
+dificultad = "dificil"
+dominio = "finanzas"
+texto = "Una caja de ahorro de trabajadores quiere que sus socios soliciten préstamos desde una aplicación. El socio puede pedir hasta tres veces lo que tiene ahorrado, y el préstamo se descuenta de su nómina en pagos quincenales. La tasa es baja y la aprobación es rápida. Para solicitar, el socio debe tener al menos seis meses en la caja y no tener otro préstamo activo. El comité de crédito revisa las solicitudes mayores a 50,000 pesos; las demás se aprueban automáticamente. Si el socio deja de trabajar en la empresa, el saldo pendiente se cubre con sus ahorros. Los socios pueden adelantar pagos sin penalización. Un socio puede tener dos préstamos al mismo tiempo si el segundo es de emergencia."
+
+[[problemas]]
+tipo = "ambiguedad"
+descripcion = "\"La tasa es baja\" y \"la aprobación es rápida\" no dan valores ni plazos."
+
+[[problemas]]
+tipo = "inconsistencia"
+descripcion = "Para solicitar no debe tener otro préstamo activo, pero puede tener dos si el segundo es de emergencia."
+
+[[problemas]]
+tipo = "ambiguedad"
+descripcion = "No define qué es un préstamo de emergencia."
+
+[[problemas]]
+tipo = "faltante"
+descripcion = "No dice qué pasa si los ahorros no alcanzan a cubrir el saldo cuando el socio deja la empresa."
+
+[[problemas]]
+tipo = "faltante"
+descripcion = "No fija el plazo máximo ni revisa si el descuento quincenal cabe en el salario del socio."

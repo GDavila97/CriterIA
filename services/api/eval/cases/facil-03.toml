@@ -1,0 +1,6 @@
+# Evaluation case v1. Only `texto` reaches the agents; the rest is metadata for the analysis.
+id = "facil-03"
+titulo = "Recordatorios de citas de una clínica dental"
+dificultad = "facil"
+dominio = "salud administrativa"
+texto = "Una clínica dental de barrio quiere enviar recordatorios automáticos de las citas. Un día antes de cada cita, el sistema envía al paciente un mensaje de texto con la fecha, la hora y el nombre del dentista. El paciente puede responder CONFIRMO o CANCELO. Las respuestas se reflejan en la agenda de la recepción, donde las citas canceladas aparecen marcadas para ofrecer el horario a otro paciente."

@@ -1,0 +1,6 @@
+# Evaluation case v1. Only `texto` reaches the agents; the rest is metadata for the analysis.
+id = "medio-02"
+titulo = "Inscripción a materias con cupo y prerrequisitos"
+dificultad = "medio"
+dominio = "educación"
+texto = "Una universidad necesita que sus estudiantes se inscriban a materias en línea durante el periodo de inscripción. Cada materia tiene grupos con horario y cupo máximo, y puede tener materias prerrequisito. El estudiante solo ve los grupos de materias cuyos prerrequisitos aprobó, no puede inscribir dos grupos con horarios que se traslapen y no puede pasar de 48 créditos por semestre. Si un grupo está lleno, el estudiante puede anotarse en una lista de espera; cuando alguien da de baja ese grupo, el primer lugar de la lista recibe el lugar y un aviso por correo, y tiene 24 horas para confirmarlo. Al cerrar el periodo, cada estudiante descarga su horario en PDF."

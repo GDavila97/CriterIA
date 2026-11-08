@@ -1,0 +1,6 @@
+# Evaluation case v1. Only `texto` reaches the agents; the rest is metadata for the analysis.
+id = "medio-03"
+titulo = "Solicitudes de vacaciones con aprobación"
+dificultad = "medio"
+dominio = "recursos humanos"
+texto = "Una empresa de 300 empleados quiere digitalizar las solicitudes de vacaciones. El empleado ve cuántos días le corresponden según su antigüedad, cuántos ha usado y cuántos le quedan, y solicita un rango de fechas. Los días festivos y los fines de semana no se descuentan. La solicitud llega a su jefe inmediato, que la aprueba o la rechaza con un comentario; si el jefe no responde en tres días hábiles, la solicitud pasa al gerente del área. Recursos humanos ve un calendario por departamento con las ausencias aprobadas y recibe una alerta si más de la mitad de un equipo estará ausente el mismo día."

@@ -1,0 +1,26 @@
+# Evaluation case v1. Only `texto` reaches the agents; the rest is metadata for the analysis.
+id = "dificil-02"
+titulo = "Apoyo económico a pequeños productores"
+dificultad = "dificil"
+dominio = "trámites de gobierno"
+texto = "La secretaría de desarrollo rural de un estado quiere un sistema para su programa de apoyo a pequeños productores de maíz. Los productores se registran en línea con sus datos y los de su parcela, y pueden solicitar el apoyo una vez por ciclo agrícola. El apoyo es de 1,500 pesos por hectárea, hasta un máximo de 5 hectáreas. Un técnico visita la parcela y confirma la superficie sembrada. Las solicitudes se atienden en orden de llegada hasta agotar el presupuesto del programa. Tienen prioridad los productores de zonas de alta marginación. El pago se hace por transferencia a la cuenta del productor. Quienes reciban el apoyo deben comprobar su uso. El monto máximo por productor es de 10,000 pesos."
+
+[[problemas]]
+tipo = "inconsistencia"
+descripcion = "1,500 pesos por hectárea con un máximo de 5 hectáreas dan 7,500 pesos, pero el máximo por productor es de 10,000."
+
+[[problemas]]
+tipo = "inconsistencia"
+descripcion = "Las solicitudes se atienden en orden de llegada, pero las zonas de alta marginación tienen prioridad; no dice cómo se combinan."
+
+[[problemas]]
+tipo = "ambiguedad"
+descripcion = "\"Pequeños productores\" no tiene un criterio (superficie, ingresos u otro)."
+
+[[problemas]]
+tipo = "faltante"
+descripcion = "No dice cómo ni en qué plazo se comprueba el uso del apoyo, ni qué pasa si no se comprueba."
+
+[[problemas]]
+tipo = "faltante"
+descripcion = "No dice qué pasa si el técnico encuentra una superficie distinta a la declarada."

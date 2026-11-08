@@ -1,0 +1,6 @@
+# Evaluation case v1. Only `texto` reaches the agents; the rest is metadata for the analysis.
+id = "medio-04"
+titulo = "Pedidos para recoger en una cadena de cafeterías"
+dificultad = "medio"
+dominio = "comercio"
+texto = "Una cadena de cinco cafeterías quiere que sus clientes pidan para recoger desde el celular. El cliente elige la sucursal, arma su pedido con productos y opciones (tamaño, tipo de leche y extras con costo) y paga con tarjeta. El sistema le indica un tiempo estimado según los pedidos en preparación en esa sucursal. En la barra, el personal ve los pedidos en orden de llegada y los marca como en preparación y como listos; al marcar uno como listo, el cliente recibe una notificación. Si un producto se agota, el personal lo desactiva en esa sucursal y deja de aparecer en el menú. Los pedidos que no se recogen en 30 minutos se marcan como abandonados y no se reembolsan."

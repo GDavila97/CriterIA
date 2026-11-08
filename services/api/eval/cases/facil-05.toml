@@ -1,0 +1,6 @@
+# Evaluation case v1. Only `texto` reaches the agents; the rest is metadata for the analysis.
+id = "facil-05"
+titulo = "Registro de gastos personales"
+dificultad = "facil"
+dominio = "finanzas"
+texto = "Una aplicación de finanzas personales necesita que el usuario registre sus gastos del día. Cada gasto tiene un monto en pesos, una categoría (comida, transporte, vivienda, entretenimiento u otros), la fecha y una nota opcional. El usuario ve el total gastado en el mes en curso con un desglose por categoría, y puede editar o borrar un gasto que registró por error."

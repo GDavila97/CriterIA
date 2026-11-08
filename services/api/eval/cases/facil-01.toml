@@ -1,0 +1,6 @@
+# Evaluation case v1. Only `texto` reaches the agents; the rest is metadata for the analysis.
+id = "facil-01"
+titulo = "Asistencia a talleres extracurriculares"
+dificultad = "facil"
+dominio = "educación"
+texto = "Una escuela secundaria necesita que los profesores registren desde el celular la asistencia a sus talleres extracurriculares. El profesor elige el taller y la fecha, ve la lista de alumnos inscritos y marca a cada uno como presente, ausente o con retardo. Al guardar, la asistencia queda registrada con la hora y el nombre del profesor. La coordinación consulta el porcentaje de asistencia de cada alumno por taller y por mes."

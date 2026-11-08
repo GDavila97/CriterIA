@@ -1,0 +1,6 @@
+# Evaluation case v1. Only `texto` reaches the agents; the rest is metadata for the analysis.
+id = "facil-02"
+titulo = "Lista de deseos de una tienda en línea"
+dificultad = "facil"
+dominio = "comercio"
+texto = "Una tienda en línea de artículos para el hogar quiere que sus clientes registrados guarden productos en una lista de deseos. Desde la ficha de un producto, el cliente lo agrega a su lista o lo quita. En la lista ve el nombre, la foto, el precio actual y si hay existencias, y puede pasar un producto al carrito con un clic. Si el precio de un producto de la lista baja, el cliente recibe un aviso por correo, una sola vez por cada baja."

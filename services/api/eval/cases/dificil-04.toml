@@ -1,0 +1,26 @@
+# Evaluation case v1. Only `texto` reaches the agents; the rest is metadata for the analysis.
+id = "dificil-04"
+titulo = "Entrega y calificación de tareas"
+dificultad = "dificil"
+dominio = "educación"
+texto = "Una preparatoria quiere una plataforma donde los profesores publiquen tareas y los alumnos las entreguen. El profesor crea la tarea con instrucciones, fecha límite y valor en puntos. Los alumnos suben su archivo antes de la fecha límite; las entregas tardías se aceptan con penalización. El profesor califica cada entrega y deja comentarios. Los padres de familia pueden ver las calificaciones de sus hijos. Las tareas en equipo las entrega un solo integrante y la calificación se asigna a todos. La plataforma debe ser fácil de usar y funcionar bien en cualquier dispositivo. Las calificaciones se publican cuando el profesor termina de calificar a todo el grupo. Cada alumno ve su calificación en cuanto el profesor la registra."
+
+[[problemas]]
+tipo = "faltante"
+descripcion = "No dice de cuánto es la penalización por entrega tardía ni hasta cuándo se aceptan."
+
+[[problemas]]
+tipo = "ambiguedad"
+descripcion = "\"Fácil de usar\" y \"funcionar bien en cualquier dispositivo\" no son verificables."
+
+[[problemas]]
+tipo = "inconsistencia"
+descripcion = "Las calificaciones se publican al terminar todo el grupo, pero cada alumno la ve en cuanto se registra."
+
+[[problemas]]
+tipo = "faltante"
+descripcion = "No dice cómo se forman los equipos ni qué pasa si un integrante no participó."
+
+[[problemas]]
+tipo = "faltante"
+descripcion = "No dice cómo se vincula a un padre o madre con su hijo ni qué tipos y tamaños de archivo se aceptan."

@@ -1,0 +1,6 @@
+# Evaluation case v1. Only `texto` reaches the agents; the rest is metadata for the analysis.
+id = "facil-04"
+titulo = "Rastreo de envíos por número de guía"
+dificultad = "facil"
+dominio = "logística"
+texto = "Una paquetería regional necesita una página pública donde cualquier persona consulte el estado de un envío con su número de guía de 12 dígitos. La página muestra el estado actual (recibido, en tránsito, en reparto, entregado o devuelto), las ciudades de origen y destino, y el historial de movimientos con fecha y hora. Si el número no existe o su formato no es válido, muestra un mensaje claro sin revelar datos de otros envíos."

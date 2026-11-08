@@ -1,0 +1,6 @@
+# Evaluation case v1. Only `texto` reaches the agents; the rest is metadata for the analysis.
+id = "medio-05"
+titulo = "Reembolso de gastos médicos"
+dificultad = "medio"
+dominio = "seguros y salud administrativa"
+texto = "Una aseguradora de gastos médicos quiere que sus asegurados soliciten reembolsos en línea. El asegurado elige la póliza, captura los datos de la consulta o del estudio (fecha, médico y monto) y sube la factura en XML y PDF junto con la receta o la orden médica. El sistema verifica que la factura esté a nombre del asegurado y que su fecha caiga dentro de la vigencia de la póliza. Un dictaminador revisa la solicitud y la aprueba total o parcialmente según el deducible y el coaseguro de la póliza, o la rechaza indicando el motivo. El asegurado ve el monto aprobado y la fecha estimada de depósito, que debe ser a más tardar diez días hábiles después de la aprobación."

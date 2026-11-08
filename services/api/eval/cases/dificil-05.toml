@@ -1,0 +1,26 @@
+# Evaluation case v1. Only `texto` reaches the agents; the rest is metadata for the analysis.
+id = "dificil-05"
+titulo = "Programación de quirófanos de un hospital"
+dificultad = "dificil"
+dominio = "salud administrativa"
+texto = "Un hospital privado de tamaño mediano necesita programar el uso de sus cuatro quirófanos. Los cirujanos solicitan un horario para una cirugía indicando el procedimiento, la duración estimada y el paciente. La coordinación de quirófanos aprueba las solicitudes. Entre una cirugía y otra se dejan 30 minutos para limpieza. Las urgencias tienen prioridad y pueden desplazar cirugías programadas. Los quirófanos funcionan de 7:00 a 21:00, aunque las cirugías largas pueden terminar después. El sistema avisa al paciente y al anestesiólogo cuando se confirma la cirugía. Cada quirófano tiene equipo distinto, y algunas cirugías solo pueden hacerse en ciertos quirófanos. La duración de la limpieza depende del tipo de cirugía."
+
+[[problemas]]
+tipo = "inconsistencia"
+descripcion = "La limpieza dura 30 minutos fijos, pero también se dice que depende del tipo de cirugía."
+
+[[problemas]]
+tipo = "ambiguedad"
+descripcion = "\"Las cirugías largas pueden terminar después\" no fija un límite ni quién lo autoriza."
+
+[[problemas]]
+tipo = "faltante"
+descripcion = "No dice qué pasa con una cirugía desplazada por una urgencia: reprogramación y avisos."
+
+[[problemas]]
+tipo = "faltante"
+descripcion = "No dice con qué criterios aprueba la coordinación ni cómo se resuelven dos solicitudes para el mismo horario."
+
+[[problemas]]
+tipo = "faltante"
+descripcion = "No dice cómo se registra el equipo de cada quirófano ni cómo se asigna el anestesiólogo."
