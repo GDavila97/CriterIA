@@ -6,7 +6,7 @@ import { useState, type FormEvent } from 'react';
 
 import { authClient } from '@/shared/lib/auth/client';
 import { useHydrated } from '@/shared/lib/react';
-import { Button, Notice, Segmented, TextField } from '@/shared/ui';
+import { Button, GithubMark, Notice, Segmented, TextField } from '@/shared/ui';
 
 import { authErrorMessage, oauthErrorMessage } from '../model/messages';
 
@@ -102,6 +102,7 @@ export function AuthCard({ githubEnabled, emailMode, oauthError }: AuthCardProps
       {githubEnabled && (
         <>
           <Button variant="secondary" block onClick={github} disabled={busy || !hydrated}>
+            <GithubMark size={18} />
             Continuar con GitHub
           </Button>
           <p className={styles.separator}>o con tu correo</p>

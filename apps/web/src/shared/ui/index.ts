@@ -3,6 +3,7 @@ export { Button, buttonClass, type ButtonProps, type ButtonVariant } from './but
 export { Drawer, type DrawerProps } from './drawer/Drawer';
 export { Ficha, type FichaProps } from './ficha/Ficha';
 export { CheckboxField, SelectField, TextArea, TextField, type SelectOption } from './field/Field';
+export { GithubMark } from './icon/GithubMark';
 export { Icon, type IconName } from './icon/Icon';
 export { Logo } from './logo/Logo';
 export { Notice, type NoticeProps } from './notice/Notice';

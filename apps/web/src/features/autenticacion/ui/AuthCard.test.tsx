@@ -39,6 +39,9 @@ describe('AuthCard', () => {
       screen.getByText('Por ahora no hay recuperación de contraseña. Guárdala en un lugar seguro.'),
     ).toBeInTheDocument();
     expect(screen.getByLabelText('Contraseña')).toHaveAccessibleDescription('Mínimo 12 caracteres');
+    const mark = github.querySelector('svg');
+    expect(mark).toHaveAttribute('aria-hidden', 'true');
+    expect(mark).toHaveAttribute('fill', 'currentColor');
   });
 
   it('signs up with 12+ characters and goes to the run page', async () => {
