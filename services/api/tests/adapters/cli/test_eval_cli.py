@@ -81,6 +81,7 @@ class TestEvalRun:
         )
         assert (saved.temperatura, saved.temperatura_juez, saved.ollama) == (0.2, 0.0, None)
         assert saved.max_tokens == 8192
+        assert saved.parametros_ignorados == []
         assert container is not None
         generacion, juez = container.selections[0]
         assert (generacion.temperatura, juez.etiqueta, juez.temperatura) == (

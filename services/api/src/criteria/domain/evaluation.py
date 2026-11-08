@@ -167,6 +167,8 @@ class EvalBatch(Esquema):
     # Everything the providers billed, failed attempts included.
     costo_gastado_usd: float = Field(default=0.0, ge=0)
     deteccion: dict[str, DeteccionCaso] = Field(default_factory=dict)
+    # Settings a provider dropped (Haiku 5.5 takes no temperature), as pydantic-ai reported them.
+    parametros_ignorados: list[str] = Field(default_factory=list)
     # The matcher is post-hoc analysis, so its cost is kept apart from the runs'.
     costo_analisis_usd: float = Field(default=0.0, ge=0)
 

@@ -2,6 +2,7 @@
 
 import argparse
 import asyncio
+import warnings
 from collections.abc import Mapping
 from datetime import UTC, datetime
 from pathlib import Path
@@ -58,6 +59,8 @@ JUDGE = ("anthropic", "claude-haiku-5-5")
 DEFAULT_SEED = 20261108
 MATCHER_VERSION = "v1"
 HUMAN_FILE = "human.json"
+# pydantic-ai warns with this text when a provider drops a sampling setting.
+IGNORED_SETTING = "will be ignored"
 PAUSE = "p"
 
 
@@ -181,6 +184,19 @@ def _check_resumable(batch: EvalBatch, fresh: EvalBatch) -> None:
         )
 
 
+def _with_ignored_settings(
+    store: JsonBatchStore, caught: list[warnings.WarningMessage]
+) -> EvalBatch:
+    batch = store.load()
+    assert batch is not None  # noqa: S101  saved before the first case
+    found = {str(w.message) for w in caught if IGNORED_SETTING in str(w.message)}
+    merged = sorted(set(batch.parametros_ignorados) | found)
+    if merged != batch.parametros_ignorados:
+        batch = batch.model_copy(update={"parametros_ignorados": merged})
+        store.save(batch)
+    return batch
+
+
 async def _run(args: argparse.Namespace, container: "Container", terminal: "Terminal") -> int:
     registry = container.registry
     settings = container.settings
@@ -242,7 +258,14 @@ async def _run(args: argparse.Namespace, container: "Container", terminal: "Term
         max_rondas=batch.max_rondas,
     )
     try:
-        batch = await runner.run(batch, cases, lambda message: print(message, file=terminal.err))
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            try:
+                batch = await runner.run(
+                    batch, cases, lambda message: print(message, file=terminal.err)
+                )
+            finally:
+                batch = _with_ignored_settings(store, caught)
     except BatchStoppedError as error:
         print(
             f"Lote detenido en {error.case_id} por {error.codigo}; "
