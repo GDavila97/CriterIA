@@ -1,4 +1,4 @@
-# Local development database. Production uses Neon (F6); CI uses its own Postgres service.
+# Local development services. Production uses Neon (F6); CI uses its own service containers.
 services:
   postgres:
     image: postgres:16
@@ -15,6 +15,12 @@ services:
       retries: 10
     volumes:
       - pgdata:/var/lib/postgresql/data
+  # Catches the web's email in development and in the end-to-end tests (EMAIL_PROVIDER=smtp).
+  mailpit:
+    image: axllent/mailpit:v1.32.0
+    ports:
+      - "127.0.0.1:1025:1025"
+      - "127.0.0.1:8025:8025"
 
 volumes:
   pgdata:

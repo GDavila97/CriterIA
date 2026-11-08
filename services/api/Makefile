@@ -47,7 +47,8 @@ db-setup:
 	psql "$(LOCAL_ADMIN_URL)/criteria" -v ON_ERROR_STOP=1 -q \
 		-c "ALTER ROLE migrator_role PASSWORD '$(LOCAL_ROLE_PASSWORD)'" \
 		-c "ALTER ROLE api_role PASSWORD '$(LOCAL_ROLE_PASSWORD)'" \
-		-c "ALTER ROLE eval_writer PASSWORD '$(LOCAL_ROLE_PASSWORD)'"
+		-c "ALTER ROLE eval_writer PASSWORD '$(LOCAL_ROLE_PASSWORD)'" \
+		-c "ALTER ROLE web_role PASSWORD '$(LOCAL_ROLE_PASSWORD)'"
 
 migrate:
 	uv run --env-file .env alembic upgrade head
