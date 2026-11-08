@@ -16,6 +16,13 @@ class CatalogError(RuntimeError):
     pass
 
 
+class TokenProfile(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    input_tokens: int = Field(ge=0)
+    output_tokens: int = Field(ge=0)
+
+
 class CatalogEntry(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -27,19 +34,14 @@ class CatalogEntry(BaseModel):
     nivel: Nivel | None = None
     thinking: bool | None = None
     output_mode: OutputMode = "tool"
+    # Overrides the catalog's general profile for models that spend very differently.
+    consumption_profile: dict[RolAgente, TokenProfile] | None = None
 
     @model_validator(mode="after")
     def _prices_come_in_pairs(self) -> Self:
         if (self.input_usd_per_million is None) != (self.output_usd_per_million is None):
             raise ValueError(f"{self.provider}:{self.name} needs both prices or neither")
         return self
-
-
-class TokenProfile(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True)
-
-    input_tokens: int = Field(ge=0)
-    output_tokens: int = Field(ge=0)
 
 
 class ModelCatalog(BaseModel):
@@ -96,12 +98,19 @@ class ModelCatalog(BaseModel):
     def tiers(self, provider: ProveedorId) -> dict[Nivel, str]:
         return {m.nivel: m.name for m in self.models if m.provider == provider and m.nivel}
 
+    def profile_for(self, provider: ProveedorId, name: str) -> dict[RolAgente, TokenProfile]:
+        entry = self.entry(provider, name)
+        if entry is not None and entry.consumption_profile is not None:
+            return {**self.consumption_profile, **entry.consumption_profile}
+        return self.consumption_profile
+
     def _profile_cost(
         self, roles: tuple[RolAgente, ...], model: tuple[ProveedorId, str]
     ) -> float | None:
+        profiles = self.profile_for(*model)
         total = 0.0
         for rol in roles:
-            profile = self.consumption_profile.get(rol)
+            profile = profiles.get(rol)
             cost = (
                 self.cost_usd(*model, profile.input_tokens, profile.output_tokens)
                 if profile

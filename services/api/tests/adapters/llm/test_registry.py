@@ -13,6 +13,7 @@ from criteria.adapters.llm.catalog import (
     CatalogError,
     ModelCatalog,
     TierNotAvailableError,
+    TokenProfile,
 )
 from criteria.adapters.llm.registry import (
     KeyRequiredError,
@@ -22,7 +23,13 @@ from criteria.adapters.llm.registry import (
 from criteria.adapters.llm.ssrf import EndpointNotAllowedError
 from criteria.config import SERVICE_ROOT, Settings
 from criteria.domain.events import ProveedorId
-from criteria.domain.run_config import Nivel, ProviderSelection, SelectionError, parse_selection
+from criteria.domain.run_config import (
+    Nivel,
+    ProviderSelection,
+    RolAgente,
+    SelectionError,
+    parse_selection,
+)
 
 USER_KEY = "sk-user-0000-very-secret"
 
@@ -413,6 +420,41 @@ class TestTiers:
                 1,
                 1,
             )
+
+
+class TestConsumptionProfile:
+    def test_a_model_can_bring_its_own_profile_and_the_rest_keep_the_general_one(self) -> None:
+        general: dict[RolAgente, TokenProfile] = {
+            "analista": TokenProfile(input_tokens=1000, output_tokens=1000)
+        }
+        own: dict[RolAgente, TokenProfile] = {
+            "analista": TokenProfile(input_tokens=1000, output_tokens=3000)
+        }
+        catalog = ModelCatalog(
+            models=[
+                CatalogEntry(
+                    provider="groq",
+                    name="razona",
+                    display_name="Razona",
+                    input_usd_per_million=1.0,
+                    output_usd_per_million=1.0,
+                    consumption_profile=own,
+                ),
+                CatalogEntry(
+                    provider="groq",
+                    name="normal",
+                    display_name="Normal",
+                    input_usd_per_million=1.0,
+                    output_usd_per_million=1.0,
+                ),
+            ],
+            consumption_profile=general,
+        )
+
+        assert catalog.estimate_agent("analista", ("groq", "razona")) == 0.004
+        assert catalog.estimate_agent("analista", ("groq", "normal")) == 0.002
+        assert catalog.estimate_agent("qa", ("groq", "razona")) is None
+        assert catalog.profile_for("groq", "desconocido") == general
 
 
 class TestOutputMode:
