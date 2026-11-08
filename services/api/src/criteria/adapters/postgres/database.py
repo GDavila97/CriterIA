@@ -121,6 +121,18 @@ saved_run = sa.Table(
     sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
 )
 
+eval_case = sa.Table(
+    "eval_case",
+    metadata,
+    sa.Column("id", UUID(as_uuid=True), primary_key=True),
+    sa.Column("title", sa.Text, nullable=False),
+    sa.Column("text", sa.Text, nullable=False),
+    sa.Column("difficulty", sa.Text, nullable=False),
+    sa.Column("tags", JSONB, nullable=False),
+    sa.Column("domain", sa.Text),
+    sa.Column("seeded_problems", JSONB, nullable=False),
+)
+
 eval_batch = sa.Table(
     "eval_batch",
     metadata,
@@ -134,6 +146,10 @@ eval_batch = sa.Table(
     sa.Column("output_mode", sa.Text, nullable=False),
     sa.Column("git_sha", sa.Text, nullable=False),
     sa.Column("notes", sa.Text),
+    sa.Column("display_name", sa.Text),
+    sa.Column("temperature", sa.Float),
+    sa.Column("judge_same_provider", sa.Boolean, nullable=False),
+    sa.Column("settings", JSONB, nullable=False),
 )
 
 eval_result = sa.Table(
@@ -142,6 +158,7 @@ eval_result = sa.Table(
     sa.Column("id", UUID(as_uuid=True), primary_key=True),
     sa.Column("batch_id", UUID(as_uuid=True), nullable=False),
     sa.Column("case_id", UUID(as_uuid=True), nullable=False),
+    sa.Column("artifacts", JSONB, nullable=False),
     sa.Column("valid_output", sa.Boolean, nullable=False),
     sa.Column("review_rounds", sa.Integer, nullable=False),
     sa.Column("latency_ms", sa.Integer, nullable=False),
@@ -149,6 +166,19 @@ eval_result = sa.Table(
     sa.Column("tokens_out", sa.Integer, nullable=False),
     sa.Column("cost_usd", sa.Numeric(12, 6)),
     sa.Column("scores", JSONB, nullable=False),
+    sa.Column("completed", sa.Boolean, nullable=False),
+    sa.Column("error_code", sa.Text),
+    sa.Column("details", JSONB, nullable=False),
+)
+
+human_score = sa.Table(
+    "human_score",
+    metadata,
+    sa.Column("id", UUID(as_uuid=True), primary_key=True),
+    sa.Column("batch_id", UUID(as_uuid=True), nullable=False),
+    sa.Column("case_id", UUID(as_uuid=True), nullable=False),
+    sa.Column("criterion", sa.Text, nullable=False),
+    sa.Column("score", sa.Integer, nullable=False),
 )
 
 
