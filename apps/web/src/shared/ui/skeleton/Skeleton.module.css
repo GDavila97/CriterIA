@@ -1,0 +1,28 @@
+.block {
+  display: block;
+  border-radius: var(--radius-field);
+  background: var(--color-surface-2);
+  animation: pulse 1.2s var(--ease-in) infinite alternate;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  padding: var(--space-24) var(--space-20);
+  border: 1px solid var(--color-card-border);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+}
+
+@keyframes pulse {
+  to {
+    opacity: 0.45;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .block {
+    animation: none;
+  }
+}

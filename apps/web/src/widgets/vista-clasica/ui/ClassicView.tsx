@@ -19,7 +19,7 @@ import { ApprovalPanel } from '@/features/aprobar-historias';
 import type { Connection } from '@/features/ejecutar-corrida';
 import { ExportButtons } from '@/features/exportar';
 import type { RespuestaHumana } from '@/shared/api';
-import { Badge, Button, buttonClass, Ficha, Icon, Tabs } from '@/shared/ui';
+import { Badge, Button, buttonClass, Ficha, Icon, motion, Tabs } from '@/shared/ui';
 
 import styles from './ClassicView.module.css';
 
@@ -142,7 +142,7 @@ function Historias({ state }: { state: RunState }) {
   return (
     <ul className={styles.stack}>
       {state.historias.map((h) => (
-        <li key={h.id} className={styles.item}>
+        <li key={h.id} className={`${styles.item} ${motion.enter}`}>
           <div className={styles.itemHead}>
             <span className={styles.mono}>{h.id}</span>
             <Badge>Prioridad {h.prioridad}</Badge>
@@ -184,7 +184,7 @@ function Casos({ state }: { state: RunState }) {
         </thead>
         <tbody>
           {state.casos.map((c) => (
-            <tr key={c.id}>
+            <tr key={c.id} className={motion.enter}>
               <td className={styles.mono}>{c.id}</td>
               <td className={styles.mono}>{c.historia_id}</td>
               <td>{c.titulo}</td>
@@ -196,7 +196,7 @@ function Casos({ state }: { state: RunState }) {
       </table>
       <ul className={`${styles.stack} ${styles.casesMobile}`}>
         {state.casos.map((c) => (
-          <li key={c.id} className={styles.item}>
+          <li key={c.id} className={`${styles.item} ${motion.enter}`}>
             <div className={styles.itemHead}>
               <span className={styles.mono}>
                 {c.id} · {c.historia_id}
@@ -217,7 +217,12 @@ function Gherkin({ state }: { state: RunState }) {
   return (
     <div className={styles.stack}>
       {state.casos.map((c) => (
-        <pre key={c.id} className={styles.gherkin} tabIndex={0} aria-label={`Escenario de ${c.id}`}>
+        <pre
+          key={c.id}
+          className={`${styles.gherkin} ${motion.enter}`}
+          tabIndex={0}
+          aria-label={`Escenario de ${c.id}`}
+        >
           {[
             `Escenario: ${c.gherkin.escenario}`,
             ...c.gherkin.dado.map((s, i) => `  ${i ? 'Y' : 'Dado'} ${s}`),
@@ -241,7 +246,7 @@ function Observaciones({ state }: { state: RunState }) {
   return (
     <ul className={styles.stack}>
       {state.observaciones.map(({ observacion: o, ronda, seCorrige }, i) => (
-        <li key={`${ronda}-${i}`} className={styles.item}>
+        <li key={`${ronda}-${i}`} className={`${styles.item} ${motion.enter}`}>
           <div className={styles.itemHead}>
             <Badge tone="revisor">{OBSERVACION_LABEL[o.tipo]}</Badge>
             <span className={styles.itemText}>
@@ -277,7 +282,11 @@ function Rubric({ state }: { state: RunState }) {
       {state.puntajes.length ? (
         <dl className={styles.bars}>
           {state.puntajes.map((p) => (
-            <div key={p.criterio} className={styles.bar} title={p.justificacion}>
+            <div
+              key={p.criterio}
+              className={`${styles.bar} ${motion.enter}`}
+              title={p.justificacion}
+            >
               <dt>{CRITERIO_LABEL[p.criterio]}</dt>
               <dd>{p.valor.toFixed(1)}</dd>
               <span className={styles.track} aria-hidden="true">
@@ -313,7 +322,7 @@ function EventLog({ state }: { state: RunState }) {
       {state.registro.length && start ? (
         <ol className={styles.log} aria-live="polite">
           {state.registro.map((entry) => (
-            <li key={entry.seq} className={styles.logEntry}>
+            <li key={entry.seq} className={`${styles.logEntry} ${motion.enter}`}>
               <span className={styles.mono}>{formatClock(start, entry.ts)}</span>
               <span className={styles.logDot} aria-hidden="true">
                 <svg width="8" height="8" viewBox="0 0 8 8">

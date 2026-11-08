@@ -1,0 +1,32 @@
+.enter {
+  animation: enter var(--duration-base) var(--ease-out) both;
+}
+
+.fade {
+  animation: fade var(--duration-base) var(--ease-out) both;
+}
+
+.lift {
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+
+.lift:hover {
+  transform: translateY(calc(var(--motion-lift) * 2));
+}
+
+.lift:active {
+  transform: scale(var(--motion-press));
+}
+
+@keyframes enter {
+  from {
+    opacity: 0;
+    transform: translateY(var(--motion-shift));
+  }
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}

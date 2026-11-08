@@ -18,7 +18,16 @@ import {
   type Tier,
 } from '@/shared/config/providers';
 import { useHydrated } from '@/shared/lib/react';
-import { Badge, Button, Icon, Notice, SelectField, TextField } from '@/shared/ui';
+import {
+  Badge,
+  Button,
+  Icon,
+  motion,
+  Notice,
+  SelectField,
+  SkeletonCard,
+  TextField,
+} from '@/shared/ui';
 
 import styles from './ModelsAndKeys.module.css';
 
@@ -109,7 +118,10 @@ export function ModelsAndKeys({ client = api }: { client?: Api }) {
     return error ? (
       <Notice tone="error">{error}</Notice>
     ) : (
-      <p className={styles.small}>Cargando…</p>
+      <div className={styles.page}>
+        <SkeletonCard lines={3} label="Cargando tus ajustes" />
+        <SkeletonCard lines={4} label="Cargando tus claves" />
+      </div>
     );
   }
 
@@ -201,7 +213,7 @@ export function ModelsAndKeys({ client = api }: { client?: Api }) {
           <fieldset className={styles.options}>
             <legend className={styles.small}>Nivel</legend>
             {providerTiers.map((tier) => (
-              <label key={tier.nivel} className={styles.option}>
+              <label key={tier.nivel} className={`${styles.option} ${motion.lift}`}>
                 <span className={styles.optionTitle}>
                   <input
                     type="radio"
@@ -246,7 +258,7 @@ export function ModelsAndKeys({ client = api }: { client?: Api }) {
             const free = provider === 'groq';
             const ready = available(provider);
             return (
-              <label key={provider} className={styles.option}>
+              <label key={provider} className={`${styles.option} ${motion.lift}`}>
                 <span className={styles.optionTitle}>
                   <input
                     type="radio"

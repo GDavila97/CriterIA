@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 
 import { stateFromSaved, type RunState } from '@/entities/corrida';
 import { api, ApiError } from '@/shared/api';
-import { Notice } from '@/shared/ui';
+import { Notice, SkeletonCard } from '@/shared/ui';
 import { Header, type HeaderUser } from '@/widgets/encabezado';
 import { ClassicView } from '@/widgets/vista-clasica';
 
@@ -41,6 +41,7 @@ export function HistoryDetailPage({
         </Link>
         <h1 className={styles.title}>Corrida guardada</h1>
         {error && <Notice tone="error">{error}</Notice>}
+        {!saved && !error && <SkeletonCard lines={4} label="Cargando la corrida" />}
         {saved && (
           <>
             <section className={styles.card} aria-label="Requerimiento">

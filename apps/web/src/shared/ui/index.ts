@@ -6,6 +6,8 @@ export { CheckboxField, SelectField, TextArea, TextField, type SelectOption } fr
 export { GithubMark } from './icon/GithubMark';
 export { Icon, type IconName } from './icon/Icon';
 export { Logo } from './logo/Logo';
+export { motion } from './motion/motion';
 export { Notice, type NoticeProps } from './notice/Notice';
 export { Segmented, type SegmentedOption } from './segmented/Segmented';
+export { Skeleton, SkeletonCard } from './skeleton/Skeleton';
 export { Tabs, type TabItem } from './tabs/Tabs';

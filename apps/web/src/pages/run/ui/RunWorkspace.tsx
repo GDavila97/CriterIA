@@ -20,7 +20,7 @@ import {
   type SettingsBody,
   type UsageBody,
 } from '@/shared/api';
-import { Notice } from '@/shared/ui';
+import { Notice, SkeletonCard } from '@/shared/ui';
 import { Header, type HeaderUser } from '@/widgets/encabezado';
 import { AgentPanel } from '@/widgets/panel-agente';
 import { ClassicView } from '@/widgets/vista-clasica';
@@ -139,7 +139,12 @@ export function RunWorkspace({
       />
       {loadError && <Notice tone="error">{loadError}</Notice>}
       {!data ? (
-        !loadError && <p className={styles.loading}>Cargando…</p>
+        !loadError && (
+          <main className={styles.layout} aria-busy="true">
+            <SkeletonCard lines={5} label="Cargando la corrida" />
+            <SkeletonCard lines={3} label="Cargando el tablero" />
+          </main>
+        )
       ) : (
         <main className={styles.layout}>
           <h1 className="sr-only">Nueva corrida</h1>

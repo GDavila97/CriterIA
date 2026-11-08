@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 
 import { api, type EvaluationBatchBody } from '@/shared/api';
-import { Notice } from '@/shared/ui';
+import { Notice, SkeletonCard } from '@/shared/ui';
 import { Header, type HeaderUser } from '@/widgets/encabezado';
 import { EvaluationBoard } from '@/widgets/tablero-evaluacion';
 
@@ -33,7 +33,7 @@ export function EvaluationPage({
         {error && (
           <Notice tone="error">No se pudieron cargar los resultados. Intenta más tarde.</Notice>
         )}
-        {lotes === null && !error && <p className={styles.loading}>Cargando…</p>}
+        {lotes === null && !error && <SkeletonCard lines={4} label="Cargando resultados" />}
         {lotes && <EvaluationBoard lotes={lotes} />}
       </main>
     </div>

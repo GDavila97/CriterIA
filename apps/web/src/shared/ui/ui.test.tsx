@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 
@@ -142,10 +142,56 @@ describe('Drawer', () => {
 
     rerender(
       <Drawer open={false} title="Agente" onClose={onClose}>
+        {null}
+      </Drawer>,
+    );
+    const dialog = screen.getByRole('dialog', { hidden: true });
+    expect(dialog).not.toHaveAttribute('open');
+    expect(dialog).toHaveTextContent('Contenido');
+  });
+
+  it('lets Escape go through the parent so the exit can play', () => {
+    const onClose = vi.fn();
+    render(
+      <Drawer open title="Agente" onClose={onClose}>
         Contenido
       </Drawer>,
     );
-    expect(screen.queryByText('Contenido')).not.toBeInTheDocument();
+    const dialog = screen.getByRole('dialog', { name: 'Agente' });
+    const cancel = new Event('cancel', { cancelable: true });
+    dialog.dispatchEvent(cancel);
+
+    expect(cancel.defaultPrevented).toBe(true);
+    expect(onClose).toHaveBeenCalledOnce();
+    expect(dialog).toHaveAttribute('open');
+  });
+
+  it('closes only after the exit animation ends', async () => {
+    let end = () => {};
+    const finished = new Promise<void>((resolve) => {
+      end = resolve;
+    });
+    // jsdom has no Web Animations, so the running exit is stubbed.
+    HTMLElement.prototype.getAnimations = () => [{ finished } as unknown as Animation];
+    const props = { title: 'Agente', onClose: vi.fn() };
+    const { rerender } = render(
+      <Drawer open {...props}>
+        Contenido
+      </Drawer>,
+    );
+    rerender(
+      <Drawer open={false} {...props}>
+        {null}
+      </Drawer>,
+    );
+    const dialog = screen.getByRole('dialog', { name: 'Agente' });
+    expect(dialog).toHaveAttribute('data-closing');
+    expect(dialog).toHaveAttribute('open');
+
+    end();
+    await waitFor(() => expect(dialog).not.toHaveAttribute('open'));
+    expect(dialog).not.toHaveAttribute('data-closing');
+    Reflect.deleteProperty(HTMLElement.prototype, 'getAnimations');
   });
 });
 

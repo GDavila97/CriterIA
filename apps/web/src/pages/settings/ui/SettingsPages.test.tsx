@@ -34,7 +34,7 @@ describe('settings pages', () => {
     render(<ModelsSettingsPage user={user} />);
 
     expect(screen.getByRole('heading', { level: 1, name: 'Modelos y claves' })).toBeInTheDocument();
-    expect(screen.getByText('Cargando…')).toBeInTheDocument();
+    expect(screen.getByRole('status', { name: 'Cargando tus ajustes' })).toBeInTheDocument();
   });
 
   it('turns the history setting on and reports failures', async () => {

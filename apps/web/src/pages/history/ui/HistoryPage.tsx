@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import { promedio } from '@/entities/corrida';
 import { DataControls } from '@/features/controles-datos';
 import { api, ApiError, type HistorySummaryBody, type Puntaje } from '@/shared/api';
-import { Notice } from '@/shared/ui';
+import { motion, Notice, SkeletonCard } from '@/shared/ui';
 import { Header, type HeaderUser } from '@/widgets/encabezado';
 
 import styles from './HistoryPage.module.css';
@@ -42,7 +42,7 @@ export function HistoryPage({
           <Link href="/ajustes/historial">Ajustes</Link> o elige guardarla al ejecutar.
         </p>
         {error && <Notice tone="error">{error}</Notice>}
-        {items === null && !error && <p className={styles.lead}>Cargando…</p>}
+        {items === null && !error && <SkeletonCard lines={3} label="Cargando tu historial" />}
         {items?.length === 0 && <p className={styles.lead}>Aún no tienes corridas guardadas.</p>}
         {items && items.length > 0 && (
           <ul className={styles.list}>
@@ -50,7 +50,7 @@ export function HistoryPage({
               const media = promedio(item.scores as unknown as Puntaje[]);
               return (
                 <li key={item.id}>
-                  <Link href={`/historial/${item.id}`} className={styles.item}>
+                  <Link href={`/historial/${item.id}`} className={`${styles.item} ${motion.lift}`}>
                     <span>
                       <strong>{DATE.format(new Date(item.created_at))}</strong>
                       <br />

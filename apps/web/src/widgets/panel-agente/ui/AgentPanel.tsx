@@ -10,7 +10,7 @@ import {
 } from '@/entities/corrida';
 import type { AgentParamsBody, AgentsBody, CatalogProviderBody } from '@/shared/api';
 import { PROVIDER_NAMES, TIER_NAMES } from '@/shared/config/providers';
-import { Drawer, Ficha, SelectField, TextField } from '@/shared/ui';
+import { Drawer, Ficha, SelectField, Skeleton, TextField } from '@/shared/ui';
 
 import styles from './AgentPanel.module.css';
 
@@ -180,13 +180,21 @@ export function AgentPanel({
           <h3 id="prompt-title" className={styles.boxHead}>
             Prompt {version && <span className={styles.version}>{version}</span>}
           </h3>
-          <pre
-            className={styles.prompt}
-            tabIndex={0}
-            aria-label={`Prompt del ${info.nombre}, solo lectura`}
-          >
-            {guide?.prompts[agent] ?? 'Cargando…'}
-          </pre>
+          {guide ? (
+            <pre
+              className={styles.prompt}
+              tabIndex={0}
+              aria-label={`Prompt del ${info.nombre}, solo lectura`}
+            >
+              {guide.prompts[agent]}
+            </pre>
+          ) : (
+            <div className={styles.promptLoading} role="status" aria-label="Cargando el prompt">
+              <Skeleton />
+              <Skeleton />
+              <Skeleton width="60%" />
+            </div>
+          )}
           <p className={styles.note}>Solo lectura en esta versión.</p>
         </section>
 
