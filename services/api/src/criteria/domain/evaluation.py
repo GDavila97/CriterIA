@@ -159,6 +159,7 @@ class EvalBatch(Esquema):
     git_sha: str
     temperatura: float
     temperatura_juez: float
+    max_tokens: int = Field(ge=1)
     max_rondas: int = Field(ge=0)
     aprobacion: Literal["automatica_sin_cambios"] = "automatica_sin_cambios"
     ollama: OllamaConfig | None = None

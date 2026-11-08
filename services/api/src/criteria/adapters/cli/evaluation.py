@@ -172,6 +172,7 @@ def _check_resumable(batch: EvalBatch, fresh: EvalBatch) -> None:
         "juez_proveedor",
         "juez_modelo",
         "temperatura",
+        "max_tokens",
     )
     changed = [k for k in keys if getattr(batch, k) != getattr(fresh, k)]
     if changed:
@@ -209,6 +210,7 @@ async def _run(args: argparse.Namespace, container: "Container", terminal: "Term
         git_sha=git_sha(SERVICE_ROOT),
         temperatura=GENERATION_TEMPERATURE,
         temperatura_juez=JUDGE_TEMPERATURE,
+        max_tokens=MAX_TOKENS,
         max_rondas=settings.max_review_rounds,
         ollama=ollama,
     )

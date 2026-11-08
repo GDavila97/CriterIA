@@ -75,6 +75,7 @@ def _batch_row(batch: EvalBatch) -> dict[str, Any]:
         "judge_same_provider": batch.juez_mismo_proveedor,
         "settings": {
             "temperatura_juez": batch.temperatura_juez,
+            "max_tokens": batch.max_tokens,
             "max_rondas": batch.max_rondas,
             "aprobacion": batch.aprobacion,
             "costo_gastado_usd": batch.costo_gastado_usd,
