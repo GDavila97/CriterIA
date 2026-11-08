@@ -663,6 +663,30 @@
       "title": "CatalogBody",
       "type": "object"
     },
+    "CatalogModelCostBody": {
+      "additionalProperties": false,
+      "properties": {
+        "modelo": {
+          "type": "string"
+        },
+        "costo_usd": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "modelo",
+        "costo_usd"
+      ],
+      "title": "CatalogModelCostBody",
+      "type": "object"
+    },
     "CatalogProviderBody": {
       "additionalProperties": false,
       "properties": {
@@ -707,6 +731,22 @@
             "type": "string"
           },
           "type": "array"
+        },
+        "costos_generacion": {
+          "items": {
+            "$ref": "#/$defs/CatalogModelCostBody"
+          },
+          "type": "array"
+        },
+        "costo_juez_usd": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "required": [
@@ -715,7 +755,9 @@
         "clave",
         "acepta_clave_propia",
         "niveles",
-        "modelos"
+        "modelos",
+        "costos_generacion",
+        "costo_juez_usd"
       ],
       "title": "CatalogProviderBody",
       "type": "object"

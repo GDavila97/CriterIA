@@ -235,3 +235,21 @@ class TestAccountService:
         )
         ollama = next(p for p in catalog.proveedores if p.proveedor == "ollama")
         assert ollama.modelos == ["llama3.1:8b", "qwen3:8b"]
+
+    async def test_the_catalog_prices_generation_and_judge_apart(self) -> None:
+        service, credentials, _ = account_service(ollama_base_url="http://127.0.0.1:11434")
+        await credentials.save(USER, "anthropic", KEY, None)
+
+        catalog = await service.catalog(USER)
+
+        by_provider = {p.proveedor: p for p in catalog.proveedores}
+        local = {c.modelo: c.costo_usd for c in by_provider["ollama"].costos_generacion}
+        assert local == {"llama3.1:8b": 0.0, "qwen3:8b": 0.0}
+        assert by_provider["ollama"].costo_juez_usd is None
+        anthropic = by_provider["anthropic"]
+        haiku = next(c for c in anthropic.costos_generacion if c.modelo == "claude-haiku-5-5")
+        assert haiku.costo_usd is not None
+        assert haiku.costo_usd > 0
+        assert anthropic.costo_juez_usd is not None
+        assert anthropic.costo_juez_usd > 0
+        assert by_provider["openai_compatible"].costos_generacion == []

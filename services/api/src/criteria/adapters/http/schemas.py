@@ -137,6 +137,11 @@ class CatalogTierBody(Body):
     costo_estimado_usd: float | None
 
 
+class CatalogModelCostBody(Body):
+    modelo: str
+    costo_usd: float | None
+
+
 class CatalogProviderBody(Body):
     proveedor: ProveedorId
     disponible: bool
@@ -144,6 +149,8 @@ class CatalogProviderBody(Body):
     acepta_clave_propia: bool
     niveles: list[CatalogTierBody]
     modelos: list[str]
+    costos_generacion: list[CatalogModelCostBody]
+    costo_juez_usd: float | None
 
 
 class CatalogBody(Body):

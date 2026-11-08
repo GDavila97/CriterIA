@@ -24,7 +24,7 @@ Fuera de producción, el esquema OpenAPI está en `/openapi.json` y la documenta
 | `GET /me/credentials` | sesión | `200 CredentialBody[]` | Proveedores con clave propia, con sus últimos 4 caracteres |
 | `DELETE /me/credentials/{provider}` | sesión | `204` | Borra la clave; `404` si no había |
 | `GET /me/settings` / `PUT /me/settings` | sesión | `200 SettingsBody` | Historial activado, proveedor, nivel y juez por defecto |
-| `GET /catalog` | sesión | `200 CatalogBody` | Proveedores, disponibilidad y origen de la clave, niveles con modelo y costo estimado, proveedor y juez por defecto |
+| `GET /catalog` | sesión | `200 CatalogBody` | Proveedores, disponibilidad y origen de la clave, niveles con modelo y costo estimado, costo de la generación por modelo (`costos_generacion`) y del Evaluador en el nivel económico (`costo_juez_usd`), proveedor y juez por defecto |
 | `GET /agents` | sesión | `200 AgentsBody` | Prompts de sistema de los cuatro agentes con su versión (solo lectura) y los rangos de los parámetros por agente |
 | `GET /me/usage` | sesión | `200 UsageBody` | Corridas iniciadas en la última hora y en el día, con sus límites |
 | `GET /me/runs` | sesión | `200 HistorySummaryBody[]` | Historial guardado (solo si `save_history` estaba activo al terminar) |

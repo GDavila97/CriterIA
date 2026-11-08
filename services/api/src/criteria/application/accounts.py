@@ -7,6 +7,7 @@ from criteria.application.errors import InvalidInputError, NotFoundError
 from criteria.domain.events import ProveedorId
 from criteria.domain.judge import elegir_juez
 from criteria.domain.run_config import (
+    GENERATION_ROLES,
     MAX_RONDAS,
     MAX_TOKENS_MAXIMO,
     MAX_TOKENS_MINIMO,
@@ -41,6 +42,13 @@ class CatalogTier:
 
 
 @dataclass(frozen=True)
+class CatalogModelCost:
+    modelo: str
+    # Analista, QA and Revisor together; null when the model has no price.
+    costo_usd: float | None
+
+
+@dataclass(frozen=True)
 class CatalogProvider:
     proveedor: ProveedorId
     disponible: bool
@@ -48,6 +56,9 @@ class CatalogProvider:
     acepta_clave_propia: bool
     niveles: list[CatalogTier]
     modelos: list[str]
+    costos_generacion: list[CatalogModelCost]
+    # The Evaluador on this provider's economic tier, the model a judge uses.
+    costo_juez_usd: float | None
 
 
 @dataclass(frozen=True)
@@ -162,11 +173,29 @@ class AccountService:
                     acepta_clave_propia=provider in USER_KEY_PROVIDERS,
                     niveles=tiers,
                     modelos=self._router.models(provider),
+                    costos_generacion=[
+                        CatalogModelCost(modelo=m, costo_usd=self._generation_cost(provider, m))
+                        for m in self._router.models(provider)
+                    ],
+                    costo_juez_usd=self._judge_cost(provider),
                 )
             )
         return Catalog(
             proveedores=providers, proveedor_predeterminado=default, juez_predeterminado=judge
         )
+
+    def _generation_cost(self, provider: ProveedorId, model: str) -> float | None:
+        selection = ProviderSelection(proveedor=provider, modelo=model)
+        parts = [self._router.estimate_agent(rol, selection) for rol in GENERATION_ROLES]
+        known = [cost for cost in parts if cost is not None]
+        return round(sum(known), 6) if len(known) == len(parts) else None
+
+    def _judge_cost(self, provider: ProveedorId) -> float | None:
+        model = self._router.tiers(provider).get("economico")
+        if model is None:
+            return None
+        selection = ProviderSelection(proveedor=provider, modelo=model)
+        return self._router.estimate_agent("evaluador", selection)
 
     def _estimate(
         self, provider: ProveedorId, model: str, judge: ProveedorId, judge_model: str | None

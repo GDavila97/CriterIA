@@ -318,6 +318,8 @@ export interface CatalogProviderBody {
   acepta_clave_propia: boolean;
   niveles: CatalogTierBody[];
   modelos: string[];
+  costos_generacion: CatalogModelCostBody[];
+  costo_juez_usd: number | null;
 }
 /**
  * This interface was referenced by `CriteriaContract`'s JSON-Schema
@@ -327,6 +329,14 @@ export interface CatalogTierBody {
   nivel: 'economico' | 'equilibrado' | 'maximo';
   modelo: string;
   costo_estimado_usd: number | null;
+}
+/**
+ * This interface was referenced by `CriteriaContract`'s JSON-Schema
+ * via the `definition` "CatalogModelCostBody".
+ */
+export interface CatalogModelCostBody {
+  modelo: string;
+  costo_usd: number | null;
 }
 /**
  * This interface was referenced by `CriteriaContract`'s JSON-Schema
