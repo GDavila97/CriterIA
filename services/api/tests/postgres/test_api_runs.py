@@ -34,7 +34,7 @@ async def test_full_run_create_stream_approve_stream_finish(api: Api) -> None:
         "modelo": "openai/gpt-oss-20b",
         "clave": "servidor",
         "temperatura": 0.2,
-        "max_tokens": 8192,
+        "max_tokens": 16384,
     }
     assert body["juez_mismo_proveedor"] is True
     assert body["costo_estimado_usd"] > 0

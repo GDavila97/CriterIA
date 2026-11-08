@@ -191,11 +191,19 @@ class ProviderRegistry:
                 )
                 return OpenAIChatModel(name, provider=OpenAIProvider(openai_client=user_client))
 
+    def max_tokens(self, selection: ProviderSelection) -> int:
+        """The cap a call really gets: the selection's, lowered by the model's own."""
+        selection = self.resolve(selection)
+        entry = self._catalog.entry(selection.proveedor, _model_name(selection))
+        cap = None if entry is None else entry.max_tokens
+        return selection.max_tokens if cap is None else min(selection.max_tokens, cap)
+
     def model_settings(self, selection: ProviderSelection) -> ModelSettings:
+        cap = self.max_tokens(selection)
         selection = self.resolve(selection)
         model_settings = OpenAIChatModelSettings(
             temperature=selection.temperatura,
-            max_tokens=selection.max_tokens,
+            max_tokens=cap,
             timeout=self._settings.timeout_for(selection.proveedor),
         )
         entry = self._catalog.entry(selection.proveedor, _model_name(selection))

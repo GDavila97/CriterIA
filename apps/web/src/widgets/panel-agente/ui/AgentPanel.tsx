@@ -29,7 +29,7 @@ export interface AgentPanelProps {
 
 const DEFAULT_TEMPERATURE = 0.2;
 // Same default as the API: reasoning models spend part of the cap thinking.
-const DEFAULT_TOKENS = 8192;
+const DEFAULT_TOKENS = 16384;
 
 function modelOptions(provider: CatalogProviderBody | null) {
   if (!provider) return [{ value: '', label: 'El de la corrida' }];
@@ -89,7 +89,7 @@ export function AgentPanel({
   const temperature = params.temperatura ?? DEFAULT_TEMPERATURE;
   const maxTemperature = guide?.temperatura_maxima ?? 1;
   const minTokens = guide?.max_tokens_minimo ?? 256;
-  const maxTokens = guide?.max_tokens_maximo ?? 8192;
+  const maxTokens = guide?.max_tokens_maximo ?? 16384;
   const version = agent === 'evaluador' ? guide?.version_juez : guide?.version_prompts;
   const set = (change: AgentParamsBody) => onParams(agent, { ...params, ...change });
 

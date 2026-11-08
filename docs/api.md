@@ -44,13 +44,13 @@ Fuera de producción, el esquema OpenAPI está en `/openapi.json` y la documenta
   "juez": "groq",
   "max_rondas": 2,
   "guardar_historial": false,
-  "agentes": { "qa": { "modelo": "openai/gpt-oss-20b", "temperatura": 0.4, "max_tokens": 8192 } }
+  "agentes": { "qa": { "modelo": "openai/gpt-oss-20b", "temperatura": 0.4, "max_tokens": 16384 } }
 }
 ```
 
 Todo es opcional salvo `requerimiento`. `max_rondas` va de 0 a 3.
 
-- `agentes` ajusta a cada agente por separado: `nivel` o `modelo` (de la lista permitida), `temperatura` de 0 a 1 y `max_tokens` de 256 a 8,192. El modelo se elige solo dentro del proveedor de su grupo: Analista, QA y Revisor usan el de generación y el Evaluador el del juez, así que el aviso de proveedor sigue siendo exacto. Lo que no se ajusta toma el valor de la corrida.
+- `agentes` ajusta a cada agente por separado: `nivel` o `modelo` (de la lista permitida), `temperatura` de 0 a 1 y `max_tokens` de 256 a 16,384 (los modelos locales lo bajan a 8,192). El modelo se elige solo dentro del proveedor de su grupo: Analista, QA y Revisor usan el de generación y el Evaluador el del juez, así que el aviso de proveedor sigue siendo exacto. Lo que no se ajusta toma el valor de la corrida.
 - `guardar_historial` decide si esa corrida se copia al historial al terminar. Sin él se usa el ajuste "Guardar mis corridas" de la cuenta. Queda fijo al crear la corrida: cambiar el ajuste después no la afecta.
 - El costo estimado suma el de cada agente con su propio modelo, y `costo_servidor_usd` solo el de los agentes que usan la clave del servidor. Sin `proveedor` se usa el de los ajustes y, si no hay, el del servidor. `modelo` gana sobre `nivel`. Sin `juez` se usa el de los ajustes o, si no, `elegir_juez` sobre los proveedores disponibles para el usuario ([ADR 0016](adr/0016-claves-por-usuario.md)).
 

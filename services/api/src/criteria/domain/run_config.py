@@ -25,7 +25,7 @@ GENERATION_ROLES: tuple[RolAgente, ...] = ("analista", "qa", "revisor")
 # Limits for what a person can tune per agent before a run.
 TEMPERATURA_MAXIMA = 1.0
 MAX_TOKENS_MINIMO = 256
-MAX_TOKENS_MAXIMO = 8192
+MAX_TOKENS_MAXIMO = 16384
 # The ceiling by default: reasoning models (gpt-oss) spend part of it thinking. It is only a cap,
 # so the cost follows the tokens actually used.
 DEFAULT_MAX_TOKENS = MAX_TOKENS_MAXIMO

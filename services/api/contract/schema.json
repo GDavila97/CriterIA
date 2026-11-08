@@ -51,7 +51,7 @@
         "max_tokens": {
           "anyOf": [
             {
-              "maximum": 8192,
+              "maximum": 16384,
               "minimum": 256,
               "type": "integer"
             },

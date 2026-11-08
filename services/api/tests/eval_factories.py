@@ -127,7 +127,7 @@ def batch(
         git_sha="abc123",
         temperatura=0.2,
         temperatura_juez=0.0,
-        max_tokens=8192,
+        max_tokens=16384,
         max_rondas=2,
         resultados={r.case_id: r for r in results or []},
         deteccion={

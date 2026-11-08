@@ -96,7 +96,7 @@ describe('AgentPanel', () => {
       'El modelo elegido al ejecutar la corrida.',
     );
     expect(screen.getByText('0.5')).toBeInTheDocument();
-    expect(screen.getByText('Entre 256 y 8192.')).toBeInTheDocument();
+    expect(screen.getByText('Entre 256 y 16384.')).toBeInTheDocument();
     expect(screen.queryByLabelText('Rondas máx.')).not.toBeInTheDocument();
     expect(screen.getByRole('status', { name: 'Cargando el prompt' })).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Cerrar' }));

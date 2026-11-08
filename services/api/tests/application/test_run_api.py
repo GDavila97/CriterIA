@@ -496,7 +496,7 @@ class TestAgentParams:
             AgentParams(temperatura=1.5),
             AgentParams(temperatura=-0.1),
             AgentParams(max_tokens=100),
-            AgentParams(max_tokens=9000),
+            AgentParams(max_tokens=17000),
         ],
     )
     async def test_out_of_range_tuning_is_refused(self, params: AgentParams) -> None:

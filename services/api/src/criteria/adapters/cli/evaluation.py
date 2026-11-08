@@ -253,7 +253,7 @@ async def _run(args: argparse.Namespace, container: "Container", terminal: "Term
         git_sha=git_sha(SERVICE_ROOT),
         temperatura=GENERATION_TEMPERATURE,
         temperatura_juez=JUDGE_TEMPERATURE,
-        max_tokens=MAX_TOKENS,
+        max_tokens=registry.max_tokens(generacion),
         max_rondas=settings.max_review_rounds,
         ollama=ollama,
     )

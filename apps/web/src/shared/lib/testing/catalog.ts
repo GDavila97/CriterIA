@@ -157,6 +157,6 @@ export const agentsGuide = (): AgentsBody => ({
   },
   temperatura_maxima: 1,
   max_tokens_minimo: 256,
-  max_tokens_maximo: 8192,
+  max_tokens_maximo: 16384,
   rondas_maximas: 3,
 });

@@ -34,6 +34,8 @@ class CatalogEntry(BaseModel):
     nivel: Nivel | None = None
     thinking: bool | None = None
     output_mode: OutputMode = "tool"
+    # A lower cap for models whose context cannot hold the default (local models).
+    max_tokens: int | None = Field(default=None, ge=256)
     # Overrides the catalog's general profile for models that spend very differently.
     consumption_profile: dict[RolAgente, TokenProfile] | None = None
 

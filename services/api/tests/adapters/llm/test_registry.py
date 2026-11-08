@@ -422,6 +422,21 @@ class TestTiers:
             )
 
 
+class TestTokenCap:
+    def test_local_models_lower_the_cap_that_api_models_keep(self) -> None:
+        reg = ProviderRegistry(
+            settings(server_key_providers="groq,ollama", groq_api_key="g"), SHIPPED
+        )
+        local = ProviderSelection(proveedor="ollama", modelo="llama3.1:8b")
+        hosted = ProviderSelection(proveedor="groq", nivel="economico")
+
+        assert (local.max_tokens, hosted.max_tokens) == (16384, 16384)
+        assert reg.max_tokens(local) == 8192
+        assert reg.model_settings(local)["max_tokens"] == 8192
+        assert reg.max_tokens(hosted) == 16384
+        assert reg.max_tokens(local.model_copy(update={"max_tokens": 2048})) == 2048
+
+
 class TestConsumptionProfile:
     def test_a_model_can_bring_its_own_profile_and_the_rest_keep_the_general_one(self) -> None:
         general: dict[RolAgente, TokenProfile] = {

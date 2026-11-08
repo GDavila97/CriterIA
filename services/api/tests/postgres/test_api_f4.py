@@ -162,7 +162,7 @@ async def test_agents_lists_the_prompts_and_the_limits(api: Api) -> None:
     assert set(body["prompts"]) == {"analista", "qa", "revisor", "evaluador"}
     assert all(len(text) > 100 for text in body["prompts"].values())
     assert body["temperatura_maxima"] == 1.0
-    assert (body["max_tokens_minimo"], body["max_tokens_maximo"]) == (256, 8192)
+    assert (body["max_tokens_minimo"], body["max_tokens_maximo"]) == (256, 16384)
     assert body["rondas_maximas"] == 3
 
 

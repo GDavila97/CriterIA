@@ -78,6 +78,8 @@ output_usd_per_million = 0.30
 [[models]]
 provider = "ollama"
 name = "llama3.1:8b"
+# 16,384 tokens of context: a 6,652-token prompt plus 16,384 of output would not fit.
+max_tokens = 8192
 display_name = "Llama 3.1 8B"
 # Schema-constrained JSON instead of a tool call; local models often skip or reshape tool calls.
 output_mode = "native"
@@ -87,6 +89,8 @@ output_usd_per_million = 0.0
 [[models]]
 provider = "ollama"
 name = "qwen3:8b"
+# 16,384 tokens of context: a 6,652-token prompt plus 16,384 of output would not fit.
+max_tokens = 8192
 display_name = "Qwen3 8B"
 thinking = false
 output_mode = "native"
