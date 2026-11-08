@@ -6,6 +6,7 @@ import type { Page, TestInfo } from '@playwright/test';
 import {
   expectNoAxeViolations,
   finishRun,
+  LONG_REQUIREMENT,
   signUpByApi,
   startRun,
   waitForApproval,
@@ -100,6 +101,28 @@ test('vista clásica: pausa humana, corrida terminada y panel del agente', async
   await check(page, testInfo, '05-panel-agente', false);
 });
 
+test('corrida larga: artefactos paginados y registro completo', async ({
+  page,
+  baseURL,
+  clientIp,
+}, testInfo) => {
+  await signIn(page, page.request, baseURL ?? '', clientIp);
+  await startRun(page, { requirement: LONG_REQUIREMENT });
+  await waitForApproval(page);
+  await page.getByRole('button', { name: /^Aprobar 12 historias/ }).click();
+  await finishRun(page);
+  const card = page.getByRole('region', { name: 'Artefactos' });
+  await card.getByRole('tab', { name: 'Casos de prueba' }).click();
+  await card
+    .getByRole('navigation', { name: 'Páginas de casos de prueba' })
+    .getByRole('button', { name: 'Siguiente' })
+    .click();
+  await check(page, testInfo, '13-paginacion');
+  await page.getByRole('button', { name: /^Ver registro completo/ }).click();
+  await expect(page.getByRole('dialog', { name: 'Registro completo' })).toBeVisible();
+  await check(page, testInfo, '14-registro-completo', false);
+});
+
 test('aviso de clave sin saldo', async ({ page, baseURL, clientIp }, testInfo) => {
   await signIn(page, page.request, baseURL ?? '', clientIp);
   await page.goto('/ajustes/modelos');
@@ -108,7 +131,7 @@ test('aviso de clave sin saldo', async ({ page, baseURL, clientIp }, testInfo) =
   await openai.getByRole('button', { name: 'Guardar y validar' }).click();
   await expect(openai.getByText('••••9999')).toBeVisible();
   await check(page, testInfo, '06-modelos-y-claves');
-  await startRun(page, { generation: 'OpenAI · Económico (gpt-6-luna)' });
+  await startRun(page, { generation: 'OpenAI · Económico' });
   await expect(
     page.getByRole('heading', { name: 'Tu clave de OpenAI no tiene saldo' }),
   ).toBeVisible();

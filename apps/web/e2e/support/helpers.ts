@@ -6,6 +6,9 @@ import { MAILPIT_URL } from './env.mjs';
 export const PASSWORD = 'una-clave-de-prueba';
 export const REQUIREMENT =
   'La biblioteca de la unidad necesita que los alumnos aparten libros en línea y los recojan en el mostrador en 48 horas.';
+/** The simulated models answer this one with the most stories, so lists get long. */
+export const LONG_REQUIREMENT =
+  'Un portal de trámites escolares con muchas historias: inscripción, pagos, constancias y citas.';
 
 export function uniqueEmail(label: string): string {
   return `${label}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@example.test`;
@@ -37,12 +40,12 @@ export async function signUpByApi(
 
 export async function startRun(
   page: Page,
-  options: { save?: boolean; generation?: string } = {},
+  options: { save?: boolean; generation?: string; requirement?: string } = {},
 ): Promise<void> {
   await page.goto('/corrida');
   await page
     .getByLabel('Describe lo que el sistema debe hacer, en lenguaje natural')
-    .fill(REQUIREMENT);
+    .fill(options.requirement ?? REQUIREMENT);
   if (options.generation)
     await page.getByLabel('Generación').selectOption({ label: options.generation });
   if (options.save) await page.getByLabel('Guardar esta corrida en mi historial').check();

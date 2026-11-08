@@ -43,7 +43,7 @@ test('"Usar el gratuito" crea una corrida con Groq solo tras el clic', async ({ 
       runs.push(request.postData() ?? '');
   });
 
-  await startRun(page, { generation: 'OpenAI · Económico (gpt-6-luna)' });
+  await startRun(page, { generation: 'OpenAI · Económico' });
   await expect(
     page.getByRole('heading', { name: 'Tu clave de OpenAI no tiene saldo' }),
   ).toBeVisible();
@@ -66,7 +66,7 @@ test('historial: guardar una corrida, verla y borrarla', async ({ page }) => {
   await finishRun(page);
 
   await page.getByRole('link', { name: 'Historial' }).click();
-  const item = page.getByRole('link', { name: /groq · openai\/gpt-oss-20b · Terminada/ });
+  const item = page.getByRole('link', { name: /Groq · GPT-OSS 20B · Terminada/ });
   await expect(item).toBeVisible();
   await item.click();
   await expect(page.getByRole('heading', { name: 'Corrida guardada' })).toBeVisible();
