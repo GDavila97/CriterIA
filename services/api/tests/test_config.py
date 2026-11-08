@@ -1,6 +1,6 @@
 import pytest
 
-from criteria.config import ConfigError, load_settings
+from criteria.config import ApiSettings, ConfigError, load_settings
 
 
 def test_fails_with_clear_message_when_app_env_is_missing() -> None:
@@ -34,3 +34,10 @@ def test_reads_port_from_environment(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("PORT", "9000")
 
     assert load_settings().port == 9000
+
+
+def test_run_limits_default_to_five_per_hour_and_twenty_per_day() -> None:
+    fields = ApiSettings.model_fields
+
+    assert fields["user_runs_per_hour"].default == 5
+    assert fields["user_runs_per_day"].default == 20
