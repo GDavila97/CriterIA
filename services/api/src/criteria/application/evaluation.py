@@ -32,6 +32,7 @@ from criteria.domain.events import (
     CorridaFin,
     EventoBase,
     RevisorObserva,
+    Uso,
 )
 from criteria.ports.agents import AgentSet
 from criteria.ports.clock import Clock
@@ -70,6 +71,18 @@ def _add(stats: AgentStats, **change: object) -> AgentStats:
     return stats.model_copy(update=change)
 
 
+def _spent(current: AgentStats, uso: Uso) -> dict[str, object]:
+    return {
+        "reintentos": current.reintentos + uso.reintentos,
+        "latencia_ms": current.latencia_ms + uso.latencia_ms,
+        "tokens_entrada": current.tokens_entrada + uso.tokens_entrada,
+        "tokens_salida": current.tokens_salida + uso.tokens_salida,
+        "costo_usd": None
+        if current.costo_usd is None or uso.costo_usd is None
+        else round(current.costo_usd + uso.costo_usd, 6),
+    }
+
+
 def _agent_stats(events: Sequence[EventoBase]) -> dict[RolAgente, AgentStats]:
     stats: dict[RolAgente, AgentStats] = {rol: AgentStats() for rol in ROLES}
     for event in events:
@@ -79,26 +92,18 @@ def _agent_stats(events: Sequence[EventoBase]) -> dict[RolAgente, AgentStats]:
         current = stats[rol]
         if isinstance(event, AgenteEntrega):
             uso = event.uso
-            costo = (
-                None
-                if current.costo_usd is None or uso.costo_usd is None
-                else round(current.costo_usd + uso.costo_usd, 6)
-            )
             stats[rol] = _add(
                 current,
                 llamadas=current.llamadas + 1,
                 validas_a_la_primera=current.validas_a_la_primera + int(uso.reintentos == 0),
-                reintentos=current.reintentos + uso.reintentos,
-                latencia_ms=current.latencia_ms + uso.latencia_ms,
-                tokens_entrada=current.tokens_entrada + uso.tokens_entrada,
-                tokens_salida=current.tokens_salida + uso.tokens_salida,
-                costo_usd=costo,
+                **_spent(current, uso),
             )
         elif isinstance(event, AgenteError):
             stats[rol] = _add(
                 current,
                 llamadas=current.llamadas + 1,
                 errores=[*current.errores, event.codigo],
+                **({} if event.uso is None else _spent(current, event.uso)),
             )
     return stats
 

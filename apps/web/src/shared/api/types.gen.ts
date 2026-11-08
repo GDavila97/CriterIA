@@ -221,6 +221,7 @@ export interface AgenteError {
     | 'error_interno';
   mensaje: string;
   respaldo_sugerido: 'groq' | null;
+  uso: Uso | null;
 }
 /**
  * This interface was referenced by `CriteriaContract`'s JSON-Schema

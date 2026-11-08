@@ -7,9 +7,12 @@ from pydantic_ai import (
     ModelAPIError,
     ModelAuthenticationError,
     ModelHTTPError,
+    ModelMessage,
     ModelQuotaExceededError,
     ModelRateLimitError,
+    ModelResponse,
     UnexpectedModelBehavior,
+    capture_run_messages,
 )
 from pydantic_ai.models import Model
 from pydantic_ai.settings import ModelSettings
@@ -136,24 +139,37 @@ class PydanticAgentRunner[Entrada, Salida]:
     def proveedor(self) -> ProveedorId:
         return self._binding.provider
 
+    def _spent(self, messages: list[ModelMessage], latencia_ms: int) -> Uso:
+        responses = [m for m in messages if isinstance(m, ModelResponse)]
+        tokens_in = sum(r.usage.input_tokens for r in responses)
+        tokens_out = sum(r.usage.output_tokens for r in responses)
+        return Uso(
+            tokens_entrada=tokens_in,
+            tokens_salida=tokens_out,
+            latencia_ms=latencia_ms,
+            costo_usd=self._binding.cost_usd(tokens_in, tokens_out),
+            reintentos=max(len(responses) - 1, 0),
+        )
+
     async def run(self, entrada: Entrada) -> AgentResult[Salida]:
         started = self._clock.monotonic()
         failure: CodigoError | None = None
-        try:
-            result = await self._agent.run(
-                self._render(entrada),
-                deps=entrada,
-                model=self._binding.model,
-                model_settings=self._binding.settings,
-            )
-        except Exception as error:
-            failure = classify_error(error, server_key=self._binding.server_key)
-            # Only the type name is logged: provider messages may echo prompts or credentials.
-            logger.warning("agent %s failed: %s (%s)", self._rol, failure, type(error).__name__)
+        # The messages survive a failed run, so the requests already billed are still counted.
+        with capture_run_messages() as messages:
+            try:
+                result = await self._agent.run(
+                    self._render(entrada),
+                    deps=entrada,
+                    model=self._binding.model,
+                    model_settings=self._binding.settings,
+                )
+            except Exception as error:
+                failure = classify_error(error, server_key=self._binding.server_key)
+                # Only the type name is logged: provider messages may echo prompts or credentials.
+                logger.warning("agent %s failed: %s (%s)", self._rol, failure, type(error).__name__)
         latencia_ms = round((self._clock.monotonic() - started) * 1000)
         if failure is not None:
-            uso = Uso(tokens_entrada=0, tokens_salida=0, latencia_ms=latencia_ms)
-            raise AgentRunError(failure, SAFE_MESSAGES[failure], uso)
+            raise AgentRunError(failure, SAFE_MESSAGES[failure], self._spent(messages, latencia_ms))
         usage = result.usage
         return AgentResult(
             salida=result.output,

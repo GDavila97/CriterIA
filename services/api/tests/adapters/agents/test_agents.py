@@ -69,6 +69,31 @@ class TestRunner:
         assert result.uso.reintentos == 0
         assert result.uso.costo_usd is not None
 
+    async def test_a_failed_call_still_reports_what_it_spent(self) -> None:
+        invalid = {"historias": [f.historia(id="US-1")]}
+        model = scripted(invalid, invalid)
+
+        with pytest.raises(AgentRunError) as raised:
+            await agents(model, price=0.001).analista.run(entrada_analista())
+
+        uso = raised.value.uso
+        assert uso is not None
+        assert uso.tokens_entrada > 0
+        assert uso.tokens_salida > 0
+        assert uso.reintentos == 1
+        assert uso.costo_usd is not None
+        assert uso.costo_usd > 0
+
+    async def test_a_call_refused_before_any_answer_spends_nothing(self) -> None:
+        with pytest.raises(AgentRunError) as raised:
+            await agents(scripted(ModelHTTPError(401, "m")), price=0.001).analista.run(
+                entrada_analista()
+            )
+
+        uso = raised.value.uso
+        assert uso is not None
+        assert (uso.tokens_entrada, uso.tokens_salida, uso.costo_usd) == (0, 0, 0.0)
+
     async def test_invalid_output_is_fixed_by_the_single_retry(self) -> None:
         model = scripted({"historias": [f.historia(id="US-1")]}, f.historias(1))
 

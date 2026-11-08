@@ -240,7 +240,14 @@ class TestRetries:
         error = harness.of(AgenteError)[0]
         assert (error.agent, error.codigo) == ("qa", "salida_invalida")
         assert harness.types()[-2:] == ["agente_error:qa", "corrida_fin:sistema"]
-        assert harness.of(CorridaFin)[0].estado == "error"
+        fin = harness.of(CorridaFin)[0]
+        assert fin.estado == "error"
+        # The two rejected QA answers were billed, so they count in the totals and the cost.
+        assert error.uso is not None
+        assert error.uso.reintentos == 1
+        assert fin.totales.costo_usd is not None
+        entregas = [e.uso.costo_usd or 0 for e in harness.of(AgenteEntrega)]
+        assert fin.totales.costo_usd == pytest.approx(sum(entregas) + (error.uso.costo_usd or 0))
         assert "revisor" not in harness.team.calls
         assert harness.checkpointer.saver().storage == {}  # type: ignore[attr-defined]
 

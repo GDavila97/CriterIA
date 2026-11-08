@@ -654,6 +654,17 @@ class TestServerCost:
         assert _server_cost(events, _record(OWN, SERVER)) == 0.02
         assert _server_cost(events, _record(OWN, OWN)) == 0.0
 
+    def test_failed_calls_are_billed_too(self) -> None:
+        failed = {
+            **{k: v for k, v in _entrega("qa", 0.004).items() if k not in {"ronda", "artefactos"}},
+            "type": "agente_error",
+            "codigo": "salida_invalida",
+            "mensaje": "El agente no produjo una salida válida tras un reintento.",
+        }
+        events = _events(_entrega("analista", 0.01), failed)
+
+        assert _server_cost(events, _record(SERVER, SERVER)) == 0.014
+
     def test_an_unpriced_server_call_makes_the_cost_unknown(self) -> None:
         events = _events(_entrega("analista", None))
 

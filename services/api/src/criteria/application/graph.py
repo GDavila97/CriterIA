@@ -130,6 +130,7 @@ async def _fail(deps: GraphDeps, rol: Rol, state: RunState, error: AgentRunError
         codigo=error.codigo,
         mensaje=error.mensaje,
         respaldo_sugerido=respaldo,
+        uso=error.uso,
     )
     return {"estado": "error", "usos": _usos(state, error.uso), "respaldo_sugerido": respaldo}
 

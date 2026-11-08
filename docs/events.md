@@ -23,7 +23,7 @@ Los eventos son modelos Pydantic (`services/api/src/criteria/domain/events.py`) 
 | `en_espera_humano` | `analista` | `solicitud` (`aprobar_historias`), `historias` |
 | `humano_responde` | `analista` | `decision` (`aprobado`, `editado` u `otra_version`), `cambios` (`agregadas`, `modificadas`, `eliminadas`: listas de ids; vacías con `otra_version`), `historias` (las aprobadas, con las que trabaja QA; `null` con `otra_version`) |
 | `revisor_observa` | `revisor` | `ronda`, `observaciones`, `se_corrige` (falso cuando ya no quedan rondas) |
-| `agente_error` | el agente | `codigo`, `mensaje` (seguro, máximo 200 caracteres), `respaldo_sugerido` |
+| `agente_error` | el agente | `codigo`, `mensaje` (seguro, máximo 200 caracteres), `respaldo_sugerido`, `uso` (lo que la llamada fallida alcanzó a gastar; `null` en eventos anteriores a F5) |
 | `corrida_fin` | `sistema` | `estado` (`completada` o `error`), `puntajes`, `totales`, `respaldo_sugerido`, `codigo` y `mensaje` (solo con `error_interno`; si no, `null`) |
 
 ### `artefactos`
@@ -67,7 +67,7 @@ Con otra versión: tras `en_espera_humano`, `humano_responde` con `decision: "ot
 
 Con observaciones: después de la entrega del Revisor llega `revisor_observa`. Si `se_corrige` es verdadero, siguen el agente destino (y QA, si el destino fue el Analista) y otra revisión con la ronda aumentada.
 
-Con error: `agente_error` del agente que falló y enseguida `corrida_fin` con `estado: "error"` y `puntajes` vacíos.
+Con error: `agente_error` del agente que falló y enseguida `corrida_fin` con `estado: "error"` y `puntajes` vacíos. Las peticiones de la llamada fallida (por ejemplo, las dos salidas inválidas) también se cobran, así que su `uso` cuenta en `totales`, en el ajuste de la reserva del tope global y en el costo de los lotes de evaluación.
 
 Con un error no previsto fuera de los agentes (solo en la API): directamente `corrida_fin` con `estado: "error"`, `codigo: "error_interno"` y un `mensaje` genérico, sin `agente_error` antes. `totales` suma lo que los agentes alcanzaron a entregar.
 

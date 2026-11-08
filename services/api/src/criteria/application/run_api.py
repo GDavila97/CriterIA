@@ -148,7 +148,8 @@ def _server_cost(events: Sequence[EventoBase], record: RunRecord) -> float | Non
     total = 0.0
     for event in events:
         uso = getattr(event, "uso", None)
-        if uso is None or getattr(event, "type", "") != "agente_entrega":
+        # Failed calls are billed too, so their usage counts against the global budget.
+        if uso is None or getattr(event, "type", "") not in {"agente_entrega", "agente_error"}:
             continue
         if record.plan_for(cast(RolAgente, event.agent)).clave != "servidor":
             continue

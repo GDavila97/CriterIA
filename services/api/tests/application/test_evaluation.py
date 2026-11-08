@@ -136,4 +136,8 @@ class TestEvalRunner:
         assert (outcome.estado, outcome.codigo_error) == ("error", "salida_invalida")
         assert outcome.agentes["analista"].errores == ["salida_invalida"]
         assert outcome.validas_a_la_primera == (0, 1)
+        assert outcome.agentes["analista"].tokens_entrada > 0
+        assert outcome.costo_usd is not None
+        assert outcome.costo_usd > 0
+        assert done.costo_gastado_usd == pytest.approx(outcome.costo_usd)
         assert outcome.puntajes == []

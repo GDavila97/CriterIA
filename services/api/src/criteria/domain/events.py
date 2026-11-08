@@ -133,6 +133,8 @@ class AgenteError(EventoBase):
     codigo: CodigoError
     mensaje: MensajeSeguro
     respaldo_sugerido: RespaldoSugerido | None = None
+    # What the failed call already spent: its requests count in the totals and the cost.
+    uso: Uso | None = None
 
 
 class Totales(Esquema):
