@@ -9,7 +9,18 @@
   --color-line: #dde1e7;
   --color-accent: #2541b2;
   --color-accent-soft: #e8ecfa;
+  /* Filled buttons keep white text above 4.5:1 in both themes. */
+  --color-accent-strong: #2541b2;
+  --color-accent-hover: #1e3593;
+  --color-on-accent: #ffffff;
+  --color-focus: #2541b2;
   --color-ok: #137a66;
+  --color-ok-soft: #e3f4ef;
+  --color-danger: #b42318;
+  --color-danger-soft: #fdeceb;
+  --color-danger-line: #f3c2bd;
+  --color-badge-revisor: #ece6fa;
+  --color-badge-revisor-ink: #5a3da3;
   --color-card-border: #ebedf1;
   --color-ficha-ink: #0f1115;
   /* Reserved for the human-attention bubble and errors. */
@@ -45,7 +56,16 @@
     --color-line: #2c313b;
     --color-accent: #93a6ff;
     --color-accent-soft: #1d2442;
+    --color-accent-strong: #3550c9;
+    --color-accent-hover: #2a44b8;
+    --color-focus: #93a6ff;
     --color-ok: #5cc9a7;
+    --color-ok-soft: #12302a;
+    --color-danger: #f97066;
+    --color-danger-soft: #3a1d1b;
+    --color-danger-line: #5a2a27;
+    --color-badge-revisor: #2c2445;
+    --color-badge-revisor-ink: #c4b2f5;
     --color-card-border: #2c313b;
   }
 }

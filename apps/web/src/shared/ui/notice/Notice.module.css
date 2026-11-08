@@ -1,0 +1,34 @@
+.notice {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 14px 16px;
+  border-radius: 16px;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.notice > svg {
+  flex: none;
+  margin-top: 1px;
+}
+
+.info {
+  background: var(--color-accent-soft);
+  color: var(--color-ink);
+}
+
+.error {
+  background: var(--color-danger-soft);
+  color: var(--color-ink);
+  border: 1px solid var(--color-danger-line);
+}
+
+.error > svg {
+  color: var(--color-danger);
+}
+
+.ok {
+  background: var(--color-ok-soft);
+  color: var(--color-ink);
+}

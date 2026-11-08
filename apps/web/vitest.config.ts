@@ -12,6 +12,8 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./vitest.setup.ts'],
+    // Modules that read the validated public env at import time need these.
+    env: { NEXT_PUBLIC_APP_ENV: 'test', NEXT_PUBLIC_API_URL: 'http://api.test' },
     include: ['src/**/*.test.{ts,tsx}'],
     css: { modules: { classNameStrategy: 'non-scoped' } },
     coverage: {

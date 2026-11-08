@@ -7,6 +7,11 @@ const emptyAsUndefined = (value: unknown) => (value === '' ? undefined : value);
 
 const httpUrl = z.url({ protocol: /^https?$/ });
 
+const flag = z.preprocess(
+  (value) => (value === undefined || value === '' ? undefined : value === 'true'),
+  z.boolean().default(false),
+);
+
 export const publicEnvSchema = z
   .object({
     NEXT_PUBLIC_APP_ENV: z.enum(['development', 'test', 'production']),
@@ -15,6 +20,8 @@ export const publicEnvSchema = z
       emptyAsUndefined,
       z.url({ protocol: /^https$/ }).optional(),
     ),
+    // The office view arrives in F9; until then the view switch stays hidden.
+    NEXT_PUBLIC_OFFICE_VIEW: flag,
   })
   .refine(
     (env) =>

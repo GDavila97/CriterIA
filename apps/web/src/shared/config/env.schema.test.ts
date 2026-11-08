@@ -24,6 +24,16 @@ describe('parsePublicEnv', () => {
     );
   });
 
+  it('keeps the office view off unless it is set to true', () => {
+    expect(parsePublicEnv(valid).NEXT_PUBLIC_OFFICE_VIEW).toBe(false);
+    expect(parsePublicEnv({ ...valid, NEXT_PUBLIC_OFFICE_VIEW: '' }).NEXT_PUBLIC_OFFICE_VIEW).toBe(
+      false,
+    );
+    expect(
+      parsePublicEnv({ ...valid, NEXT_PUBLIC_OFFICE_VIEW: 'true' }).NEXT_PUBLIC_OFFICE_VIEW,
+    ).toBe(true);
+  });
+
   it('requires https for the API in production', () => {
     expect(() => parsePublicEnv({ ...valid, NEXT_PUBLIC_APP_ENV: 'production' })).toThrow(
       /NEXT_PUBLIC_API_URL \(must use https in production\)/,

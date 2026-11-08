@@ -1,0 +1,19 @@
+.page {
+  min-height: 100dvh;
+}
+
+.main {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 32px 24px 64px;
+}
+
+.loading {
+  color: var(--color-muted);
+}
+
+@media (max-width: 639px) {
+  .main {
+    padding: 20px 16px 48px;
+  }
+}

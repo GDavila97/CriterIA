@@ -32,4 +32,17 @@ describe('Ficha', () => {
     rerender(<Ficha {...colors} size={48} />);
     expect(screen.getByTestId('ficha-lines')).toBeInTheDocument();
   });
+
+  it('adds the role badge, legs and the working sway on request', () => {
+    const { rerender } = render(<Ficha {...colors} size={34} />);
+    expect(screen.queryByTestId('ficha-badge')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('ficha-working')).not.toBeInTheDocument();
+
+    rerender(<Ficha {...colors} size={96} rol="lupa" patas trabajando />);
+
+    expect(screen.getByTestId('ficha-badge')).toBeInTheDocument();
+    expect(screen.getByTestId('ficha-legs')).toBeInTheDocument();
+    expect(screen.getByTestId('ficha-working')).toBeInTheDocument();
+    expect(screen.getByTestId('ficha')).toHaveAttribute('viewBox', '0 0 64 72');
+  });
 });

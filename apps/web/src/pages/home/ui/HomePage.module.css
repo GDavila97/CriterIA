@@ -1,22 +1,81 @@
 .page {
-  display: grid;
   min-height: 100dvh;
-  place-items: center;
-  padding: 24px 16px;
 }
 
-.brand {
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+  gap: 48px;
+  align-items: start;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 56px 24px 64px;
+}
+
+.fichas {
+  display: flex;
+  gap: 24px;
+  margin-bottom: 28px;
+}
+
+.title {
+  margin: 0;
+  font-size: clamp(2.3rem, 5vw, 3.5rem);
+  font-weight: 800;
+  line-height: 1.02;
+  letter-spacing: var(--tracking-title);
+}
+
+.lead {
+  max-width: 34rem;
+  margin: 24px 0;
+  font-size: 1.15rem;
+  line-height: 1.55;
+  color: var(--color-muted);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0 0 24px;
+  padding: 0;
+  list-style: none;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+}
+
+.note {
+  max-width: 34rem;
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--color-muted);
+}
+
+.side {
   display: flex;
   flex-direction: column;
+  gap: 16px;
   align-items: center;
-  gap: 20px;
 }
 
-.name {
-  margin: 0;
-  font-size: clamp(2.5rem, 8vw, 4rem);
-  font-weight: 800;
-  letter-spacing: var(--tracking-title);
-  line-height: 1;
-  color: var(--color-ink);
+@media (max-width: 899px) {
+  .hero {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 32px;
+    padding: 32px 16px 48px;
+  }
+
+  .fichas {
+    gap: 14px;
+  }
 }

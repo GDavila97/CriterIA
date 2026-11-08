@@ -1,0 +1,66 @@
+.drawer {
+  position: fixed;
+  inset: 0 0 0 auto;
+  width: min(440px, 100vw);
+  max-width: 100vw;
+  height: 100dvh;
+  max-height: 100dvh;
+  margin: 0 0 0 auto;
+  padding: 0;
+  border: 0;
+  overflow-y: auto;
+  /* The agent panel is dark in both themes, like its reference. */
+  --color-bg: #0f1115;
+  --color-surface: #171a20;
+  --color-surface-2: #1f232b;
+  --color-ink: #eceef2;
+  --color-muted: #a4abb8;
+  --color-line: #2c313b;
+  --color-accent: #93a6ff;
+  --color-accent-soft: #1d2442;
+  --color-focus: #93a6ff;
+  --color-ok: #5cc9a7;
+  background: var(--color-bg);
+  color: var(--color-ink);
+  color-scheme: dark;
+}
+
+.drawer::backdrop {
+  background: rgba(15, 17, 21, 0.55);
+}
+
+.header {
+  position: sticky;
+  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 12px 8px;
+  background: var(--color-bg);
+}
+
+.title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.body {
+  padding: 4px 20px 32px;
+}
+
+.close {
+  display: inline-grid;
+  place-items: center;
+  width: var(--size-control-min);
+  height: var(--size-control-min);
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--color-ink);
+  cursor: pointer;
+}
+
+.close:focus-visible {
+  outline: 3px solid var(--color-focus);
+}

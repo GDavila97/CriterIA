@@ -5,6 +5,7 @@ import { scrubSensitiveData, sentryOptions } from './options';
 const env = {
   NEXT_PUBLIC_APP_ENV: 'test',
   NEXT_PUBLIC_API_URL: 'http://localhost:8080',
+  NEXT_PUBLIC_OFFICE_VIEW: false,
 } as const;
 
 describe('sentryOptions', () => {

@@ -1,0 +1,162 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 24px 20px;
+  border: 1px solid var(--color-card-border);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+  min-width: 0;
+}
+
+.cardTitle {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.option {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 14px 16px;
+  border: 1px solid var(--color-line);
+  border-radius: 16px;
+  cursor: pointer;
+}
+
+.option:has(input:checked) {
+  border: 2px solid var(--color-accent);
+  background: var(--color-accent-soft);
+}
+
+.option:has(input:disabled) {
+  cursor: not-allowed;
+}
+
+.option:has(input:focus-visible) {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.optionTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+}
+
+.optionTitle input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--color-accent-strong);
+}
+
+.small {
+  font-size: 0.85rem;
+  color: var(--color-muted);
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--color-muted);
+}
+
+.ok {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-ok);
+}
+
+.needs {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-danger);
+}
+
+.key {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px;
+  border-radius: 18px;
+  background: var(--color-surface-2);
+}
+
+.keyHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+}
+
+.keyName {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.keyActions {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.keyForm {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.pair {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.care {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 12px;
+  padding: 24px 20px;
+  border-radius: var(--radius-card);
+  background: var(--color-accent-soft);
+}
+
+.care ul {
+  margin: 8px 0;
+  padding-left: 18px;
+  line-height: 1.7;
+}
+
+.care a {
+  color: var(--color-accent);
+}
+
+@media (max-width: 639px) {
+  .keyForm {
+    grid-template-columns: 1fr;
+  }
+
+  .keyActions {
+    margin-left: 0;
+  }
+}

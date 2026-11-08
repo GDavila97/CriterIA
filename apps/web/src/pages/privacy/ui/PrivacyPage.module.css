@@ -1,0 +1,99 @@
+.page {
+  min-height: 100dvh;
+}
+
+.main {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 40px 24px 64px;
+}
+
+.title {
+  margin: 0;
+  font-size: clamp(1.9rem, 5vw, 2.6rem);
+  font-weight: 800;
+  letter-spacing: var(--tracking-title);
+}
+
+.lead {
+  margin: 0;
+  color: var(--color-muted);
+}
+
+.card {
+  padding: 24px;
+  border: 1px solid var(--color-card-border);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+  line-height: 1.6;
+}
+
+.card h2 {
+  margin: 0 0 12px;
+  font-size: 1.2rem;
+}
+
+.card p {
+  margin: 0 0 10px;
+}
+
+.card ul {
+  margin: 0 0 10px;
+  padding-left: 18px;
+}
+
+.scroll {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+.table th {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--color-line);
+  text-align: left;
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.table td {
+  padding: 12px 10px;
+  border-bottom: 1px solid var(--color-line);
+  vertical-align: top;
+}
+
+.soft {
+  padding: 24px;
+  border-radius: var(--radius-card);
+  background: var(--color-accent-soft);
+  line-height: 1.6;
+}
+
+.soft h2 {
+  margin: 0 0 8px;
+  font-size: 1.1rem;
+}
+
+.soft p {
+  margin: 0 0 8px;
+}
+
+.back {
+  color: var(--color-accent);
+}
+
+@media (max-width: 639px) {
+  .main {
+    padding: 24px 16px 48px;
+  }
+}
