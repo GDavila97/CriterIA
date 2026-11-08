@@ -20,6 +20,7 @@ import {
   type SettingsBody,
   type UsageBody,
 } from '@/shared/api';
+import { modelLabelFromId } from '@/shared/config/providers';
 import { Notice, SkeletonCard } from '@/shared/ui';
 import { Header, type HeaderUser } from '@/widgets/encabezado';
 import { AgentPanel } from '@/widgets/panel-agente';
@@ -165,6 +166,11 @@ export function RunWorkspace({
               onOpenAgent={setAgent}
               approval={{ busy: run.busy, onAnswer: (respuesta) => void run.respond(respuesta) }}
               onUseFree={useFree}
+              judgeLabel={
+                run.state.modelos
+                  ? modelLabelFromId(run.state.modelos.juez, data.catalog)
+                  : undefined
+              }
             />
           </div>
           <AgentPanel

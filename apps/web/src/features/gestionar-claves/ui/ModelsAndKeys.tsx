@@ -227,7 +227,7 @@ export function ModelsAndKeys({ client = api }: { client?: Api }) {
                   />
                   {TIER_NAMES[tier.nivel]}
                 </span>
-                <span className={styles.small}>{tier.modelo}</span>
+                <span className={styles.small}>{tier.display_name}</span>
                 <span className={styles.mono}>
                   {tier.costo_estimado_usd === null
                     ? 'sin precio'

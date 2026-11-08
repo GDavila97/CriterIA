@@ -80,6 +80,9 @@ export function RunForm({
     judgeProvider === selected.provider,
   );
   const judgeClave = sendTo.find((r) => r.provider === judgeProvider)?.clave ?? null;
+  const judgeModel = catalog.proveedores
+    .find((p) => p.proveedor === judgeProvider)
+    ?.niveles.find((t) => t.nivel === 'economico')?.display_name;
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
@@ -146,6 +149,7 @@ export function RunForm({
             value={selected.value}
             onChange={(event) => setChoice(event.target.value)}
             options={choices.map((c) => ({ value: c.value, label: c.label }))}
+            hint={`Modelo: ${selected.modelLabel}`}
           />
           <SelectField
             label="Juez"
@@ -158,6 +162,7 @@ export function RunForm({
               },
               ...candidates.map((p) => ({ value: p, label: PROVIDER_NAMES[p] })),
             ]}
+            hint={judgeModel ? `Modelo: ${judgeModel}` : undefined}
           />
         </div>
         {selected.value === COMPATIBLE_MODEL && (

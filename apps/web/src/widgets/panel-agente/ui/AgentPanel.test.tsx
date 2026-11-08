@@ -66,9 +66,21 @@ describe('AgentPanel', () => {
     expect(props.onMaxRondas).toHaveBeenCalledWith(3);
     expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual([
       'El de la corrida',
-      'Groq · Económico (openai/gpt-oss-20b)',
-      'Groq · llama-3.3-70b-versatile',
+      'Groq · Económico',
+      'Groq · Llama 3.3 70B Versatile',
     ]);
+  });
+
+  it('names the chosen model under the selector', () => {
+    setup({ params: { nivel: 'economico' } });
+    expect(screen.getByLabelText('Modelo')).toHaveAccessibleDescription('Modelo: GPT-OSS 20B');
+  });
+
+  it('names an explicit model under the selector', () => {
+    setup({ params: { modelo: 'llama-3.3-70b-versatile' } });
+    expect(screen.getByLabelText('Modelo')).toHaveAccessibleDescription(
+      'Modelo: Llama 3.3 70B Versatile',
+    );
   });
 
   it('shows the chosen values, flags out-of-range tokens and hides rounds for others', async () => {
@@ -80,6 +92,9 @@ describe('AgentPanel', () => {
     });
 
     expect(screen.getByLabelText('Modelo')).toHaveValue('');
+    expect(screen.getByLabelText('Modelo')).toHaveAccessibleDescription(
+      'El modelo elegido al ejecutar la corrida.',
+    );
     expect(screen.getByText('0.5')).toBeInTheDocument();
     expect(screen.getByText('Entre 256 y 8192.')).toBeInTheDocument();
     expect(screen.queryByLabelText('Rondas máx.')).not.toBeInTheDocument();

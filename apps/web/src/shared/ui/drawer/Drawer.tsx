@@ -28,8 +28,8 @@ function closeAfterExit(dialog: HTMLDialogElement) {
 /** A modal side panel on the native dialog: focus trap and Escape come with it. */
 export function Drawer({ open, title, onClose, children }: DrawerProps) {
   const ref = useRef<HTMLDialogElement>(null);
-  // The last content stays on screen while the panel slides out.
-  const [shown, setShown] = useState(children);
+  // The last content stays on screen while the panel slides out; nothing renders before opening.
+  const [shown, setShown] = useState<ReactNode>(null);
   if (open && shown !== children) setShown(children);
 
   useEffect(() => {

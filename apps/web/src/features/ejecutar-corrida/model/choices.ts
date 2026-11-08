@@ -10,6 +10,8 @@ import {
 export interface GenerationChoice {
   value: string;
   label: string;
+  /** The model on its own line under the selector, so the option never gets cut. */
+  modelLabel: string;
   provider: ProviderId;
   nivel?: Tier;
   modelo?: string;
@@ -29,18 +31,28 @@ export function generationChoices(catalog: CatalogBody): GenerationChoice[] {
       if (p.niveles.length) {
         return p.niveles.map((tier) => ({
           value: `${p.proveedor}|${tier.nivel}`,
-          label: `${name} · ${TIER_NAMES[tier.nivel]} (${tier.modelo})`,
+          label: `${name} · ${TIER_NAMES[tier.nivel]}`,
+          modelLabel: tier.display_name,
           provider: p.proveedor,
           nivel: tier.nivel,
           costo: tier.costo_estimado_usd,
         }));
       }
       if (p.proveedor === 'openai_compatible') {
-        return [{ value: COMPATIBLE_MODEL, label: name, provider: p.proveedor, costo: null }];
+        return [
+          {
+            value: COMPATIBLE_MODEL,
+            label: name,
+            modelLabel: 'El modelo que escribas',
+            provider: p.proveedor,
+            costo: null,
+          },
+        ];
       }
       return p.modelos.map((modelo) => ({
         value: `${p.proveedor}|${modelo}`,
-        label: `${name} · ${modelo}`,
+        label: `${name} · ${p.display_names[modelo] ?? modelo}`,
+        modelLabel: p.display_names[modelo] ?? modelo,
         provider: p.proveedor,
         modelo,
         costo: null,

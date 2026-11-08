@@ -24,7 +24,9 @@ describe('HistoryDetailPage', () => {
       scores,
       provider: 'groq',
       model: 'openai/gpt-oss-20b',
+      model_display_name: 'GPT-OSS 20B',
       judge_model: 'groq:openai/gpt-oss-20b',
+      judge_display_name: 'GPT-OSS 20B',
       prompt_version: 'v1',
       judge_version: 'v1',
       experimental: false,
@@ -43,6 +45,9 @@ describe('HistoryDetailPage', () => {
       await screen.findByText('La biblioteca necesita apartados en línea'),
     ).toBeInTheDocument();
     expect(screen.getByText(/quiero hacer la tarea 1/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Calificado por el Evaluador \(Groq · GPT-OSS 20B\)/),
+    ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Exportar Markdown' })).toBeInTheDocument();
   });
 

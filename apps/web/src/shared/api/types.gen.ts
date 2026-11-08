@@ -318,6 +318,9 @@ export interface CatalogProviderBody {
   acepta_clave_propia: boolean;
   niveles: CatalogTierBody[];
   modelos: string[];
+  display_names: {
+    [k: string]: string;
+  };
   costos_generacion: CatalogModelCostBody[];
   costo_juez_usd: number | null;
 }
@@ -328,6 +331,7 @@ export interface CatalogProviderBody {
 export interface CatalogTierBody {
   nivel: 'economico' | 'equilibrado' | 'maximo';
   modelo: string;
+  display_name: string;
   costo_estimado_usd: number | null;
 }
 /**
@@ -449,6 +453,7 @@ export interface EvaluationBatchBody {
   created_at: string;
   provider: string;
   model: string;
+  model_display_name: string;
   prompt_version: string;
   judge_model: string;
   judge_version: string;
@@ -554,7 +559,9 @@ export interface HistoryItemBody {
   }[];
   provider: string;
   model: string;
+  model_display_name: string;
   judge_model: string;
+  judge_display_name: string;
   prompt_version: string;
   judge_version: string;
   experimental: boolean;
@@ -572,6 +579,7 @@ export interface HistorySummaryBody {
   status: string;
   provider: string;
   model: string;
+  model_display_name: string;
   created_at: string;
   scores: {
     [k: string]: unknown;

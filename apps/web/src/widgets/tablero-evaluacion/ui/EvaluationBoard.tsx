@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 
 import type { EvaluationBatchBody } from '@/shared/api';
+import { modelLabel } from '@/shared/config/providers';
 import { Ficha, SelectField } from '@/shared/ui';
 
 import styles from './EvaluationBoard.module.css';
@@ -120,7 +121,7 @@ export function EvaluationBoard({ lotes }: { lotes: EvaluationBatchBody[] }) {
                   {shown.map((l) => (
                     <tr key={l.id}>
                       <td>
-                        {l.provider} · {l.model}
+                        {modelLabel(l.provider, l.model_display_name)}
                         {l.judge_model.startsWith(`${l.provider}:`) && ' *'}
                       </td>
                       <td>{percent(l.valid_rate)}</td>

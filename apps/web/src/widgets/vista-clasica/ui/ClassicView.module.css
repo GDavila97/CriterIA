@@ -151,7 +151,17 @@
 .table {
   width: 100%;
   border-collapse: collapse;
+  /* Fixed columns keep every page of cases aligned with the others. */
+  table-layout: fixed;
   font-size: 0.9rem;
+}
+
+.table .colId {
+  width: 88px;
+}
+
+.table .colOrigin {
+  width: 104px;
 }
 
 .table th {
@@ -291,6 +301,22 @@
 
 .logDot {
   display: inline-flex;
+}
+
+.logMore {
+  margin-top: var(--space-16);
+}
+
+.logPanel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
+
+.logCount {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--color-muted);
 }
 
 .footnote {

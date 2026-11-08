@@ -85,6 +85,9 @@ describe('RunForm', () => {
     );
 
     expect(screen.getByLabelText('Generación')).toHaveValue('openai|equilibrado');
+    expect(screen.getByRole('option', { name: 'OpenAI · Equilibrado' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Generación')).toHaveAccessibleDescription('Modelo: GPT-6.1 Sol');
+    expect(screen.getByLabelText('Juez')).toHaveAccessibleDescription('Modelo: Claude Haiku 5.5');
     expect(notice()).toHaveTextContent(
       'Tu texto se enviará a OpenAI con tu clave y a Anthropic con tu clave.',
     );
@@ -120,8 +123,13 @@ describe('RunForm', () => {
       />,
     );
 
-    expect(screen.getByRole('option', { name: 'Ollama · llama3.1:8b' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Ollama · Llama 3.1 8B' })).toBeInTheDocument();
+    await userEvent.selectOptions(screen.getByLabelText('Generación'), 'ollama|llama3.1:8b');
+    expect(screen.getByLabelText('Generación')).toHaveAccessibleDescription('Modelo: Llama 3.1 8B');
     await userEvent.selectOptions(screen.getByLabelText('Generación'), 'openai_compatible|modelo');
+    expect(screen.getByLabelText('Generación')).toHaveAccessibleDescription(
+      'Modelo: El modelo que escribas',
+    );
     expect(screen.getByText(/sin precio/)).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Ejecutar' }));
     expect(onSubmit).not.toHaveBeenCalled();

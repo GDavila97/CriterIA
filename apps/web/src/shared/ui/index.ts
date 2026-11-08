@@ -8,6 +8,7 @@ export { Icon, type IconName } from './icon/Icon';
 export { Logo } from './logo/Logo';
 export { motion } from './motion/motion';
 export { Notice, type NoticeProps } from './notice/Notice';
+export { Paged, type PagedProps } from './paged/Paged';
 export { Segmented, type SegmentedOption } from './segmented/Segmented';
 export { Skeleton, SkeletonCard } from './skeleton/Skeleton';
 export { Tabs, type TabItem } from './tabs/Tabs';

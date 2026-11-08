@@ -8,7 +8,6 @@ import {
   AGENTS,
   agentSummary,
   CRITERIO_LABEL,
-  formatClock,
   OBSERVACION_LABEL,
   promedio,
   runHeadline,
@@ -19,9 +18,10 @@ import { ApprovalPanel } from '@/features/aprobar-historias';
 import type { Connection } from '@/features/ejecutar-corrida';
 import { ExportButtons } from '@/features/exportar';
 import type { RespuestaHumana } from '@/shared/api';
-import { Badge, Button, buttonClass, Ficha, Icon, motion, Tabs } from '@/shared/ui';
+import { Badge, Button, buttonClass, Ficha, Icon, motion, Paged, Tabs } from '@/shared/ui';
 
 import styles from './ClassicView.module.css';
+import { EventLog } from './EventLog';
 
 export interface ClassicViewProps {
   state: RunState;
@@ -32,6 +32,8 @@ export interface ClassicViewProps {
   approval?: { busy: boolean; onAnswer: (respuesta: RespuestaHumana) => void };
   /** Offers the free mode after a key failure; it only runs after the click. */
   onUseFree?: () => void;
+  /** The judge's readable name, such as "Groq · GPT-OSS 20B". */
+  judgeLabel?: string;
 }
 
 const CONNECTION_TEXT: Record<Connection, string> = {
@@ -140,24 +142,28 @@ function AgentFlow({
 function Historias({ state }: { state: RunState }) {
   if (!state.historias.length) return <p className={styles.empty}>Aún no hay historias.</p>;
   return (
-    <ul className={styles.stack}>
-      {state.historias.map((h) => (
-        <li key={h.id} className={`${styles.item} ${motion.enter}`}>
-          <div className={styles.itemHead}>
-            <span className={styles.mono}>{h.id}</span>
-            <Badge>Prioridad {h.prioridad}</Badge>
-          </div>
-          <p className={styles.itemTitle}>
-            Como {h.como}, quiero {h.quiero} para {h.para}.
-          </p>
-          {h.supuestos?.map((s) => (
-            <p key={s} className={styles.itemText}>
-              Supuesto: {s}
-            </p>
+    <Paged items={state.historias} label="Páginas de historias">
+      {(page) => (
+        <ul className={styles.stack}>
+          {page.map((h) => (
+            <li key={h.id} className={`${styles.item} ${motion.enter}`}>
+              <div className={styles.itemHead}>
+                <span className={styles.mono}>{h.id}</span>
+                <Badge>Prioridad {h.prioridad}</Badge>
+              </div>
+              <p className={styles.itemTitle}>
+                Como {h.como}, quiero {h.quiero} para {h.para}.
+              </p>
+              {h.supuestos?.map((s) => (
+                <p key={s} className={styles.itemText}>
+                  Supuesto: {s}
+                </p>
+              ))}
+            </li>
           ))}
-        </li>
-      ))}
-    </ul>
+        </ul>
+      )}
+    </Paged>
   );
 }
 
@@ -168,70 +174,84 @@ const origin = (o: 'qa' | 'revisor') => (
 function Casos({ state }: { state: RunState }) {
   if (!state.casos.length) return <p className={styles.empty}>Aún no hay casos de prueba.</p>;
   return (
-    <>
-      <table className={styles.table}>
-        <caption className="sr-only">
-          Casos de prueba con su historia, resultado esperado y origen
-        </caption>
-        <thead>
-          <tr>
-            <th scope="col">ID</th>
-            <th scope="col">Historia</th>
-            <th scope="col">Caso</th>
-            <th scope="col">Resultado esperado</th>
-            <th scope="col">Origen</th>
-          </tr>
-        </thead>
-        <tbody>
-          {state.casos.map((c) => (
-            <tr key={c.id} className={motion.enter}>
-              <td className={styles.mono}>{c.id}</td>
-              <td className={styles.mono}>{c.historia_id}</td>
-              <td>{c.titulo}</td>
-              <td>{c.resultado_esperado}</td>
-              <td>{origin(c.origen)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <ul className={`${styles.stack} ${styles.casesMobile}`}>
-        {state.casos.map((c) => (
-          <li key={c.id} className={`${styles.item} ${motion.enter}`}>
-            <div className={styles.itemHead}>
-              <span className={styles.mono}>
-                {c.id} · {c.historia_id}
-              </span>
-              {origin(c.origen)}
-            </div>
-            <p className={styles.itemTitle}>{c.titulo}</p>
-            <p className={styles.itemText}>{c.resultado_esperado}</p>
-          </li>
-        ))}
-      </ul>
-    </>
+    <Paged items={state.casos} label="Páginas de casos de prueba">
+      {(page) => (
+        <>
+          <table className={styles.table}>
+            <caption className="sr-only">
+              Casos de prueba con su historia, resultado esperado y origen
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col" className={styles.colId}>
+                  ID
+                </th>
+                <th scope="col" className={styles.colId}>
+                  Historia
+                </th>
+                <th scope="col">Caso</th>
+                <th scope="col">Resultado esperado</th>
+                <th scope="col" className={styles.colOrigin}>
+                  Origen
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {page.map((c) => (
+                <tr key={c.id} className={motion.enter}>
+                  <td className={styles.mono}>{c.id}</td>
+                  <td className={styles.mono}>{c.historia_id}</td>
+                  <td>{c.titulo}</td>
+                  <td>{c.resultado_esperado}</td>
+                  <td>{origin(c.origen)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <ul className={`${styles.stack} ${styles.casesMobile}`}>
+            {page.map((c) => (
+              <li key={c.id} className={`${styles.item} ${motion.enter}`}>
+                <div className={styles.itemHead}>
+                  <span className={styles.mono}>
+                    {c.id} · {c.historia_id}
+                  </span>
+                  {origin(c.origen)}
+                </div>
+                <p className={styles.itemTitle}>{c.titulo}</p>
+                <p className={styles.itemText}>{c.resultado_esperado}</p>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </Paged>
   );
 }
 
 function Gherkin({ state }: { state: RunState }) {
   if (!state.casos.length) return <p className={styles.empty}>Aún no hay escenarios.</p>;
   return (
-    <div className={styles.stack}>
-      {state.casos.map((c) => (
-        <pre
-          key={c.id}
-          className={`${styles.gherkin} ${motion.enter}`}
-          tabIndex={0}
-          aria-label={`Escenario de ${c.id}`}
-        >
-          {[
-            `Escenario: ${c.gherkin.escenario}`,
-            ...c.gherkin.dado.map((s, i) => `  ${i ? 'Y' : 'Dado'} ${s}`),
-            ...c.gherkin.cuando.map((s, i) => `  ${i ? 'Y' : 'Cuando'} ${s}`),
-            ...c.gherkin.entonces.map((s, i) => `  ${i ? 'Y' : 'Entonces'} ${s}`),
-          ].join('\n')}
-        </pre>
-      ))}
-    </div>
+    <Paged items={state.casos} label="Páginas de escenarios Gherkin">
+      {(page) => (
+        <div className={styles.stack}>
+          {page.map((c) => (
+            <pre
+              key={c.id}
+              className={`${styles.gherkin} ${motion.enter}`}
+              tabIndex={0}
+              aria-label={`Escenario de ${c.id}`}
+            >
+              {[
+                `Escenario: ${c.gherkin.escenario}`,
+                ...c.gherkin.dado.map((s, i) => `  ${i ? 'Y' : 'Dado'} ${s}`),
+                ...c.gherkin.cuando.map((s, i) => `  ${i ? 'Y' : 'Cuando'} ${s}`),
+                ...c.gherkin.entonces.map((s, i) => `  ${i ? 'Y' : 'Entonces'} ${s}`),
+              ].join('\n')}
+            </pre>
+          ))}
+        </div>
+      )}
+    </Paged>
   );
 }
 
@@ -243,28 +263,33 @@ function Observaciones({ state }: { state: RunState }) {
       </p>
     );
   }
+  const keyed = state.observaciones.map((item, i) => ({ ...item, key: `${item.ronda}-${i}` }));
   return (
-    <ul className={styles.stack}>
-      {state.observaciones.map(({ observacion: o, ronda, seCorrige }, i) => (
-        <li key={`${ronda}-${i}`} className={`${styles.item} ${motion.enter}`}>
-          <div className={styles.itemHead}>
-            <Badge tone="revisor">{OBSERVACION_LABEL[o.tipo]}</Badge>
-            <span className={styles.itemText}>
-              Ronda {ronda + 1} · para {AGENTS[o.destino].nombre}
-              {seCorrige ? '' : ' · pendiente'}
-            </span>
-          </div>
-          <p className={styles.itemTitle}>{o.descripcion}</p>
-          <p className={styles.itemText}>
-            {o.referencias.join(', ')} · Sugerencia: {o.sugerencia}
-          </p>
-        </li>
-      ))}
-    </ul>
+    <Paged items={keyed} label="Páginas de observaciones">
+      {(page) => (
+        <ul className={styles.stack}>
+          {page.map(({ observacion: o, ronda, seCorrige, key }) => (
+            <li key={key} className={`${styles.item} ${motion.enter}`}>
+              <div className={styles.itemHead}>
+                <Badge tone="revisor">{OBSERVACION_LABEL[o.tipo]}</Badge>
+                <span className={styles.itemText}>
+                  Ronda {ronda + 1} · para {AGENTS[o.destino].nombre}
+                  {seCorrige ? '' : ' · pendiente'}
+                </span>
+              </div>
+              <p className={styles.itemTitle}>{o.descripcion}</p>
+              <p className={styles.itemText}>
+                {o.referencias.join(', ')} · Sugerencia: {o.sugerencia}
+              </p>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Paged>
   );
 }
 
-function Rubric({ state }: { state: RunState }) {
+function Rubric({ state, judgeLabel }: { state: RunState; judgeLabel?: string }) {
   const media = promedio(state.puntajes);
   return (
     <Card
@@ -307,41 +332,9 @@ function Rubric({ state }: { state: RunState }) {
       )}
       {state.modelos && media !== null && (
         <p className={styles.footnote}>
-          Calificado por el Evaluador ({state.modelos.juez}).
+          Calificado por el Evaluador ({judgeLabel ?? state.modelos.juez}).
           {state.juezMismoProveedor && ' El juez es del mismo proveedor que la generación.'}
         </p>
-      )}
-    </Card>
-  );
-}
-
-function EventLog({ state }: { state: RunState }) {
-  const start = state.inicio ?? state.registro[0]?.ts;
-  return (
-    <Card title="Registro" label="log-title">
-      {state.registro.length && start ? (
-        <ol className={styles.log} aria-live="polite">
-          {state.registro.map((entry) => (
-            <li key={entry.seq} className={`${styles.logEntry} ${motion.enter}`}>
-              <span className={styles.mono}>{formatClock(start, entry.ts)}</span>
-              <span className={styles.logDot} aria-hidden="true">
-                <svg width="8" height="8" viewBox="0 0 8 8">
-                  <circle
-                    cx="4"
-                    cy="4"
-                    r="4"
-                    fill={
-                      entry.agent === 'sistema' ? 'var(--color-muted)' : AGENTS[entry.agent].color
-                    }
-                  />
-                </svg>
-              </span>
-              <span>{entry.texto}</span>
-            </li>
-          ))}
-        </ol>
-      ) : (
-        <p className={styles.empty}>Los eventos aparecen aquí en vivo.</p>
       )}
     </Card>
   );
@@ -412,6 +405,7 @@ export function ClassicView({
   onOpenAgent,
   approval,
   onUseFree,
+  judgeLabel,
 }: ClassicViewProps) {
   const waiting = state.fase === 'esperando_aprobacion' && approval;
   const finished = state.fase === 'completada' || state.fase === 'error';
@@ -469,7 +463,7 @@ export function ClassicView({
           </Card>
         )}
         <div className={styles.aside}>
-          <Rubric state={state} />
+          <Rubric state={state} judgeLabel={judgeLabel} />
           <EventLog state={state} />
         </div>
       </div>

@@ -16,11 +16,11 @@
   transition: transform var(--duration-fast) var(--ease-out);
 }
 
-.button:hover:not(:disabled) {
+.button:hover:not(:disabled, [aria-disabled='true']) {
   transform: translateY(var(--motion-lift));
 }
 
-.button:active:not(:disabled) {
+.button:active:not(:disabled, [aria-disabled='true']) {
   transform: scale(var(--motion-press));
 }
 

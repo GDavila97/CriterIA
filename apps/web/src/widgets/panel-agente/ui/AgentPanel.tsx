@@ -9,7 +9,7 @@ import {
   type RunState,
 } from '@/entities/corrida';
 import type { AgentParamsBody, AgentsBody, CatalogProviderBody } from '@/shared/api';
-import { PROVIDER_NAMES, TIER_NAMES } from '@/shared/config/providers';
+import { modelLabel, PROVIDER_NAMES, TIER_NAMES } from '@/shared/config/providers';
 import { Drawer, Ficha, SelectField, Skeleton, TextField } from '@/shared/ui';
 
 import styles from './AgentPanel.module.css';
@@ -34,13 +34,22 @@ function modelOptions(provider: CatalogProviderBody | null) {
   if (!provider) return [{ value: '', label: 'El de la corrida' }];
   const tiers = provider.niveles.map((t) => ({
     value: `nivel:${t.nivel}`,
-    label: `${PROVIDER_NAMES[provider.proveedor]} · ${TIER_NAMES[t.nivel]} (${t.modelo})`,
+    label: `${PROVIDER_NAMES[provider.proveedor]} · ${TIER_NAMES[t.nivel]}`,
   }));
   const tiered = new Set(provider.niveles.map((t) => t.modelo));
   const models = provider.modelos
     .filter((m) => !tiered.has(m))
-    .map((m) => ({ value: `modelo:${m}`, label: `${PROVIDER_NAMES[provider.proveedor]} · ${m}` }));
+    .map((m) => ({
+      value: `modelo:${m}`,
+      label: modelLabel(provider.proveedor, provider.display_names[m] ?? m),
+    }));
   return [{ value: '', label: 'El de la corrida' }, ...tiers, ...models];
+}
+
+function modelHint(provider: CatalogProviderBody | null, params: AgentParamsBody): string {
+  if (params.modelo) return `Modelo: ${provider?.display_names[params.modelo] ?? params.modelo}`;
+  const tier = provider?.niveles.find((t) => t.nivel === params.nivel);
+  return tier ? `Modelo: ${tier.display_name}` : 'El modelo elegido al ejecutar la corrida.';
 }
 
 function selectedModel(params: AgentParamsBody): string {
@@ -125,6 +134,7 @@ export function AgentPanel({
             value={selectedModel(params)}
             onChange={(event) => set(fromModelValue(event.target.value))}
             options={modelOptions(provider)}
+            hint={modelHint(provider, params)}
           />
           <div className={styles.range}>
             <div className={styles.rangeHead}>

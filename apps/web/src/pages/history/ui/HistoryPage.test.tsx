@@ -23,6 +23,7 @@ describe('HistoryPage', () => {
           status: 'completada',
           provider: 'groq',
           model: 'openai/gpt-oss-20b',
+          model_display_name: 'GPT-OSS 20B',
           created_at: '2026-11-07T12:00:00Z',
           scores,
         },
@@ -31,6 +32,7 @@ describe('HistoryPage', () => {
           status: 'error',
           provider: 'openai',
           model: 'gpt-6-luna',
+          model_display_name: 'GPT-6 Luna',
           created_at: '2026-11-06T12:00:00Z',
           scores: [],
         },
@@ -39,7 +41,7 @@ describe('HistoryPage', () => {
     render(<HistoryPage user={user} client={client} />);
 
     expect(
-      await screen.findByRole('link', { name: /groq · openai\/gpt-oss-20b · Terminada/ }),
+      await screen.findByRole('link', { name: /Groq · GPT-OSS 20B · Terminada/ }),
     ).toHaveAttribute('href', '/historial/r1');
     expect(screen.getByText('4.0/5')).toBeInTheDocument();
     expect(screen.getByText(/Con error/)).toBeInTheDocument();

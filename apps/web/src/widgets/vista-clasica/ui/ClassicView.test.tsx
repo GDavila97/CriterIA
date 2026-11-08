@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 
 import { initialRunState, runReducer, type RunState } from '@/entities/corrida';
 import type { Evento } from '@/shared/api';
-import { eventsFrom, fullRun, inicia } from '@/shared/lib/testing';
+import { caso, delivers, eventsFrom, fullRun, historia, inicia } from '@/shared/lib/testing';
 
 import { ClassicView } from './ClassicView';
 
@@ -50,6 +50,38 @@ describe('ClassicView', () => {
     expect(within(rubric).getByText(/El juez es del mismo proveedor/)).toBeInTheDocument();
     expect(screen.getByText('Evaluador calificó: 4.0 de 5')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Exportar Markdown' })).toBeInTheDocument();
+  });
+
+  it('pages long artifact lists inside the card', async () => {
+    const historias = Array.from({ length: 12 }, (_, i) => historia(i + 1));
+    const casos = Array.from({ length: 13 }, (_, i) => caso(i + 1));
+    const state = reduce(
+      eventsFrom(
+        inicia,
+        delivers('analista', { tipo: 'historias', historias }),
+        delivers('qa', { tipo: 'pruebas', criterios: [], casos }),
+      ),
+    );
+    render(<ClassicView state={state} requerimiento={REQ} judgeLabel="Groq · GPT-OSS 20B" />);
+
+    const stories = screen.getByRole('navigation', { name: 'Páginas de historias' });
+    expect(within(stories).getByText('Página 1 de 2')).toBeInTheDocument();
+    await userEvent.click(within(stories).getByRole('button', { name: 'Siguiente' }));
+    expect(within(stories).getByText('Página 2 de 2')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('tab', { name: 'Casos de prueba' }));
+    const cases = screen.getByRole('navigation', { name: 'Páginas de casos de prueba' });
+    expect(within(cases).getByText('Página 1 de 2')).toBeInTheDocument();
+    const visibleRows = () =>
+      screen.getAllByRole('row').filter((row) => !row.closest('[inert]') && row.closest('tbody'));
+    expect(visibleRows()).toHaveLength(10);
+    await userEvent.click(within(cases).getByRole('button', { name: 'Siguiente' }));
+    expect(visibleRows()).toHaveLength(3);
+
+    await userEvent.click(screen.getByRole('tab', { name: 'Gherkin' }));
+    expect(
+      screen.getByRole('navigation', { name: 'Páginas de escenarios Gherkin' }),
+    ).toBeInTheDocument();
   });
 
   it('puts the approval inline while the run waits and shows the live connection', async () => {

@@ -10,6 +10,7 @@ const batch = (over: Partial<EvaluationBatchBody>): EvaluationBatchBody => ({
   created_at: '2026-11-09T12:00:00Z',
   provider: 'groq',
   model: 'openai/gpt-oss-20b',
+  model_display_name: 'GPT-OSS 20B',
   prompt_version: 'v1',
   judge_model: 'anthropic:claude-haiku-5-5',
   judge_version: 'v1',
@@ -41,18 +42,20 @@ describe('EvaluationBoard', () => {
           batch({
             provider: 'anthropic',
             model: 'claude-haiku-5-5',
+            model_display_name: 'Claude Haiku 5.5',
             valid_rate: 1,
             latency_p50_ms: 33_000,
           }),
           batch({
             provider: 'ollama',
             model: 'llama3.1:8b',
+            model_display_name: 'Llama 3.1 8B',
             valid_rate: null,
             latency_p50_ms: null,
             latency_p95_ms: null,
             cost_usd_avg: null,
           }),
-          batch({ prompt_version: 'v2', model: 'v2-model' }),
+          batch({ prompt_version: 'v2', model: 'v2-model', model_display_name: 'v2-model' }),
         ]}
       />,
     );
@@ -61,7 +64,7 @@ describe('EvaluationBoard', () => {
     await userEvent.selectOptions(screen.getByLabelText('Versión de prompts'), 'v1');
     const table = screen.getByRole('table');
     expect(within(table).getAllByRole('row')).toHaveLength(4);
-    expect(within(table).getByText('anthropic · claude-haiku-5-5 *')).toBeInTheDocument();
+    expect(within(table).getByText('Anthropic · Claude Haiku 5.5 *')).toBeInTheDocument();
     expect(
       within(screen.getByRole('region', { name: 'Más rápido' })).getByText('14 s'),
     ).toBeInTheDocument();

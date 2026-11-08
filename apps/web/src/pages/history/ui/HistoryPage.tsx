@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { promedio } from '@/entities/corrida';
 import { DataControls } from '@/features/controles-datos';
 import { api, ApiError, type HistorySummaryBody, type Puntaje } from '@/shared/api';
+import { modelLabel } from '@/shared/config/providers';
 import { motion, Notice, SkeletonCard } from '@/shared/ui';
 import { Header, type HeaderUser } from '@/widgets/encabezado';
 
@@ -55,7 +56,7 @@ export function HistoryPage({
                       <strong>{DATE.format(new Date(item.created_at))}</strong>
                       <br />
                       <span className={styles.meta}>
-                        {item.provider} · {item.model} ·{' '}
+                        {modelLabel(item.provider, item.model_display_name)} ·{' '}
                         {item.status === 'completada' ? 'Terminada' : 'Con error'}
                       </span>
                     </span>

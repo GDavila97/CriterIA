@@ -1,4 +1,4 @@
-import type { CatalogProviderBody, CatalogTierBody } from '@/shared/api/types.gen';
+import type { CatalogBody, CatalogProviderBody, CatalogTierBody } from '@/shared/api/types.gen';
 
 export type ProviderId = CatalogProviderBody['proveedor'];
 export type Tier = CatalogTierBody['nivel'];
@@ -25,3 +25,20 @@ export const JUDGE_ORDER: readonly ProviderId[] = [
   'openai_compatible',
   'ollama',
 ];
+
+const providerName = (provider: string): string =>
+  PROVIDER_NAMES[provider as ProviderId] ?? provider;
+
+/** "Groq · GPT-OSS 20B": the provider and the catalog's display_name. */
+export function modelLabel(provider: string, displayName: string): string {
+  return `${providerName(provider)} · ${displayName}`;
+}
+
+/** The same label for an id such as "groq:openai/gpt-oss-20b", looked up in the catalog. */
+export function modelLabelFromId(id: string, catalog: CatalogBody | null | undefined): string {
+  const [provider = '', ...rest] = id.split(':');
+  const model = rest.join(':');
+  if (!model) return id;
+  const display = catalog?.proveedores.find((p) => p.proveedor === provider)?.display_names[model];
+  return modelLabel(provider, display ?? model);
+}
