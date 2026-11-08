@@ -115,8 +115,61 @@ jobs:
         run: pnpm test
       - name: Build
         run: pnpm build
+      - name: Pnpm audit
+        run: pnpm audit --audit-level=moderate
+
+  e2e:
+    name: End to end
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: apps/web
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: criteria
+          POSTGRES_PASSWORD: criteria
+          POSTGRES_DB: criteria
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U criteria -d criteria"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      mailpit:
+        image: axllent/mailpit:v1.32.0
+        ports:
+          - 1025:1025
+          - 8025:8025
+    env:
+      E2E_DATABASE_ADMIN_URL: postgresql://criteria:criteria@localhost:5432/criteria
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.3
+        with:
+          version-file: services/api/pyproject.toml
+          enable-cache: true
+          cache-dependency-glob: services/api/uv.lock
+      - name: Install API dependencies
+        working-directory: services/api
+        run: uv sync --frozen
+      - uses: pnpm/action-setup@v6
+        with:
+          package_json_file: apps/web/package.json
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: apps/web/.nvmrc
+          cache: pnpm
+          cache-dependency-path: apps/web/pnpm-lock.yaml
+      - name: Install web dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build the web for the end-to-end servers
+        run: pnpm e2e:build
       - name: Install Playwright Chromium
         run: pnpm exec playwright install --with-deps chromium
+      # The API runs on fake models and GitHub is a local stub: nothing leaves the runner.
       - name: Playwright with axe
         run: pnpm e2e
       - name: Upload Playwright report
@@ -126,8 +179,6 @@ jobs:
           name: playwright-report
           path: apps/web/playwright-report
           retention-days: 7
-      - name: Pnpm audit
-        run: pnpm audit --audit-level=moderate
 
   docker:
     name: API image
@@ -169,6 +220,10 @@ jobs:
           psql "$ADMIN_URL" -v ON_ERROR_STOP=1 -q \
             -c "ALTER ROLE migrator_role PASSWORD '$password'" \
             -c "ALTER ROLE api_role PASSWORD '$password'"
+          # Stands in for the Better Auth migrations: migration 0004 references auth."user".
+          psql "$ADMIN_URL" -v ON_ERROR_STOP=1 -q \
+            -c "SET ROLE web_role" \
+            -c 'CREATE TABLE auth."user" (id text PRIMARY KEY)'
           docker run --rm --network host \
             -e MIGRATION_DATABASE_URL="postgresql://migrator_role:$password@localhost:5432/criteria" \
             criteria-api:ci alembic upgrade head
