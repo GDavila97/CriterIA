@@ -257,6 +257,43 @@ class TestSpendLimit:
         assert classify_error(ModelHTTPError(403, "m", body={"error": "x"})) == "clave_invalida"
 
 
+REFUSED = {
+    "error": {
+        "message": "Failed to validate JSON.",
+        "type": "invalid_request_error",
+        "code": "json_validate_failed",
+        "failed_generation": "",
+    }
+}
+
+
+class TestSchemaRefusedByTheServer:
+    async def test_counts_as_an_invalid_output_with_the_single_retry(self) -> None:
+        model = scripted(ModelHTTPError(400, "m", body=REFUSED), f.historias(1))
+
+        result = await agents(model, price=0.001).analista.run(entrada_analista())
+
+        assert [h.id for h in result.salida.historias] == ["HU-1"]
+        assert result.uso.reintentos == 1
+
+    async def test_a_second_refusal_ends_as_invalid_output(self) -> None:
+        refused = ModelHTTPError(400, "m", body=REFUSED)
+        model = scripted(refused, refused, f.historias(1))
+
+        with pytest.raises(AgentRunError) as raised:
+            await agents(model).analista.run(entrada_analista())
+
+        assert raised.value.codigo == "salida_invalida"
+        assert raised.value.uso is not None
+        assert raised.value.uso.reintentos == 1
+
+    def test_other_bad_requests_stay_provider_errors(self) -> None:
+        assert classify_error(ModelHTTPError(400, "m", body=REFUSED)) == "salida_invalida"
+        assert classify_error(ModelHTTPError(400, "m", body={"error": {"code": "x"}})) == (
+            "proveedor_no_disponible"
+        )
+
+
 class TestPromptInjection:
     async def test_requirement_cannot_close_its_delimiter(self) -> None:
         texto = (

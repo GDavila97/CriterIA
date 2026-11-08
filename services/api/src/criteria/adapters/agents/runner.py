@@ -32,7 +32,10 @@ HTTP_UNAUTHORIZED, HTTP_PAYMENT_REQUIRED, HTTP_FORBIDDEN, HTTP_TOO_MANY_REQUESTS
     429,
 )
 BLOCKED_ENDPOINT_ERRORS = (EndpointNotAllowedError, ResponseTooLargeError)
+# Same as the agents' own output retry.
+OUTPUT_RETRIES = 1
 BLOCKED_API_ACCESS = "blocked_api_access"
+JSON_VALIDATE_FAILED = "json_validate_failed"
 
 SAFE_MESSAGES: dict[CodigoError, str] = {
     "salida_invalida": "El agente no produjo una salida válida tras un reintento.",
@@ -69,12 +72,23 @@ def _no_balance(error: BaseException) -> bool:
     return isinstance(error, ModelQuotaExceededError) or _status(error, HTTP_PAYMENT_REQUIRED)
 
 
+def _body_code(error: BaseException) -> str | None:
+    """The provider's error code, from an OpenAI-style body with or without the error wrapper."""
+    if not isinstance(error, ModelHTTPError) or not isinstance(error.body, dict):
+        return None
+    inner = error.body.get("error", error.body)
+    code = inner.get("code") if isinstance(inner, dict) else None
+    return code if isinstance(code, str) else None
+
+
 def _spend_limit_reached(error: BaseException) -> bool:
     """Groq's blocked_api_access: the organization reached its spending limit."""
-    if not isinstance(error, ModelHTTPError) or not isinstance(error.body, dict):
-        return False
-    inner = error.body.get("error", error.body)
-    return isinstance(inner, dict) and inner.get("code") == BLOCKED_API_ACCESS
+    return _body_code(error) == BLOCKED_API_ACCESS
+
+
+def schema_refused(error: BaseException) -> bool:
+    """Groq's json_validate_failed: the native JSON broke the schema and the server refused it."""
+    return any(_body_code(e) == JSON_VALIDATE_FAILED for e in _causes(error))
 
 
 def _rate_limited(error: BaseException) -> bool:
@@ -85,7 +99,7 @@ def _rate_limited(error: BaseException) -> bool:
 # Balance comes before rate limit because OpenAI reports an exhausted balance as a 429.
 _RULES: tuple[tuple[CodigoError, Callable[[BaseException], bool]], ...] = (
     ("destino_no_permitido", lambda e: isinstance(e, BLOCKED_ENDPOINT_ERRORS)),
-    ("salida_invalida", lambda e: isinstance(e, UnexpectedModelBehavior)),
+    ("salida_invalida", lambda e: isinstance(e, UnexpectedModelBehavior) or schema_refused(e)),
     ("clave_invalida", _bad_key),
     ("sin_saldo", _no_balance),
     ("limite_proveedor", _rate_limited),
@@ -139,7 +153,7 @@ class PydanticAgentRunner[Entrada, Salida]:
     def proveedor(self) -> ProveedorId:
         return self._binding.provider
 
-    def _spent(self, messages: list[ModelMessage], latencia_ms: int) -> Uso:
+    def _spent(self, messages: list[ModelMessage], latencia_ms: int, refused: int) -> Uso:
         responses = [m for m in messages if isinstance(m, ModelResponse)]
         tokens_in = sum(r.usage.input_tokens for r in responses)
         tokens_out = sum(r.usage.output_tokens for r in responses)
@@ -148,36 +162,45 @@ class PydanticAgentRunner[Entrada, Salida]:
             tokens_salida=tokens_out,
             latencia_ms=latencia_ms,
             costo_usd=self._binding.cost_usd(tokens_in, tokens_out),
-            reintentos=max(len(responses) - 1, 0),
+            # A refused generation never comes back as a response, but it was a request.
+            reintentos=max(len(responses) + refused - 1, 0),
         )
 
     async def run(self, entrada: Entrada) -> AgentResult[Salida]:
         started = self._clock.monotonic()
-        failure: CodigoError | None = None
-        # The messages survive a failed run, so the requests already billed are still counted.
-        with capture_run_messages() as messages:
-            try:
-                result = await self._agent.run(
-                    self._render(entrada),
-                    deps=entrada,
-                    model=self._binding.model,
-                    model_settings=self._binding.settings,
-                )
-            except Exception as error:
-                failure = classify_error(error, server_key=self._binding.server_key)
-                # Only the type name is logged: provider messages may echo prompts or credentials.
-                logger.warning("agent %s failed: %s (%s)", self._rol, failure, type(error).__name__)
+        spent: list[ModelMessage] = []
+        refused = 0
+        while True:
+            failure: CodigoError | None = None
+            retry = False
+            # The messages survive a failed run, so the requests already billed are still counted.
+            with capture_run_messages() as messages:
+                try:
+                    result = await self._agent.run(
+                        self._render(entrada),
+                        deps=entrada,
+                        model=self._binding.model,
+                        model_settings=self._binding.settings,
+                    )
+                except Exception as error:
+                    failure = classify_error(error, server_key=self._binding.server_key)
+                    # A schema refused by the server gets the same single retry as any invalid
+                    # output the agent validates itself.
+                    if schema_refused(error):
+                        refused += 1
+                        retry = refused <= OUTPUT_RETRIES
+                    # Only the type name is logged: provider messages may echo prompts or keys.
+                    logger.warning(
+                        "agent %s failed: %s (%s)", self._rol, failure, type(error).__name__
+                    )
+            spent.extend(messages)
+            if failure is None:
+                break
+            if retry:
+                continue
+            latencia_ms = round((self._clock.monotonic() - started) * 1000)
+            raise AgentRunError(
+                failure, SAFE_MESSAGES[failure], self._spent(spent, latencia_ms, refused)
+            )
         latencia_ms = round((self._clock.monotonic() - started) * 1000)
-        if failure is not None:
-            raise AgentRunError(failure, SAFE_MESSAGES[failure], self._spent(messages, latencia_ms))
-        usage = result.usage
-        return AgentResult(
-            salida=result.output,
-            uso=Uso(
-                tokens_entrada=usage.input_tokens,
-                tokens_salida=usage.output_tokens,
-                latencia_ms=latencia_ms,
-                costo_usd=self._binding.cost_usd(usage.input_tokens, usage.output_tokens),
-                reintentos=max(usage.requests - 1, 0),
-            ),
-        )
+        return AgentResult(salida=result.output, uso=self._spent(spent, latencia_ms, refused))

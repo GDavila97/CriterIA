@@ -50,7 +50,7 @@ Unión discriminada por `tipo`, según el agente que entrega:
 
 | Código | Cuándo |
 | --- | --- |
-| `salida_invalida` | La salida no cumplió el esquema ni con el reintento |
+| `salida_invalida` | La salida no cumplió el esquema ni con el reintento. Incluye el `json_validate_failed` de Groq (el servidor rechaza una salida nativa que no cumple el esquema), que también tiene un reintento |
 | `clave_invalida` | El proveedor rechazó la clave (401 o 403) |
 | `sin_saldo` | La cuenta no tiene saldo o cuota (402, el `insufficient_quota` que OpenAI envía con un 429, o el `blocked_api_access` de Groq con la clave del usuario) |
 | `cupo_gratuito_agotado` | Groq respondió `blocked_api_access` (la organización llegó a su límite de gasto) con la clave del servidor: se agotó el cupo gratuito de CriterIA |
