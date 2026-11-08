@@ -1,6 +1,6 @@
 # 0017. Salida JSON nativa para los modelos locales
 
-**Estado:** aceptada (5 nov 2026). Ajusta la [0004](0004-pydantic-ai-agents.md).
+**Estado:** aceptada (5 nov 2026). Ajusta la [0004](0004-pydantic-ai-agents.md); extendida por la [0021](0021-native-output-for-gpt-oss-on-groq.md) (gpt-oss-20b en Groq).
 
 **Contexto:** la 0004 define cada agente con un `output_type` tipado, y Pydantic AI lo pide por defecto como una llamada a una herramienta de salida. En la selección del modelo local (F2b), con salida por herramienta, `qwen3:8b` completó 1 de 3 corridas y `llama3.1:8b` ninguna. Casi todos los fallos fueron de formato: respuestas en texto en lugar de llamar a la herramienta, campos obligatorios ausentes (`gherkin`) y tipos incorrectos. Ollama acepta además `response_format` con `json_schema` y restringe la generación al esquema.
 

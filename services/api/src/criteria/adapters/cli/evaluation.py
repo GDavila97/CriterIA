@@ -161,6 +161,7 @@ def _check_resumable(batch: EvalBatch, fresh: EvalBatch) -> None:
     keys = (
         "proveedor",
         "modelo",
+        "output_mode",
         "version_prompts",
         "version_juez",
         "juez_proveedor",

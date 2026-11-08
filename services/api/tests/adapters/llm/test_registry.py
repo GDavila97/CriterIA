@@ -416,14 +416,15 @@ class TestTiers:
 
 
 class TestOutputMode:
-    def test_local_models_use_native_output_and_the_rest_tool_calls(self) -> None:
+    def test_local_models_and_gpt_oss_use_native_output_and_the_rest_tool_calls(self) -> None:
         reg = ProviderRegistry(settings(), SHIPPED)
+        assert reg.output_mode(ProviderSelection(proveedor="groq", nivel="economico")) == "native"
 
         assert reg.output_mode(ProviderSelection(proveedor="ollama", modelo="qwen3:8b")) == "native"
         assert (
             reg.output_mode(ProviderSelection(proveedor="ollama", modelo="llama3.1:8b")) == "native"
         )
-        for provider in ("openai", "anthropic", "groq"):
+        for provider in ("openai", "anthropic"):
             assert (
                 reg.output_mode(ProviderSelection(proveedor=provider, nivel="economico")) == "tool"
             )

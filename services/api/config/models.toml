@@ -68,6 +68,8 @@ provider = "groq"
 name = "openai/gpt-oss-20b"
 display_name = "GPT-OSS 20B"
 nivel = "economico"
+# Native JSON output: with tool calls it names the tool "functions.final_result" (ADR 0021).
+output_mode = "native"
 input_usd_per_million = 0.075
 output_usd_per_million = 0.30
 
