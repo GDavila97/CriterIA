@@ -41,3 +41,12 @@ def test_run_limits_default_to_five_per_hour_and_twenty_per_day() -> None:
 
     assert fields["user_runs_per_hour"].default == 5
     assert fields["user_runs_per_day"].default == 20
+
+
+def test_global_caps_keep_groqs_monthly_limit_for_the_whole_month() -> None:
+    fields = ApiSettings.model_fields
+
+    assert fields["global_daily_runs"].default == 25
+    assert fields["global_daily_budget_usd"].default == 0.09
+    # 31 days at the daily budget stay under Groq's 3 USD monthly spending limit.
+    assert 31 * 0.09 < 3

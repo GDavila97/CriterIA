@@ -152,8 +152,9 @@ class ApiSettings(Settings):
     credential_checks_per_hour: int = Field(default=10, ge=1)
     user_runs_per_hour: int = Field(default=5, ge=1)
     user_runs_per_day: int = Field(default=20, ge=1)
-    global_daily_runs: int = Field(default=100, ge=0)
-    global_daily_budget_usd: float = Field(default=1.0, ge=0)
+    # Keeps Groq's 3 USD monthly spending limit from running out mid-month (ADR 0019).
+    global_daily_runs: int = Field(default=25, ge=0)
+    global_daily_budget_usd: float = Field(default=0.09, ge=0)
     run_ttl_minutes: int = Field(default=60, ge=5)
     sse_heartbeat_seconds: float = Field(default=15.0, gt=0, le=60)
     max_request_bytes: int = Field(default=65536, ge=1024, le=1_048_576)

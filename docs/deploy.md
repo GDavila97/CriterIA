@@ -44,7 +44,7 @@ Parten de `services/api/.env.example` y `apps/web/.env.example`. Lo que falta de
 | `SENTRY_DSN` | Secret Manager | |
 | `WEB_ORIGIN`, `AUTH_JWKS_URL`, `AUTH_ISSUER`, `AUTH_AUDIENCE` | Variables de Cloud Run | Origen exacto de la web en Vercel |
 | `SERVER_KEY_PROVIDERS=groq`, `APP_ENV=production` | Variables de Cloud Run | |
-| `USER_RUNS_PER_HOUR`, `USER_RUNS_PER_DAY`, `GLOBAL_DAILY_RUNS`, `GLOBAL_DAILY_BUDGET_USD` | Variables de Cloud Run | Los topes globales se fijan con los precios verificados de Groq (F5) |
+| `USER_RUNS_PER_HOUR`, `USER_RUNS_PER_DAY`, `GLOBAL_DAILY_RUNS`, `GLOBAL_DAILY_BUDGET_USD` | Variables de Cloud Run | Por defecto: 5 corridas por hora y 20 por día por usuario; tope global diario de 25 corridas y 0.09 USD con la clave del servidor, para que el límite de gasto mensual de 3 USD de Groq no se agote a mitad de mes (31 × 0.09 = 2.79 USD). Con el precio verificado de `openai/gpt-oss-20b`, el tope en dólares suele llegar antes que el de corridas |
 | `RUN_TTL_MINUTES`, `SSE_HEARTBEAT_SECONDS`, `MAX_REQUEST_BYTES`, `PROVIDER_TIMEOUTS` | Variables de Cloud Run | Valores por defecto salvo motivo |
 | `AUTH_REQUIRE_VERIFIED_EMAIL` | Variable de Cloud Run | `false` mientras la web tenga `EMAIL_PROVIDER=none` ([ADR 0020](adr/0020-github-first-sign-in-without-email.md)); `true` al tener dominio y envío |
 | `MODEL_BACKEND` | — | Siempre `real` (el valor por defecto); `fake` solo existe para las pruebas y la API no arranca con él fuera de `APP_ENV=test` |
