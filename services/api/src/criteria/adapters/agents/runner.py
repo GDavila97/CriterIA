@@ -29,11 +29,13 @@ HTTP_UNAUTHORIZED, HTTP_PAYMENT_REQUIRED, HTTP_FORBIDDEN, HTTP_TOO_MANY_REQUESTS
     429,
 )
 BLOCKED_ENDPOINT_ERRORS = (EndpointNotAllowedError, ResponseTooLargeError)
+BLOCKED_API_ACCESS = "blocked_api_access"
 
 SAFE_MESSAGES: dict[CodigoError, str] = {
     "salida_invalida": "El agente no produjo una salida válida tras un reintento.",
     "clave_invalida": "El proveedor rechazó la clave de API.",
     "sin_saldo": "La cuenta del proveedor no tiene saldo o cuota disponible.",
+    "cupo_gratuito_agotado": "Se agotó el cupo gratuito de CriterIA; puedes usar tu propia clave.",
     "limite_proveedor": "El proveedor alcanzó su límite de peticiones; intenta más tarde.",
     "destino_no_permitido": "El servidor del proveedor no está permitido.",
     "proveedor_no_disponible": "El proveedor no está disponible o tardó demasiado en responder.",
@@ -64,6 +66,14 @@ def _no_balance(error: BaseException) -> bool:
     return isinstance(error, ModelQuotaExceededError) or _status(error, HTTP_PAYMENT_REQUIRED)
 
 
+def _spend_limit_reached(error: BaseException) -> bool:
+    """Groq's blocked_api_access: the organization reached its spending limit."""
+    if not isinstance(error, ModelHTTPError) or not isinstance(error.body, dict):
+        return False
+    inner = error.body.get("error", error.body)
+    return isinstance(inner, dict) and inner.get("code") == BLOCKED_API_ACCESS
+
+
 def _rate_limited(error: BaseException) -> bool:
     return isinstance(error, ModelRateLimitError) or _status(error, HTTP_TOO_MANY_REQUESTS)
 
@@ -80,8 +90,11 @@ _RULES: tuple[tuple[CodigoError, Callable[[BaseException], bool]], ...] = (
 )
 
 
-def classify_error(error: BaseException) -> CodigoError:
+def classify_error(error: BaseException, *, server_key: bool = False) -> CodigoError:
     chain = _causes(error)
+    # A spending limit is CriterIA's free quota with the server key, the user's balance otherwise.
+    if any(_spend_limit_reached(e) for e in chain):
+        return "cupo_gratuito_agotado" if server_key else "sin_saldo"
     for codigo, matches in _RULES:
         if any(matches(e) for e in chain):
             return codigo
@@ -96,6 +109,7 @@ class ModelBinding:
     settings: ModelSettings
     cost_usd: Callable[[int, int], float | None]
     output_mode: OutputMode = "tool"
+    server_key: bool = False
 
 
 class PydanticAgentRunner[Entrada, Salida]:
@@ -133,7 +147,7 @@ class PydanticAgentRunner[Entrada, Salida]:
                 model_settings=self._binding.settings,
             )
         except Exception as error:
-            failure = classify_error(error)
+            failure = classify_error(error, server_key=self._binding.server_key)
             # Only the type name is logged: provider messages may echo prompts or credentials.
             logger.warning("agent %s failed: %s (%s)", self._rol, failure, type(error).__name__)
         latencia_ms = round((self._clock.monotonic() - started) * 1000)

@@ -52,7 +52,8 @@ Unión discriminada por `tipo`, según el agente que entrega:
 | --- | --- |
 | `salida_invalida` | La salida no cumplió el esquema ni con el reintento |
 | `clave_invalida` | El proveedor rechazó la clave (401 o 403) |
-| `sin_saldo` | La cuenta no tiene saldo o cuota (402, o el `insufficient_quota` que OpenAI envía con un 429) |
+| `sin_saldo` | La cuenta no tiene saldo o cuota (402, el `insufficient_quota` que OpenAI envía con un 429, o el `blocked_api_access` de Groq con la clave del usuario) |
+| `cupo_gratuito_agotado` | Groq respondió `blocked_api_access` (la organización llegó a su límite de gasto) con la clave del servidor: se agotó el cupo gratuito de CriterIA |
 | `limite_proveedor` | El proveedor limitó la frecuencia de peticiones (429) |
 | `proveedor_no_disponible` | Error del servidor del proveedor (5xx), de conexión o tiempo agotado |
 | `destino_no_permitido` | La URL del usuario no pasó la protección SSRF o respondió demasiado |

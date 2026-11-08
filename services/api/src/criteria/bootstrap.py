@@ -62,6 +62,7 @@ class Container:
             label=selection.etiqueta,
             settings=registry.model_settings(selection),
             output_mode=registry.output_mode(selection),
+            server_key=not selection.usa_clave_propia,
             cost_usd=lambda tokens_in, tokens_out: registry.cost_usd(
                 selection, tokens_in, tokens_out
             ),

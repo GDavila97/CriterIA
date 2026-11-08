@@ -191,6 +191,7 @@ def fake_agent_builder(
             provider=resolved.proveedor,
             label=resolved.etiqueta,
             settings=registry.model_settings(resolved),
+            server_key=not selection.usa_clave_propia,
             cost_usd=lambda tokens_in, tokens_out: registry.cost_usd(
                 resolved, tokens_in, tokens_out
             ),

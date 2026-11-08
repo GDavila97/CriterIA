@@ -21,6 +21,7 @@ CodigoError = Literal[
     "salida_invalida",
     "clave_invalida",
     "sin_saldo",
+    "cupo_gratuito_agotado",
     "limite_proveedor",
     "proveedor_no_disponible",
     "destino_no_permitido",

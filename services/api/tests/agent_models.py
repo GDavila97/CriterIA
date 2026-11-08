@@ -19,6 +19,7 @@ def make_binding(
     label: str,
     price: float | None = None,
     provider: ProveedorId = "ollama",
+    server_key: bool = False,
 ) -> ModelBinding:
     def cost(tokens_in: int, tokens_out: int) -> float | None:
         return None if price is None else round((tokens_in + tokens_out) * price, 6)
@@ -29,6 +30,7 @@ def make_binding(
         label=label,
         settings=ModelSettings(temperature=0),
         cost_usd=cost,
+        server_key=server_key,
     )
 
 

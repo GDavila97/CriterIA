@@ -21,7 +21,7 @@ from pydantic_ai.models.function import AgentInfo, FunctionModel
 from criteria.adapters.agents.blocks import data_block
 from criteria.adapters.agents.factory import AgentFactory, render_analista, render_qa
 from criteria.adapters.agents.prompts import PromptNotFoundError, load_prompt
-from criteria.adapters.agents.runner import ModelBinding
+from criteria.adapters.agents.runner import ModelBinding, classify_error
 from criteria.adapters.llm.catalog import ModelCatalog
 from criteria.adapters.llm.registry import ProviderRegistry
 from criteria.adapters.llm.ssrf import EndpointNotAllowedError, GuardedTransport
@@ -202,6 +202,34 @@ class TestErrorCodes:
         assert raised.value.codigo == codigo
         assert "internal detail" not in str(raised.value)
         assert "internal detail" not in caplog.text
+
+
+BLOCKED = {"error": {"code": "blocked_api_access", "message": "spend limit reached"}}
+
+
+class TestSpendLimit:
+    @pytest.mark.parametrize(
+        ("server_key", "codigo"), [(True, "cupo_gratuito_agotado"), (False, "sin_saldo")]
+    )
+    @pytest.mark.parametrize("body", [BLOCKED, BLOCKED["error"]], ids=["wrapped", "inner"])
+    @pytest.mark.parametrize("status", [400, 403])
+    async def test_blocked_api_access_depends_on_whose_key_it_is(
+        self, server_key: bool, codigo: str, body: dict[str, object], status: int
+    ) -> None:
+        model = scripted(ModelHTTPError(status, "m", body=body))
+        binding = replace(model.binding(), server_key=server_key)
+        team = AgentFactory(PROMPTS, "v1", "v1", FakeClock()).build(binding, binding)
+
+        with pytest.raises(AgentRunError) as raised:
+            await team.analista.run(entrada_analista())
+
+        assert raised.value.codigo == codigo
+
+    def test_other_bodies_keep_their_usual_code(self) -> None:
+        assert classify_error(ModelHTTPError(400, "m", body="blocked_api_access")) == (
+            "proveedor_no_disponible"
+        )
+        assert classify_error(ModelHTTPError(403, "m", body={"error": "x"})) == "clave_invalida"
 
 
 class TestPromptInjection:
