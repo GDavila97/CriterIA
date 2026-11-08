@@ -32,7 +32,9 @@ test.beforeEach(async ({ page }) => {
 /** axe and the CSP on what is on screen, plus the evidence screenshot when asked for. */
 async function check(page: Page, testInfo: TestInfo, name: string, fullPage = true): Promise<void> {
   await page.waitForLoadState('networkidle');
+  await settleAnimations(page);
   await expectNoAxeViolations(page);
+  await expectNoHorizontalOverflow(page);
   expect(await page.evaluate(() => window.cspViolations)).toEqual([]);
   if (SHOTS) {
     mkdirSync(SHOTS, { recursive: true });
@@ -40,8 +42,32 @@ async function check(page: Page, testInfo: TestInfo, name: string, fullPage = tr
     await page.screenshot({
       path: join(SHOTS, `${name}-${testInfo.project.name}.png`),
       fullPage,
+      // A full-page capture in Chromium restarts CSS entrances; this shows them finished.
+      animations: 'disabled',
     });
   }
+}
+
+/** Entrances fade in; axe would measure contrast halfway through them. Loops are left alone. */
+async function settleAnimations(page: Page): Promise<void> {
+  await page.evaluate(() =>
+    Promise.all(
+      document
+        .getAnimations()
+        .filter((animation) => animation.effect?.getTiming().iterations !== Infinity)
+        .map((animation) => animation.finished.catch(() => undefined)),
+    ),
+  );
+}
+
+async function expectNoHorizontalOverflow(page: Page): Promise<void> {
+  const viewport = page.viewportSize();
+  if (!viewport || viewport.width > 400) return;
+  const widths = await page.evaluate(() => ({
+    page: document.documentElement.scrollWidth,
+    viewport: window.innerWidth,
+  }));
+  expect(widths.page, 'la página no se desborda a lo ancho').toBeLessThanOrEqual(widths.viewport);
 }
 
 async function signIn(page: Page, request: Page['request'], baseURL: string, ip: string) {
@@ -109,4 +135,16 @@ test('evaluación, historial, privacidad y cuenta', async ({
   await check(page, testInfo, '11-cuenta');
   await page.goto('/ajustes/historial');
   await check(page, testInfo, '12-ajustes-historial');
+});
+
+test('con movimiento reducido nada se desplaza, solo se funde', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/');
+  const distances = await page.evaluate(() => {
+    const root = getComputedStyle(document.documentElement);
+    return ['--motion-shift', '--motion-lift', '--motion-slide'].map((name) =>
+      root.getPropertyValue(name).trim(),
+    );
+  });
+  expect(distances).toEqual(['0px', '0px', '0px']);
 });
