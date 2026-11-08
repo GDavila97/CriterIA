@@ -176,3 +176,7 @@ class HistoryStore(Protocol):
 
 class EvaluationReader(Protocol):
     async def batches(self) -> list[dict[str, Any]]: ...
+
+    async def judge_pairs(self) -> list[tuple[str, int, int]]:
+        """(criterion, judge, person) for every run and criterion a person scored."""
+        ...

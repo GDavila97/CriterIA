@@ -460,7 +460,10 @@ export interface EvaluationBatchBody {
   prompt_version: string;
   judge_model: string;
   judge_version: string;
+  judge_same_provider: boolean;
   output_mode: string;
+  completed: number;
+  score_mean: number | null;
   cases: number;
   valid_rate: number | null;
   latency_p50_ms: number | null;
@@ -473,6 +476,28 @@ export interface EvaluationBatchBody {
  */
 export interface EvaluationBody {
   lotes: EvaluationBatchBody[];
+  acuerdo_juez: JudgeAgreementBody | null;
+}
+/**
+ * This interface was referenced by `CriteriaContract`'s JSON-Schema
+ * via the `definition` "JudgeAgreementBody".
+ */
+export interface JudgeAgreementBody {
+  pares: number;
+  kappa: IntervalBody;
+  spearman: IntervalBody;
+  exacto: IntervalBody;
+  mas_menos_uno: IntervalBody;
+  juez_menos_humano: IntervalBody;
+}
+/**
+ * This interface was referenced by `CriteriaContract`'s JSON-Schema
+ * via the `definition` "IntervalBody".
+ */
+export interface IntervalBody {
+  valor: number | null;
+  bajo: number | null;
+  alto: number | null;
 }
 /**
  * This interface was referenced by `CriteriaContract`'s JSON-Schema

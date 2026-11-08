@@ -29,8 +29,11 @@ from criteria.adapters.http.schemas import (
 from criteria.adapters.http.services import ApiServices, services
 from criteria.adapters.llm.ssrf import validate_endpoint_url
 from criteria.application.errors import NotFoundError
+from criteria.application.report import judge_agreement
 from criteria.application.run_api import AgentParams, RunRequest
 from criteria.domain.approval import RespuestaHumana
+from criteria.domain.artifacts import CRITERIOS, Criterio
+from criteria.domain.eval_metrics import Agreement, Estimate
 from criteria.domain.events import ProveedorId
 from criteria.domain.run_config import RolAgente
 from criteria.ports.stores import ModelPlan, UserSettings
@@ -225,16 +228,37 @@ async def evaluation(request: Request, response: Response) -> EvaluationBody:
     response.headers["cache-control"] = "public, max-age=60"
     services = _services(request)
     batches = await services.evaluation.batches()
+    agreement = judge_agreement(_criteria_pairs(await services.evaluation.judge_pairs()))
     return EvaluationBody.model_validate(
         {
             "lotes": [
                 {
-                    **batch,
-                    "model_display_name": services.accounts.display_name(
-                        batch["provider"], batch["model"]
-                    ),
+                    **{k: v for k, v in batch.items() if k != "display_name"},
+                    # The catalog name, or the one the batch recorded for a model it no longer has.
+                    "model_display_name": batch.get("display_name")
+                    or services.accounts.display_name(batch["provider"], batch["model"]),
                 }
                 for batch in batches
-            ]
+            ],
+            "acuerdo_juez": None if agreement is None else _agreement_body(agreement.total),
         }
     )
+
+
+def _criteria_pairs(pairs: list[tuple[str, int, int]]) -> list[tuple[Criterio, int, int]]:
+    return [(c, j, h) for criterio, j, h in pairs for c in CRITERIOS if c == criterio]
+
+
+def _interval(estimate: Estimate) -> dict[str, float | None]:
+    return {"valor": estimate.value, "bajo": estimate.low, "alto": estimate.high}
+
+
+def _agreement_body(a: Agreement) -> dict[str, object]:
+    return {
+        "pares": a.pairs,
+        "kappa": _interval(a.kappa),
+        "spearman": _interval(a.spearman),
+        "exacto": _interval(a.exact),
+        "mas_menos_uno": _interval(a.within_one),
+        "juez_menos_humano": _interval(a.judge_minus_human),
+    }

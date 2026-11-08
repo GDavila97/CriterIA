@@ -202,7 +202,10 @@ class EvaluationBatchBody(Body):
     prompt_version: str
     judge_model: str
     judge_version: str
+    judge_same_provider: bool
     output_mode: str
+    completed: int
+    score_mean: float | None
     cases: int
     valid_rate: float | None
     latency_p50_ms: float | None
@@ -210,5 +213,22 @@ class EvaluationBatchBody(Body):
     cost_usd_avg: float | None
 
 
+class IntervalBody(Body):
+    valor: float | None
+    bajo: float | None
+    alto: float | None
+
+
+class JudgeAgreementBody(Body):
+    pares: int
+    kappa: IntervalBody
+    spearman: IntervalBody
+    exacto: IntervalBody
+    mas_menos_uno: IntervalBody
+    juez_menos_humano: IntervalBody
+
+
 class EvaluationBody(Body):
     lotes: list[EvaluationBatchBody]
+    # Agreement of the judge with the person's blind scores; null until there are some.
+    acuerdo_juez: JudgeAgreementBody | None = None

@@ -10,6 +10,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from criteria.adapters.postgres import database as t
+from criteria.domain.artifacts import CRITERIOS
 from criteria.domain.events import ProveedorId
 from criteria.domain.run_config import Nivel
 from criteria.ports.credentials import Sealed, StoredCredential
@@ -524,42 +525,87 @@ class PostgresEvaluationReader:
 
     async def batches(self) -> list[dict[str, Any]]:
         b, r = t.eval_batch.c, t.eval_result.c
+        done = r.completed.is_(True)
+        llamadas = sa.func.sum(sa.cast(r.details["llamadas"].astext, sa.Integer))
+        validas = sa.func.sum(sa.cast(r.details["validas_a_la_primera"].astext, sa.Integer))
         summary = (
             sa.select(
                 b.id,
                 b.created_at,
                 b.provider,
                 b.model,
+                b.display_name,
                 b.prompt_version,
                 b.judge_model,
                 b.judge_version,
+                b.judge_same_provider,
                 b.output_mode,
                 sa.func.count(r.id).label("cases"),
-                sa.func.avg(sa.cast(r.valid_output, sa.Integer)).label("valid_rate"),
-                sa.func.percentile_cont(0.5).within_group(r.latency_ms).label("latency_p50_ms"),
-                sa.func.percentile_cont(0.95).within_group(r.latency_ms).label("latency_p95_ms"),
-                sa.func.avg(r.cost_usd).label("cost_usd_avg"),
+                sa.func.count(r.id).filter(done).label("completed"),
+                # Each agent call valid at the first answer; older rows only know the whole run.
+                sa.func.coalesce(
+                    sa.cast(validas, sa.Float) / sa.func.nullif(llamadas, 0),
+                    sa.func.avg(sa.cast(r.valid_output, sa.Integer)),
+                ).label("valid_rate"),
+                sa.func.percentile_cont(0.5)
+                .within_group(r.latency_ms)
+                .filter(done)
+                .label("latency_p50_ms"),
+                sa.func.percentile_cont(0.95)
+                .within_group(r.latency_ms)
+                .filter(done)
+                .label("latency_p95_ms"),
+                sa.func.avg(r.cost_usd).filter(done).label("cost_usd_avg"),
             )
             .select_from(t.eval_batch.outerjoin(t.eval_result, r.batch_id == b.id))
             .group_by(b.id)
             .order_by(b.created_at.desc())
         )
+        scores = sa.select(r.batch_id, r.scores)
         async with self._engine.connect() as conn:
-            rows = (await conn.execute(summary)).mappings()
-            return [
-                {
-                    **{k: row[k] for k in ("id", "created_at", "provider", "model")},
-                    **{
-                        k: row[k]
-                        for k in ("prompt_version", "judge_model", "judge_version", "output_mode")
-                    },
-                    "cases": int(row["cases"]),
-                    "valid_rate": None if row["valid_rate"] is None else float(row["valid_rate"]),
-                    "latency_p50_ms": row["latency_p50_ms"],
-                    "latency_p95_ms": row["latency_p95_ms"],
-                    "cost_usd_avg": None
-                    if row["cost_usd_avg"] is None
-                    else float(row["cost_usd_avg"]),
-                }
-                for row in rows
-            ]
+            rows = list((await conn.execute(summary)).mappings())
+            by_batch: dict[Any, list[float]] = {}
+            for row in (await conn.execute(scores)).mappings():
+                values = [float(s["valor"]) for s in row["scores"]]
+                if len(values) == len(CRITERIOS):
+                    by_batch.setdefault(row["batch_id"], []).append(sum(values) / len(values))
+        return [
+            {
+                **{k: row[k] for k in ("id", "created_at", "provider", "model")},
+                **{
+                    k: row[k]
+                    for k in ("prompt_version", "judge_model", "judge_version", "output_mode")
+                },
+                "display_name": row["display_name"],
+                "judge_same_provider": row["judge_same_provider"],
+                "cases": int(row["cases"]),
+                "completed": int(row["completed"]),
+                "valid_rate": None if row["valid_rate"] is None else float(row["valid_rate"]),
+                "latency_p50_ms": row["latency_p50_ms"],
+                "latency_p95_ms": row["latency_p95_ms"],
+                "cost_usd_avg": None if row["cost_usd_avg"] is None else float(row["cost_usd_avg"]),
+                "score_mean": (
+                    sum(by_batch[row["id"]]) / len(by_batch[row["id"]])
+                    if row["id"] in by_batch
+                    else None
+                ),
+            }
+            for row in rows
+        ]
+
+    async def judge_pairs(self) -> list[tuple[str, int, int]]:
+        h, r = t.human_score.c, t.eval_result.c
+        query = sa.select(h.criterion, h.score, r.scores).select_from(
+            t.human_score.join(t.eval_result, (r.batch_id == h.batch_id) & (r.case_id == h.case_id))
+        )
+        async with self._engine.connect() as conn:
+            rows = list((await conn.execute(query)).mappings())
+        pairs: list[tuple[str, int, int]] = []
+        for row in rows:
+            judge = next(
+                (int(s["valor"]) for s in row["scores"] if s["criterio"] == row["criterion"]),
+                None,
+            )
+            if judge is not None:
+                pairs.append((row["criterion"], judge, int(row["score"])))
+        return pairs

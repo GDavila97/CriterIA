@@ -238,3 +238,9 @@ class TestEvaluation:
         assert (lote["cases"], lote["valid_rate"]) == (2, 0.5)
         assert lote["latency_p50_ms"] == 200
         assert lote["cost_usd_avg"] == pytest.approx(0.02)
+        assert (lote["completed"], lote["score_mean"], lote["judge_same_provider"]) == (
+            2,
+            None,
+            False,
+        )
+        assert response.json()["acuerdo_juez"] is None

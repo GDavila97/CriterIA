@@ -9,14 +9,18 @@ from criteria.adapters.cli.main import Terminal, main
 from criteria.adapters.eval.files import JsonBatchStore, JsonSessionStore
 from criteria.adapters.postgres.database import create_engine
 from criteria.adapters.postgres.evaluation import PostgresEvalPublisher
+from criteria.adapters.postgres.stores import PostgresEvaluationReader
 from criteria.bootstrap import Container
 from criteria.config import SERVICE_ROOT, Settings
+from criteria.domain.artifacts import Criterio
 from criteria.domain.evaluation import HumanScore, HumanSession, case_uuid
 from tests.adapters.cli.test_cli import FakeContainer, happy
 from tests.eval_factories import all_cases, batch, result
 from tests.postgres.database import Database
 
 pytestmark = pytest.mark.integration
+
+SCORED: list[tuple[Criterio, int]] = [("claridad", 4), ("verificabilidad", 3), ("completitud", 3)]
 
 
 async def test_publishing_twice_inserts_each_row_once_as_eval_writer(database: Database) -> None:
@@ -96,3 +100,46 @@ def test_the_cli_publishes_a_batch_file_and_the_human_session(
     assert (batch_code, human_code) == (0, 0)
     assert "openai:gpt-6-luna: 1 casos, 1 lote y 1 resultados nuevos." in err.getvalue()
     assert "Puntajes humanos nuevos: 2." in err.getvalue()
+
+
+async def test_the_board_shows_published_batches_with_the_judge_agreement(
+    database: Database,
+) -> None:
+    engine = create_engine(database.eval_writer, pool_size=2)
+    published = batch(
+        "anthropic",
+        "claude-haiku-5-5",
+        [
+            result("medio-05", scores=(4, 4, 3, 5)),
+            result("facil-05", scores=(2, 2, 2, 2), validas=2),
+        ],
+    )
+    session = HumanSession(
+        semilla=1,
+        puntajes=[
+            HumanScore(batch_id=published.batch_id, case_id="medio-05", criterio=c, valor=v)
+            for c, v in SCORED
+        ],
+    )
+    try:
+        await PostgresEvalPublisher(engine).publish(published, all_cases())
+        await PostgresEvalPublisher(engine).publish_human(session)
+    finally:
+        await engine.dispose()
+    reader_engine = create_engine(database.api, pool_size=2)
+    try:
+        reader = PostgresEvaluationReader(reader_engine)
+        lotes = {b["id"]: b for b in await reader.batches()}
+        pairs = await reader.judge_pairs()
+    finally:
+        await reader_engine.dispose()
+
+    lote = lotes[published.batch_id]
+    assert lote["display_name"] == "claude-haiku-5-5"
+    assert lote["judge_same_provider"] is True
+    assert (lote["cases"], lote["completed"]) == (2, 2)
+    assert lote["valid_rate"] == pytest.approx(6 / 8)
+    assert lote["score_mean"] == pytest.approx((4.0 + 2.0) / 2)
+    assert sorted(p for p in pairs if p[0] in {"claridad", "verificabilidad", "completitud"})[
+        -3:
+    ] == [("claridad", 4, 4), ("completitud", 3, 3), ("verificabilidad", 4, 3)]

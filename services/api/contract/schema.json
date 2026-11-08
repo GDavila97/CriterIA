@@ -1251,8 +1251,24 @@
         "judge_version": {
           "type": "string"
         },
+        "judge_same_provider": {
+          "type": "boolean"
+        },
         "output_mode": {
           "type": "string"
+        },
+        "completed": {
+          "type": "integer"
+        },
+        "score_mean": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "cases": {
           "type": "integer"
@@ -1307,7 +1323,10 @@
         "prompt_version",
         "judge_model",
         "judge_version",
+        "judge_same_provider",
         "output_mode",
+        "completed",
+        "score_mean",
         "cases",
         "valid_rate",
         "latency_p50_ms",
@@ -1325,10 +1344,22 @@
             "$ref": "#/$defs/EvaluationBatchBody"
           },
           "type": "array"
+        },
+        "acuerdo_juez": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/JudgeAgreementBody"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         }
       },
       "required": [
-        "lotes"
+        "lotes",
+        "acuerdo_juez"
       ],
       "title": "EvaluationBody",
       "type": "object"
@@ -1724,6 +1755,81 @@
         "historias"
       ],
       "title": "HumanoResponde",
+      "type": "object"
+    },
+    "IntervalBody": {
+      "additionalProperties": false,
+      "properties": {
+        "valor": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "bajo": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "alto": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "valor",
+        "bajo",
+        "alto"
+      ],
+      "title": "IntervalBody",
+      "type": "object"
+    },
+    "JudgeAgreementBody": {
+      "additionalProperties": false,
+      "properties": {
+        "pares": {
+          "type": "integer"
+        },
+        "kappa": {
+          "$ref": "#/$defs/IntervalBody"
+        },
+        "spearman": {
+          "$ref": "#/$defs/IntervalBody"
+        },
+        "exacto": {
+          "$ref": "#/$defs/IntervalBody"
+        },
+        "mas_menos_uno": {
+          "$ref": "#/$defs/IntervalBody"
+        },
+        "juez_menos_humano": {
+          "$ref": "#/$defs/IntervalBody"
+        }
+      },
+      "required": [
+        "pares",
+        "kappa",
+        "spearman",
+        "exacto",
+        "mas_menos_uno",
+        "juez_menos_humano"
+      ],
+      "title": "JudgeAgreementBody",
       "type": "object"
     },
     "ModelPlanBody": {
