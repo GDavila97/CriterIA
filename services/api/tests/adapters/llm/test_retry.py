@@ -112,10 +112,10 @@ async def test_legacy_transport_retries_one_connection_failure() -> None:
 
 CATALOG = ModelCatalog(
     models=[
-        CatalogEntry(provider="openai", name="o"),
-        CatalogEntry(provider="anthropic", name="a"),
-        CatalogEntry(provider="groq", name="g"),
-        CatalogEntry(provider="ollama", name="l"),
+        CatalogEntry(provider="openai", name="o", display_name="o"),
+        CatalogEntry(provider="anthropic", name="a", display_name="a"),
+        CatalogEntry(provider="groq", name="g", display_name="g"),
+        CatalogEntry(provider="ollama", name="l", display_name="l"),
     ]
 )
 

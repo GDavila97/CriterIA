@@ -732,6 +732,12 @@
           },
           "type": "array"
         },
+        "display_names": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
         "costos_generacion": {
           "items": {
             "$ref": "#/$defs/CatalogModelCostBody"
@@ -756,6 +762,7 @@
         "acepta_clave_propia",
         "niveles",
         "modelos",
+        "display_names",
         "costos_generacion",
         "costo_juez_usd"
       ],
@@ -776,6 +783,9 @@
         "modelo": {
           "type": "string"
         },
+        "display_name": {
+          "type": "string"
+        },
         "costo_estimado_usd": {
           "anyOf": [
             {
@@ -790,6 +800,7 @@
       "required": [
         "nivel",
         "modelo",
+        "display_name",
         "costo_estimado_usd"
       ],
       "title": "CatalogTierBody",
@@ -1214,6 +1225,9 @@
         "model": {
           "type": "string"
         },
+        "model_display_name": {
+          "type": "string"
+        },
         "prompt_version": {
           "type": "string"
         },
@@ -1275,6 +1289,7 @@
         "created_at",
         "provider",
         "model",
+        "model_display_name",
         "prompt_version",
         "judge_model",
         "judge_version",
@@ -1531,7 +1546,13 @@
         "model": {
           "type": "string"
         },
+        "model_display_name": {
+          "type": "string"
+        },
         "judge_model": {
+          "type": "string"
+        },
+        "judge_display_name": {
           "type": "string"
         },
         "prompt_version": {
@@ -1567,7 +1588,9 @@
         "scores",
         "provider",
         "model",
+        "model_display_name",
         "judge_model",
+        "judge_display_name",
         "prompt_version",
         "judge_version",
         "experimental",
@@ -1593,6 +1616,9 @@
         "model": {
           "type": "string"
         },
+        "model_display_name": {
+          "type": "string"
+        },
         "created_at": {
           "format": "date-time",
           "type": "string"
@@ -1610,6 +1636,7 @@
         "status",
         "provider",
         "model",
+        "model_display_name",
         "created_at",
         "scores"
       ],

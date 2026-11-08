@@ -2,10 +2,12 @@
 # Prices are copied by hand from each provider's price list (verified 2026-11-05). A model without
 # both prices reports its cost as null. openai_compatible accepts any model name the user brings.
 # Each provider has at most one model per tier (nivel); the catalog refuses to load otherwise.
+# display_name is what the interface shows next to the provider, such as "Groq · GPT-OSS 20B".
 
 [[models]]
 provider = "openai"
 name = "gpt-6-luna"
+display_name = "GPT-6 Luna"
 nivel = "economico"
 input_usd_per_million = 0.10
 output_usd_per_million = 0.50
@@ -13,6 +15,7 @@ output_usd_per_million = 0.50
 [[models]]
 provider = "openai"
 name = "gpt-6.1-sol"
+display_name = "GPT-6.1 Sol"
 nivel = "equilibrado"
 input_usd_per_million = 2.0
 output_usd_per_million = 10.0
@@ -20,6 +23,7 @@ output_usd_per_million = 10.0
 [[models]]
 provider = "openai"
 name = "gpt-6-astra"
+display_name = "GPT-6 Astra"
 nivel = "maximo"
 input_usd_per_million = 10.0
 output_usd_per_million = 50.0
@@ -28,6 +32,7 @@ output_usd_per_million = 50.0
 [[models]]
 provider = "openai"
 name = "gpt-5.4-mini"
+display_name = "GPT-5.4 mini"
 input_usd_per_million = 0.75
 output_usd_per_million = 4.50
 
@@ -35,6 +40,7 @@ output_usd_per_million = 4.50
 [[models]]
 provider = "anthropic"
 name = "claude-haiku-5-5"
+display_name = "Claude Haiku 5.5"
 nivel = "economico"
 input_usd_per_million = 0.10
 output_usd_per_million = 0.50
@@ -42,6 +48,7 @@ output_usd_per_million = 0.50
 [[models]]
 provider = "anthropic"
 name = "claude-sonnet-5-5"
+display_name = "Claude Sonnet 5.5"
 nivel = "equilibrado"
 input_usd_per_million = 2.0
 output_usd_per_million = 10.0
@@ -49,6 +56,7 @@ output_usd_per_million = 10.0
 [[models]]
 provider = "anthropic"
 name = "claude-opus-5-5"
+display_name = "Claude Opus 5.5"
 nivel = "maximo"
 input_usd_per_million = 4.0
 output_usd_per_million = 20.0
@@ -57,6 +65,7 @@ output_usd_per_million = 20.0
 [[models]]
 provider = "groq"
 name = "openai/gpt-oss-20b"
+display_name = "GPT-OSS 20B"
 nivel = "economico"
 input_usd_per_million = 0.07
 output_usd_per_million = 0.30
@@ -64,6 +73,7 @@ output_usd_per_million = 0.30
 [[models]]
 provider = "groq"
 name = "llama-3.3-70b-versatile"
+display_name = "Llama 3.3 70B Versatile"
 input_usd_per_million = 0.59
 output_usd_per_million = 0.79
 
@@ -72,6 +82,7 @@ output_usd_per_million = 0.79
 [[models]]
 provider = "ollama"
 name = "llama3.1:8b"
+display_name = "Llama 3.1 8B"
 # Schema-constrained JSON instead of a tool call; local models often skip or reshape tool calls.
 output_mode = "native"
 input_usd_per_million = 0.0
@@ -80,6 +91,7 @@ output_usd_per_million = 0.0
 [[models]]
 provider = "ollama"
 name = "qwen3:8b"
+display_name = "Qwen3 8B"
 thinking = false
 output_mode = "native"
 input_usd_per_million = 0.0

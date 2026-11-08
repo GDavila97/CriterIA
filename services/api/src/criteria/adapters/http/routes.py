@@ -194,14 +194,25 @@ async def catalog(user: CurrentUser, request: Request) -> CatalogBody:
 
 @router.get("/me/runs", response_model=list[HistorySummaryBody], tags=["historial"])
 async def history(user: CurrentUser, request: Request) -> list[HistorySummaryBody]:
-    items = await _services(request).accounts.history(user.user_id)
-    return [HistorySummaryBody(**asdict(item)) for item in items]
+    accounts = _services(request).accounts
+    items = await accounts.history(user.user_id)
+    return [
+        HistorySummaryBody(
+            **asdict(item), model_display_name=accounts.display_name(item.provider, item.model)
+        )
+        for item in items
+    ]
 
 
 @router.get("/me/runs/{run_id}", response_model=HistoryItemBody, tags=["historial"])
 async def history_item(run_id: UUID, user: CurrentUser, request: Request) -> HistoryItemBody:
-    item = await _services(request).accounts.history_item(user.user_id, run_id)
-    return HistoryItemBody(**asdict(item))
+    accounts = _services(request).accounts
+    item = await accounts.history_item(user.user_id, run_id)
+    return HistoryItemBody(
+        **asdict(item),
+        model_display_name=accounts.display_name(item.provider, item.model),
+        judge_display_name=accounts.judge_display_name(item.judge_model),
+    )
 
 
 @router.delete("/me/runs", response_model=HistoryDeletedBody, tags=["historial"])
@@ -212,4 +223,18 @@ async def clear_history(user: CurrentUser, request: Request) -> HistoryDeletedBo
 @router.get("/evaluation", response_model=EvaluationBody, tags=["evaluacion"])
 async def evaluation(request: Request, response: Response) -> EvaluationBody:
     response.headers["cache-control"] = "public, max-age=60"
-    return EvaluationBody.model_validate({"lotes": await _services(request).evaluation.batches()})
+    services = _services(request)
+    batches = await services.evaluation.batches()
+    return EvaluationBody.model_validate(
+        {
+            "lotes": [
+                {
+                    **batch,
+                    "model_display_name": services.accounts.display_name(
+                        batch["provider"], batch["model"]
+                    ),
+                }
+                for batch in batches
+            ]
+        }
+    )

@@ -141,6 +141,9 @@ class ProviderRegistry:
     def models(self, provider: ProveedorId) -> list[str]:
         return self._catalog.allowed_models(provider)
 
+    def display_name(self, provider: ProveedorId, model: str) -> str:
+        return self._catalog.display_name(provider, model)
+
     def model(self, selection: ProviderSelection) -> Model:
         selection = self.validate(selection)
         name = _model_name(selection)

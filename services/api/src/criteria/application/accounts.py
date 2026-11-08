@@ -38,6 +38,7 @@ HISTORY_PAGE = 50
 class CatalogTier:
     nivel: Nivel
     modelo: str
+    display_name: str
     costo_estimado_usd: float | None
 
 
@@ -56,6 +57,8 @@ class CatalogProvider:
     acepta_clave_propia: bool
     niveles: list[CatalogTier]
     modelos: list[str]
+    # Model name to the readable name the interface shows.
+    display_names: dict[str, str]
     costos_generacion: list[CatalogModelCost]
     # The Evaluador on this provider's economic tier, the model a judge uses.
     costo_juez_usd: float | None
@@ -126,6 +129,16 @@ class AccountService:
         await self._settings.put(user_id, settings)
         return settings
 
+    def display_name(self, provider: str, model: str) -> str:
+        """The readable model name the interface shows; unknown models keep their own name."""
+        known = next((p for p in PROVIDERS if p == provider), None)
+        return model if known is None else self._router.display_name(known, model)
+
+    def judge_display_name(self, judge_model: str) -> str:
+        """Same for a judge stored as "provider:model"."""
+        provider, _, model = judge_model.partition(":")
+        return self.display_name(provider, model) if model else judge_model
+
     async def history(self, user_id: str) -> list[SavedRunSummary]:
         return await self._history.list(user_id, HISTORY_PAGE)
 
@@ -161,6 +174,7 @@ class AccountService:
                 CatalogTier(
                     nivel=nivel,
                     modelo=model,
+                    display_name=self._router.display_name(provider, model),
                     costo_estimado_usd=self._estimate(provider, model, judge, judge_model),
                 )
                 for nivel, model in self._router.tiers(provider).items()
@@ -173,6 +187,10 @@ class AccountService:
                     acepta_clave_propia=provider in USER_KEY_PROVIDERS,
                     niveles=tiers,
                     modelos=self._router.models(provider),
+                    display_names={
+                        m: self._router.display_name(provider, m)
+                        for m in self._router.models(provider)
+                    },
                     costos_generacion=[
                         CatalogModelCost(modelo=m, costo_usd=self._generation_cost(provider, m))
                         for m in self._router.models(provider)

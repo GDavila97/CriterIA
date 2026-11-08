@@ -253,3 +253,25 @@ class TestAccountService:
         assert anthropic.costo_juez_usd is not None
         assert anthropic.costo_juez_usd > 0
         assert by_provider["openai_compatible"].costos_generacion == []
+
+    async def test_the_catalog_names_every_model_for_people(self) -> None:
+        service, _, _ = account_service()
+
+        catalog = await service.catalog(USER)
+
+        groq = next(p for p in catalog.proveedores if p.proveedor == "groq")
+        assert groq.display_names["openai/gpt-oss-20b"] == "GPT-OSS 20B"
+        assert next(t for t in groq.niveles if t.nivel == "economico").display_name == (
+            "GPT-OSS 20B"
+        )
+        assert set(groq.display_names) == set(groq.modelos)
+
+    def test_display_names_fall_back_to_the_stored_name(self) -> None:
+        service, _, _ = account_service()
+
+        assert service.display_name("anthropic", "claude-opus-5-5") == "Claude Opus 5.5"
+        assert service.judge_display_name("groq:openai/gpt-oss-20b") == "GPT-OSS 20B"
+        assert service.judge_display_name("ollama:qwen3:8b") == "Qwen3 8B"
+        assert service.display_name("openai_compatible", "mi-modelo") == "mi-modelo"
+        assert service.display_name("desconocido", "x") == "x"
+        assert service.judge_display_name("sin-proveedor") == "sin-proveedor"

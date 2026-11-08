@@ -28,12 +28,13 @@ USER_KEY = "sk-user-0000-very-secret"
 
 CATALOG = ModelCatalog(
     models=[
-        CatalogEntry(provider="openai", name="gpt-test-mini"),
-        CatalogEntry(provider="anthropic", name="claude-test"),
-        CatalogEntry(provider="groq", name="groq-test"),
+        CatalogEntry(provider="openai", name="gpt-test-mini", display_name="gpt-test-mini"),
+        CatalogEntry(provider="anthropic", name="claude-test", display_name="claude-test"),
+        CatalogEntry(provider="groq", name="groq-test", display_name="groq-test"),
         CatalogEntry(
             provider="ollama",
             name="qwen3:8b",
+            display_name="qwen3:8b",
             thinking=False,
             input_usd_per_million=0.0,
             output_usd_per_million=0.0,
@@ -41,6 +42,7 @@ CATALOG = ModelCatalog(
         CatalogEntry(
             provider="openai",
             name="gpt-priced",
+            display_name="gpt-priced",
             input_usd_per_million=0.5,
             output_usd_per_million=2.0,
         ),
@@ -263,7 +265,7 @@ class TestCatalog:
 
     def test_prices_must_come_in_pairs(self) -> None:
         with pytest.raises(ValidationError, match="both prices"):
-            CatalogEntry(provider="openai", name="m", input_usd_per_million=1.0)
+            CatalogEntry(provider="openai", name="m", display_name="m", input_usd_per_million=1.0)
 
     def test_shipped_catalog_carries_the_verified_prices(self) -> None:
         catalog = ModelCatalog.load(SERVICE_ROOT / "config" / "models.toml")
@@ -276,9 +278,15 @@ class TestCatalog:
 
     def test_load_reads_toml(self, tmp_path: Path) -> None:
         path = tmp_path / "models.toml"
-        path.write_text('[[models]]\nprovider = "groq"\nname = "m"\n', encoding="utf-8")
+        path.write_text(
+            '[[models]]\nprovider = "groq"\nname = "m"\ndisplay_name = "M"\n', encoding="utf-8"
+        )
 
         assert ModelCatalog.load(path).allows("groq", "m")
+
+    def test_display_name_is_readable_and_unknown_models_keep_their_name(self) -> None:
+        assert SHIPPED.display_name("groq", "openai/gpt-oss-20b") == "GPT-OSS 20B"
+        assert SHIPPED.display_name("openai_compatible", "mi-modelo") == "mi-modelo"
 
 
 USER_KEY_PROVIDERS = [*PAID, "openai_compatible"]
@@ -344,15 +352,17 @@ class TestTiers:
         ):
             ModelCatalog(
                 models=[
-                    CatalogEntry(provider="groq", name="a", nivel="economico"),
-                    CatalogEntry(provider="groq", name="b", nivel="economico"),
-                    CatalogEntry(provider="openai", name="c", nivel="economico"),
+                    CatalogEntry(provider="groq", name="a", display_name="a", nivel="economico"),
+                    CatalogEntry(provider="groq", name="b", display_name="b", nivel="economico"),
+                    CatalogEntry(provider="openai", name="c", display_name="c", nivel="economico"),
                 ]
             )
 
     def test_a_duplicated_tier_stops_loading_with_a_clear_message(self, tmp_path: Path) -> None:
         path = tmp_path / "models.toml"
-        entry = '[[models]]\nprovider = "groq"\nname = "{}"\nnivel = "maximo"\n'
+        entry = (
+            '[[models]]\nprovider = "groq"\nname = "{0}"\ndisplay_name = "{0}"\nnivel = "maximo"\n'
+        )
         path.write_text(entry.format("a") + entry.format("b"), encoding="utf-8")
 
         with pytest.raises(CatalogError, match=r"Invalid model catalog models\.toml: .*two models"):
@@ -448,7 +458,12 @@ class TestCostEstimate:
         unpriced = ProviderRegistry(
             settings(),
             SHIPPED.model_copy(
-                update={"models": [*SHIPPED.models, CatalogEntry(provider="openai", name="nuevo")]}
+                update={
+                    "models": [
+                        *SHIPPED.models,
+                        CatalogEntry(provider="openai", name="nuevo", display_name="nuevo"),
+                    ]
+                }
             ),
         )
 

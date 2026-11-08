@@ -21,6 +21,7 @@ class CatalogEntry(BaseModel):
 
     provider: ProveedorId
     name: NombreModelo
+    display_name: str = Field(min_length=1, max_length=60)
     input_usd_per_million: float | None = Field(default=None, ge=0)
     output_usd_per_million: float | None = Field(default=None, ge=0)
     nivel: Nivel | None = None
@@ -74,6 +75,11 @@ class ModelCatalog(BaseModel):
 
     def entry(self, provider: ProveedorId, name: str) -> CatalogEntry | None:
         return next((m for m in self.models if m.provider == provider and m.name == name), None)
+
+    def display_name(self, provider: ProveedorId, name: str) -> str:
+        """The readable name of a model; a model outside the catalog keeps its own name."""
+        entry = self.entry(provider, name)
+        return entry.display_name if entry else name
 
     def allows(self, provider: ProveedorId, name: str) -> bool:
         return provider == "openai_compatible" or self.entry(provider, name) is not None

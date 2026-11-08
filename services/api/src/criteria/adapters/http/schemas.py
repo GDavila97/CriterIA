@@ -134,6 +134,7 @@ class SettingsBody(Body):
 class CatalogTierBody(Body):
     nivel: Nivel
     modelo: str
+    display_name: str
     costo_estimado_usd: float | None
 
 
@@ -149,6 +150,7 @@ class CatalogProviderBody(Body):
     acepta_clave_propia: bool
     niveles: list[CatalogTierBody]
     modelos: list[str]
+    display_names: dict[str, str]
     costos_generacion: list[CatalogModelCostBody]
     costo_juez_usd: float | None
 
@@ -164,6 +166,7 @@ class HistorySummaryBody(Body):
     status: str
     provider: str
     model: str
+    model_display_name: str
     created_at: datetime
     scores: list[dict[str, Any]]
 
@@ -176,7 +179,9 @@ class HistoryItemBody(Body):
     scores: list[dict[str, Any]]
     provider: str
     model: str
+    model_display_name: str
     judge_model: str
+    judge_display_name: str
     prompt_version: str
     judge_version: str
     experimental: bool
@@ -193,6 +198,7 @@ class EvaluationBatchBody(Body):
     created_at: datetime
     provider: str
     model: str
+    model_display_name: str
     prompt_version: str
     judge_model: str
     judge_version: str

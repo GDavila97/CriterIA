@@ -181,7 +181,10 @@ class TestTiers:
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     ) -> None:
         catalog = tmp_path / "models.toml"
-        entry = '[[models]]\nprovider = "groq"\nname = "{}"\nnivel = "economico"\n'
+        entry = (
+            '[[models]]\nprovider = "groq"\nname = "{0}"\ndisplay_name = "{0}"\n'
+            'nivel = "economico"\n'
+        )
         catalog.write_text(entry.format("a") + entry.format("b"), encoding="utf-8")
         monkeypatch.setenv("MODELS_FILE", str(catalog))
 
