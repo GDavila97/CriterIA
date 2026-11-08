@@ -26,11 +26,13 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-test('home shows the product name and logo', async ({ page }) => {
+test('home shows the product message and the agents', async ({ page }) => {
   await page.goto('/');
 
-  await expect(page.getByRole('heading', { level: 1, name: 'CriterIA' })).toBeVisible();
-  await expect(page.getByTestId('ficha')).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(
+    /De un requerimiento a casos de prueba/,
+  );
+  await expect(page.getByRole('link', { name: 'CriterIA, inicio' })).toBeVisible();
 });
 
 test('home has no accessibility violations', async ({ page }) => {
