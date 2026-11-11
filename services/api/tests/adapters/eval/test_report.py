@@ -76,10 +76,10 @@ def test_tables_cover_every_section_and_say_what_is_still_pending() -> None:
     assert "| Pendiente | — | — | — |" in text
     assert "1 casos que todos los modelos completaron y el juez calificó: `facil-01`." in text
     assert "| Anthropic · claude-haiku-5-5 (tool) * | 4.00 (15) | 4.00 (1) |" in text
-    assert "| 5 de 5 | 50 % (5 de 10) |" in text
-    assert "| 1 de 5 † | 0 % (0 de 2) |" in text
+    assert "| 5 de 5 | 50% (5 de 10) |" in text
+    assert "| 1 de 5 † | 0% (0 de 2) |" in text
     assert "En los difíciles comunes (1)" in text
-    assert "| 50 % (1 de 2) |\n| Groq" in text
+    assert "| 50% (1 de 2) |\n| Groq" in text
     assert "† No directamente comparable" in text
 
 

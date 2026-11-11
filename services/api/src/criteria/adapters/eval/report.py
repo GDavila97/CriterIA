@@ -49,7 +49,7 @@ def _num(value: float | None, digits: int = 2) -> str:
 
 
 def _pct(value: float | None) -> str:
-    return "—" if value is None else f"{value * 100:.0f} %"
+    return "—" if value is None else f"{value:.0%}"
 
 
 def _secs(ms: float | None) -> str:
