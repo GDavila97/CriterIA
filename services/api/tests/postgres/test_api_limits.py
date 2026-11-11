@@ -57,13 +57,13 @@ async def test_the_global_cap_closes_the_free_mode_for_everyone(api: Api) -> Non
     assert api.sql("SELECT runs FROM app.global_usage_daily") == [(2,)]
 
 
-@pytest.mark.api_settings(global_daily_budget_usd=0.006)
+@pytest.mark.api_settings(global_daily_budget_usd=0.012)
 async def test_the_global_budget_counts_reserved_dollars(api: Api) -> None:
     first = await api.create_run("user-a")
     reserved = first.json()["costo_servidor_usd"]
     second = await api.create_run("user-b")
 
-    assert 0.003 < reserved <= 0.006 < 2 * reserved
+    assert 0.006 < reserved <= 0.012 < 2 * reserved
     assert (second.status_code, second.json()["code"]) == (429, "cupo_gratuito_agotado")
 
 
