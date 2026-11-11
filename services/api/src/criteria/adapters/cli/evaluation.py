@@ -43,10 +43,11 @@ from criteria.application.analysis import (
 )
 from criteria.application.evaluation import BatchStoppedError, EvalRunner
 from criteria.application.report import (
+    common_cases,
     judge_agreement,
     judge_pairs,
     matcher_agreement,
-    summarize_batch,
+    summarize,
 )
 from criteria.application.stability import (
     judge_self_agreement,
@@ -441,7 +442,7 @@ async def _report(args: argparse.Namespace, container: "Container", terminal: "T
     batches = sorted(load_batches(folder), key=lambda b: b.clave)
     if not batches:
         raise EvalUsageError("Todavía no hay lotes.")
-    summaries = [summarize_batch(b, cases) for b in batches]
+    summaries = summarize(batches, cases)
     session = JsonSessionStore(folder / HUMAN_FILE).load()
     judge = None if session is None else judge_agreement(judge_pairs(session, batches))
     matcher = None if session is None else matcher_agreement(session)
@@ -454,6 +455,7 @@ async def _report(args: argparse.Namespace, container: "Container", terminal: "T
         markdown(
             summaries,
             cases,
+            common=common_cases(batches),
             judge=judge,
             matcher=matcher,
             matcher_checks=checks,

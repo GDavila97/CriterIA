@@ -1,7 +1,7 @@
 """Seeded samples for the human checks and the detection rates of seeded problems."""
 
 import random
-from collections.abc import Mapping, Sequence
+from collections.abc import Collection, Mapping, Sequence
 from dataclasses import dataclass
 from uuid import UUID
 
@@ -89,15 +89,26 @@ class DetectionRate:
 class DetectionReport:
     total: DetectionRate
     by_type: dict[TipoObservacion, DetectionRate]
+    casos: int
+    casos_dificiles: int
+
+    @property
+    def comparable(self) -> bool:
+        """Only a batch matched on every hard case compares directly with the others."""
+        return self.casos == self.casos_dificiles
 
 
-def detection(batch: EvalBatch, cases: Mapping[str, EvalCase]) -> DetectionReport:
+def detection(
+    batch: EvalBatch, cases: Mapping[str, EvalCase], only: Collection[str] | None = None
+) -> DetectionReport:
+    """Seeded problems the batch's reviewer caught, over its matched cases (or only those)."""
     counts: dict[TipoObservacion, list[int]] = {
         "ambiguedad": [0, 0],
         "inconsistencia": [0, 0],
         "faltante": [0, 0],
     }
-    for case_id, deteccion in batch.deteccion.items():
+    matched = {c: d for c, d in batch.deteccion.items() if only is None or c in only}
+    for case_id, deteccion in matched.items():
         problemas = cases[case_id].problemas
         for d in deteccion.detecciones:
             tipo = problemas[d.problema].tipo
@@ -109,6 +120,8 @@ def detection(batch: EvalBatch, cases: Mapping[str, EvalCase]) -> DetectionRepor
             sum(r.detected for r in by_type.values()), sum(r.total for r in by_type.values())
         ),
         by_type=by_type,
+        casos=len(matched),
+        casos_dificiles=sum(c.dificultad == "dificil" for c in cases.values()),
     )
 
 

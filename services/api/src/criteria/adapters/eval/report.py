@@ -1,7 +1,7 @@
 """Writes the evaluation report: Markdown tables, one SVG chart per criterion and a JSON summary."""
 
 import json
-from collections.abc import Mapping, Sequence
+from collections.abc import Collection, Mapping, Sequence
 from dataclasses import asdict
 from html import escape
 
@@ -9,6 +9,7 @@ from criteria.application.report import JudgeAgreement, ModelSummary
 from criteria.application.stability import SelfAgreement
 from criteria.domain.artifacts import CRITERIOS, TipoObservacion
 from criteria.domain.eval_metrics import Agreement, Estimate
+from criteria.domain.eval_sampling import DetectionRate
 from criteria.domain.evaluation import DIFICULTADES, EvalCase
 
 CRITERIA_NAMES = {
@@ -59,6 +60,10 @@ def _usd(value: float | None) -> str:
     return "—" if value is None else f"{value:.4f}"
 
 
+def _rate(rate: DetectionRate) -> str:
+    return f"{_pct(rate.rate)} ({rate.detected} de {rate.total})"
+
+
 def _interval(estimate: Estimate, fmt: str = "{:.2f}") -> str:
     if estimate.value is None:
         return "—"
@@ -90,6 +95,7 @@ def markdown(  # noqa: PLR0913  every part of the report is an input
     summaries: Sequence[ModelSummary],
     cases: Mapping[str, EvalCase],
     *,
+    common: Collection[str],
     judge: JudgeAgreement | None,
     matcher: Estimate | None,
     matcher_checks: int,
@@ -110,7 +116,29 @@ def markdown(  # noqa: PLR0913  every part of the report is an input
             for s in summaries
         ],
     )
-    out += ["", "## Operación por modelo", ""]
+    out += ["", "## Comparación sobre los casos comunes", ""]
+    shared = sorted(common)
+    out.append(
+        f"{len(shared)} casos que todos los modelos completaron y el juez calificó: "
+        + (", ".join(f"`{c}`" for c in shared) or "ninguno")
+        + ". El promedio general de cada modelo usa todas sus corridas completas; el de los casos "
+        "comunes compara a todos sobre el mismo terreno."
+    )
+    out.append("")
+    out += _table(
+        ["Modelo", "Global (todas)", "Global (comunes)", *CRITERIA_NAMES.values()],
+        [
+            [
+                label(s),
+                f"{_num(s.puntaje_global)} ({s.completas})",
+                f"{_num(s.comunes.puntaje_global)} ({s.comunes.casos})",
+                *(_num(s.comunes.puntajes[c]) for c in CRITERIOS),
+            ]
+            for s in summaries
+        ],
+    )
+    out += ["", "Entre paréntesis, las corridas que entran en cada promedio.", ""]
+    out += ["## Operación por modelo", ""]
     out += _table(
         [
             "Modelo",
@@ -163,22 +191,35 @@ def markdown(  # noqa: PLR0913  every part of the report is an input
         ],
     )
     out += ["", "## Detección de problemas sembrados (casos difíciles)", ""]
+    shared_hard = min((s.deteccion_comunes.casos for s in summaries), default=0)
     out += _table(
-        ["Modelo", "Total", *TYPE_NAMES.values()],
+        [
+            "Modelo",
+            "Casos emparejados",
+            "Total",
+            *TYPE_NAMES.values(),
+            f"En los difíciles comunes ({shared_hard})",
+        ],
         [
             [
                 label(s),
-                f"{_pct(s.deteccion.total.rate)} ({s.deteccion.total.detected} de "
-                f"{s.deteccion.total.total})",
-                *(
-                    f"{_pct(r.rate)} ({r.detected} de {r.total})"
-                    for r in (s.deteccion.by_type[t] for t in TYPE_NAMES)
-                ),
+                f"{s.deteccion.casos} de {s.deteccion.casos_dificiles}"
+                + ("" if s.deteccion.comparable else " †"),
+                _rate(s.deteccion.total),
+                *(_rate(s.deteccion.by_type[t]) for t in TYPE_NAMES),
+                _rate(s.deteccion_comunes.total),
             ]
             for s in summaries
         ],
     )
-    out += ["", "Problemas que ningún modelo detectó:", ""]
+    if not all(s.deteccion.comparable for s in summaries):
+        out += [
+            "",
+            "† No directamente comparable: el modelo no completó todos los casos difíciles y el "
+            "emparejador solo leyó los que completó. La última columna compara a todos sobre los "
+            "mismos casos.",
+        ]
+    out += ["", "Problemas que ningún modelo detectó, entre los que completaron cada caso:", ""]
     out += [
         f"- `{case_id}` ({TYPE_NAMES[cases[case_id].problemas[i].tipo]}): "
         f"{cases[case_id].problemas[i].descripcion}"
@@ -230,9 +271,15 @@ def markdown(  # noqa: PLR0913  every part of the report is an input
     return "\n".join(out)
 
 
+def _bar_value(summary: ModelSummary, group: int) -> float | None:
+    if group < len(CRITERIOS):
+        return summary.puntajes[CRITERIOS[group]]
+    return summary.puntaje_global if group == len(CRITERIOS) else summary.comunes.puntaje_global
+
+
 def chart_svg(summaries: Sequence[ModelSummary]) -> str:
-    """Grouped bars: the four criteria and the overall score, one bar per model, scale 1 to 5."""
-    groups = [*(CRITERIA_NAMES[c] for c in CRITERIOS), "Global"]
+    """Grouped bars: the criteria, the overall score and the score on common cases, scale 1 to 5."""
+    groups = [*(CRITERIA_NAMES[c] for c in CRITERIOS), "Global", "Casos comunes"]
     width, height = 760, 360
     left, right, top, bottom = 48, 16, 64, 56
     plot_w, plot_h = width - left - right, height - top - bottom
@@ -265,7 +312,7 @@ def chart_svg(summaries: Sequence[ModelSummary]) -> str:
     for gi, group in enumerate(groups):
         start = left + gi * group_w + (group_w - span) / 2
         for si, summary in enumerate(summaries):
-            value = summary.puntaje_global if group == "Global" else summary.puntajes[CRITERIOS[gi]]
+            value = _bar_value(summary, gi)
             if value is None:
                 continue
             x = start + si * (bar_w + gap)
@@ -281,7 +328,7 @@ def chart_svg(summaries: Sequence[ModelSummary]) -> str:
                 else f'<rect x="{x:.1f}" y="{top_y:.1f}" width="{bar_w}" height="{bar_h:.1f}" '
                 f'fill="{SERIES[si % len(SERIES)]}"/>'
             )
-            if group == "Global":
+            if gi >= len(CRITERIOS):
                 parts.append(
                     f'<text x="{x + bar_w / 2:.1f}" y="{top_y - 6:.1f}" text-anchor="middle" '
                     f'font-size="11" fill="{INK}">{value:.1f}</text>'

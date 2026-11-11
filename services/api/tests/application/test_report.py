@@ -4,6 +4,7 @@ from criteria.application.report import (
     judge_agreement,
     judge_pairs,
     matcher_agreement,
+    summarize,
     summarize_batch,
 )
 from criteria.domain.evaluation import HumanScore, HumanSession, MatchCheck
@@ -38,6 +39,34 @@ def test_a_batch_summary_counts_runs_scores_operation_and_detection() -> None:
     assert summary.por_dificultad["dificil"].completas == 0
     assert summary.por_dificultad["facil"].puntaje_global == pytest.approx(4.0)
     assert summary.deteccion.total.detected == 1
+
+
+def test_models_also_compare_on_the_cases_every_batch_completed() -> None:
+    complete = batch(
+        "anthropic",
+        "haiku",
+        [result("facil-01", scores=(4, 4, 4, 4)), result("medio-01", scores=(2, 2, 2, 2))],
+        detections={"dificil-01": [True, True], "dificil-02": [True, False]},
+    )
+    partial = batch(
+        "ollama",
+        "llama",
+        [
+            result("facil-01", scores=(3, 3, 3, 3)),
+            result("medio-01", estado="error", scores=None),
+        ],
+        detections={"dificil-01": [False, True]},
+    )
+
+    first, second = summarize([complete, partial], all_cases())
+
+    assert (first.puntaje_global, first.comunes.puntaje_global) == (3.0, 4.0)
+    assert (first.comunes.casos, second.comunes.casos) == (1, 1)
+    assert second.comunes.puntajes["claridad"] == 3.0
+    assert (first.deteccion.total.detected, first.deteccion.total.total) == (3, 4)
+    assert (first.deteccion_comunes.total.detected, first.deteccion_comunes.casos) == (2, 1)
+    assert (second.deteccion.casos, second.deteccion_comunes.total.detected) == (1, 1)
+    assert summarize_batch(complete, all_cases()).comunes.puntaje_global is None
 
 
 def test_an_unpriced_completed_run_leaves_the_cost_per_run_unknown() -> None:

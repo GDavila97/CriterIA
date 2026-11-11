@@ -10,6 +10,7 @@ from criteria.domain.eval_metrics import (
     Estimate,
     agreement,
     bootstrap,
+    common_keys,
     mean,
     percentile,
 )
@@ -30,6 +31,15 @@ REPORT_SEED = 20261108
 class DifficultySummary:
     corridas: int
     completas: int
+    puntaje_global: float | None
+
+
+@dataclass(frozen=True)
+class CommonScores:
+    """Scores over the cases every batch completed, so models compare on the same ground."""
+
+    casos: int
+    puntajes: dict[Criterio, float | None]
     puntaje_global: float | None
 
 
@@ -56,6 +66,8 @@ class ModelSummary:
     costo_analisis_usd: float
     por_dificultad: dict[Dificultad, DifficultySummary]
     deteccion: DetectionReport
+    comunes: CommonScores
+    deteccion_comunes: DetectionReport
 
     @property
     def tasa_validas(self) -> float | None:
@@ -70,8 +82,30 @@ def _scores(results: Sequence[CaseResult]) -> list[float]:
     return [g for g in (_global(r) for r in results) if g is not None]
 
 
-def summarize_batch(batch: EvalBatch, cases: Mapping[str, EvalCase]) -> ModelSummary:
+def common_cases(batches: Sequence[EvalBatch]) -> frozenset[str]:
+    """Cases every batch completed and the judge scored."""
+    return common_keys([c for c, r in b.resultados.items() if r.calificada] for b in batches)
+
+
+def common_matched(batches: Sequence[EvalBatch]) -> frozenset[str]:
+    """Hard cases the matcher read in every batch."""
+    return common_keys(b.deteccion for b in batches)
+
+
+def _criteria_means(results: Sequence[CaseResult]) -> dict[Criterio, float | None]:
+    return {
+        c: mean([float(v) for r in results if (v := r.puntaje(c)) is not None]) for c in CRITERIOS
+    }
+
+
+def summarize_batch(
+    batch: EvalBatch,
+    cases: Mapping[str, EvalCase],
+    common: frozenset[str] = frozenset(),
+    common_hard: frozenset[str] = frozenset(),
+) -> ModelSummary:
     results = list(batch.resultados.values())
+    shared = [r for r in results if r.case_id in common]
     completas = [r for r in results if r.estado == "completada"]
     graded = [r for r in results if r.calificada]
     costs = [r.costo_usd for r in completas if r.costo_usd is not None]
@@ -94,10 +128,7 @@ def summarize_batch(batch: EvalBatch, cases: Mapping[str, EvalCase]) -> ModelSum
         corridas=len(results),
         completas=len(completas),
         errores=dict(Counter(r.codigo_error for r in results if r.codigo_error)),
-        puntajes={
-            c: mean([float(v) for r in graded if (v := r.puntaje(c)) is not None])
-            for c in CRITERIOS
-        },
+        puntajes=_criteria_means(graded),
         puntaje_global=mean(_scores(graded)),
         validas=validas,
         llamadas=llamadas,
@@ -110,7 +141,18 @@ def summarize_batch(batch: EvalBatch, cases: Mapping[str, EvalCase]) -> ModelSum
         costo_analisis_usd=batch.costo_analisis_usd,
         por_dificultad=by_level,
         deteccion=detection(batch, cases),
+        comunes=CommonScores(
+            casos=len(shared),
+            puntajes=_criteria_means(shared),
+            puntaje_global=mean(_scores(shared)),
+        ),
+        deteccion_comunes=detection(batch, cases, only=common_hard),
     )
+
+
+def summarize(batches: Sequence[EvalBatch], cases: Mapping[str, EvalCase]) -> list[ModelSummary]:
+    common, common_hard = common_cases(batches), common_matched(batches)
+    return [summarize_batch(b, cases, common, common_hard) for b in batches]
 
 
 @dataclass(frozen=True)

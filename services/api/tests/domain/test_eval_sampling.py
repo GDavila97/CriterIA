@@ -94,6 +94,20 @@ class TestDetection:
         assert (report.by_type["faltante"].detected, report.by_type["faltante"].total) == (1, 1)
         assert detection(batch(), cases).total.rate is None
 
+    def test_coverage_marks_a_batch_matched_on_fewer_hard_cases_and_can_narrow_to_some(
+        self,
+    ) -> None:
+        cases = all_cases()
+        b = batch(detections={"dificil-01": [True, False], "dificil-03": [False, False]})
+
+        report = detection(b, cases)
+        narrowed = detection(b, cases, only={"dificil-01"})
+
+        assert (report.casos, report.casos_dificiles, report.comparable) == (2, 5, False)
+        assert (narrowed.casos, narrowed.total.detected, narrowed.total.total) == (1, 1, 2)
+        every = batch(detections={f"dificil-0{i}": [True] for i in range(1, 6)})
+        assert detection(every, cases).comparable
+
     def test_problems_no_model_detected(self) -> None:
         first = batch("openai", "a", detections={"dificil-01": [True, False]})
         second = batch("groq", "b", detections={"dificil-01": [False, False]})

@@ -2,7 +2,7 @@
 
 import math
 import random
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Collection, Iterable, Sequence
 from dataclasses import dataclass
 
 SCALE = (1, 2, 3, 4, 5)
@@ -11,6 +11,12 @@ BOOTSTRAP_SAMPLES = 2000
 
 def mean(values: Sequence[float]) -> float | None:
     return sum(values) / len(values) if values else None
+
+
+def common_keys[K](groups: Iterable[Collection[K]]) -> frozenset[K]:
+    """Keys every group has; none when there are no groups."""
+    sets = [frozenset(g) for g in groups]
+    return frozenset.intersection(*sets) if sets else frozenset()
 
 
 def percentile(values: Sequence[float], q: float) -> float | None:

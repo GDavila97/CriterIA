@@ -5,6 +5,7 @@ import pytest
 from criteria.domain.eval_metrics import (
     agreement,
     bootstrap,
+    common_keys,
     exact_agreement,
     mean,
     mean_difference,
@@ -80,3 +81,8 @@ class TestBootstrap:
         assert result.pairs == 5
         assert result.kappa.value == pytest.approx(16 / 17)
         assert result.judge_minus_human.value == pytest.approx(0.2)
+
+
+def test_common_keys_are_those_every_group_has() -> None:
+    assert common_keys([{"a", "b"}, ["b", "c", "a"]]) == frozenset({"a", "b"})
+    assert common_keys([]) == frozenset()
