@@ -56,7 +56,7 @@ Escala: 1 deficiente, 2 con problemas graves, 3 aceptable con problemas, 4 bueno
 
 El juez no cambia durante la evaluación. Su prompt vive en `services/api/prompts/juez/vN/evaluador.md` con una versión propia (`JUDGE_VERSION`), y cada corrida registra `version_prompts` y `version_juez` ([ADR 0015](adr/0015-frozen-judge-prompt.md)). Las mejoras v1 contra v2 solo tocan los prompts de los agentes, así que una diferencia de puntaje no puede venir de un juez distinto.
 
-- **Juez.** `claude-haiku-5-5` con el juez v1 para los cuatro lotes, deliberadamente severo: un 5 es excepcional y, si duda entre dos valores, elige el menor. El lote de Haiku se marca con `*` porque el juez es de su mismo proveedor.
+- **Juez.** `claude-haiku-5-5` con el juez v1 para los tres lotes, deliberadamente severo: un 5 es excepcional y, si duda entre dos valores, elige el menor. El lote de Haiku se marca con `*` porque el juez es de su mismo proveedor.
 - **Calificación humana.** `criteria eval score` toma una muestra estratificada con semilla fija: 8 corridas repartidas lo más parejo posible entre los modelos (con tres modelos, 3, 3 y 2; la semilla decide cuál lleva 2), de dificultades distintas dentro de cada modelo; los 4 criterios de cada una, 32 pares. Es a ciegas: no muestra el modelo ni el puntaje del juez, y presenta los mismos artefactos y la misma rúbrica que recibió el juez.
 - **Acuerdo.** Kappa de Cohen ponderada cuadrática, correlación de Spearman, acuerdo exacto y a ±1 punto, en total y por criterio, con intervalos al 95 % por bootstrap (2,000 remuestreos de los pares, semilla fija). La diferencia media juez menos humano dice si el juez califica más alto o más bajo.
 
@@ -71,7 +71,11 @@ En los 5 casos difíciles, un emparejador automático decide para cada problema 
 - **Emparejador.** `claude-haiku-5-5` con un prompt propio, versionado y congelado en `services/api/prompts/analisis/v1/emparejador.md`. Su salida es tipada: problema, detectado (sí o no), número de la observación que lo detecta y una justificación breve. Si duda, el problema no cuenta como detectado.
 - **Fuera de la corrida.** No participa en las corridas ni en la rúbrica: es análisis posterior sobre los lotes ya guardados (`criteria eval match`). Solo se emparejan las corridas difíciles completas.
 - **Validación.** En la misma sesión humana se revisan 10 emparejamientos elegidos con semilla fija, a ciegas sobre el modelo, y se reporta qué proporción confirmó la persona.
-- **Métrica.** Tasa de detección por modelo, en total y por tipo, y la lista de problemas que ningún modelo detectó.
+- **Métrica.** Tasa de detección por modelo, en total y por tipo, siempre con su denominador, y la lista de problemas que ningún modelo detectó entre los que completaron cada caso. Un modelo que no completó los 5 casos difíciles tiene una tasa sobre menos casos: se marca como no directamente comparable, y una columna aparte compara a todos sobre los casos difíciles que todos completaron.
+
+## Comparación sobre los casos comunes
+
+Un modelo con corridas fallidas promedia sobre menos casos, y no siempre los mismos. Por eso, además del promedio general (todas sus corridas completas), el reporte y el tablero dan el puntaje de cada modelo sobre los casos que todos los modelos de la misma versión completaron y el juez calificó. El tablero destaca el mejor puntaje sobre esos casos comunes.
 
 ## Modelos comparados
 
@@ -85,6 +89,10 @@ En los 5 casos difíciles, un emparejador automático decide para cada problema 
 
 **Tope de tokens por modelo.** Los modelos por API usan 16,384, el valor por defecto de la app. Ollama usa 8,192 (`max_tokens` en su entrada de `models.toml`) porque su contexto es de 16,384 y una petición grande (6,652 tokens medidos) más 16,384 de salida no caben. Es la única diferencia de configuración entre lotes, y queda registrada en cada uno.
 
+**Tiempo límite.** Cada proveedor usa el tiempo límite de la app: 60 s por llamada para los modelos por API y 180 s para Ollama (`PROVIDER_TIMEOUTS=ollama:180`).
+
+**Reanudaciones.** El lote de Ollama se detuvo en el segundo caso porque la cuenta de Anthropic del juez se quedó sin saldo; el caso no se registró y el lote se reanudó tras la recarga. Al reanudar, el código había avanzado de `f5e5b9a` a `ec270c4`, un commit que solo cambió la muestra de la calificación humana y la documentación, no el camino de una corrida. El lote conserva el SHA con el que empezó.
+
 ## Hallazgos de integración antes de los lotes v1
 
 Ninguno cambió los prompts; todos cambiaron cómo se llama al modelo, y los lotes afectados se repitieron completos.
@@ -92,6 +100,7 @@ Ninguno cambió los prompts; todos cambiaron cómo se llama al modelo, y los lot
 - **gpt-oss-20b con salida por herramienta.** En el primer intento, 0 de 7 corridas completas y 0 de 8 llamadas válidas a la primera. En el reintento, el modelo producía la salida correcta pero llamaba a la herramienta `functions.final_result` en lugar de `final_result`, y Pydantic AI la descartaba como herramienta desconocida; otras veces Groq rechazaba la llamada mal formada con un 400. Con salida JSON nativa, 3 de 3 salidas fueron válidas a la primera ([ADR 0021](adr/0021-native-output-for-gpt-oss-on-groq.md)).
 - **Rechazos del esquema en Groq.** Con salida nativa, Groq valida el JSON en su servidor y rechaza con un 400 (`json_validate_failed`) la salida que no cumple. Ahora cuenta como salida inválida y tiene el mismo reintento único que los demás modelos.
 - **Tope de 4,096 y de 8,192 tokens.** Los tokens de razonamiento de gpt-oss cuentan dentro del tope. Con 4,096, el Revisor salió bien 1 de 4 veces; con 8,192, Groq siguió rechazando salidas vacías. Al repetir la misma petición sin esquema, 3 de 6 respuestas terminaron con `finish_reason=length`, 8,190 tokens de razonamiento y contenido vacío: los rechazos eran por longitud. Con 16,384 bajaron de 4 de 6 a 1 de 6, y esa también fue por longitud (16,382 tokens de razonamiento). En Haiku, el primer lote con 8,192 completó 7 de 15 corridas: sus entregas de QA en las rondas de corrección promediaban de 7,400 a 8,100 tokens por petición y el JSON se cortaba.
+- **Tiempo límite de Ollama más corto que su tope de tokens.** En el lote v1, 4 de 15 corridas de `llama3.1:8b` terminaron con `proveedor_no_disponible` por tiempo agotado: 3 en QA y 1 en el Analista. En las corridas completas el modelo generó a unos 40 tokens por segundo (16,706 tokens de QA en 414 s), así que una llamada de más de unos 7,000 tokens no cabe en 180 s aunque el tope sea 8,192. El fallo del Analista sugiere un bucle de repetición: suele responder en unos 20 s con unos 500 tokens. Una llamada cortada por tiempo no devuelve uso, así que no se sabe cuántos tokens llevaba ni si habría terminado bien. Se aceptaron las 11 corridas completas como resultado v1, porque el método trata un tiempo agotado como un resultado y 180 s es la configuración de la app; alinear el tiempo límite con el tope queda como mejora candidata para v2.
 - **Costo de las llamadas fallidas.** Antes no se sumaba (el evento de error no llevaba uso), así que el costo de un lote con errores salía en cero. Ahora cuenta en los totales, en la reserva del tope global y en los lotes. Los rechazos de Groq no devuelven uso, así que su costo no se puede medir; el de un lote de Groq es un mínimo.
 
 ## Selección del modelo local
@@ -165,7 +174,7 @@ Pendiente.
 
 ## Comparación v1 contra v2
 
-Pendiente: comparación pareada (Wilcoxon) con tamaño del efecto.
+Pendiente: comparación pareada (Wilcoxon) con tamaño del efecto. Se hará solo con Haiku y GPT-OSS 20B: el modelo local completó 11 de 15 casos en v1 y su tiempo límite corta salidas largas, así que no aporta una base pareada estable.
 
 ## Limitaciones
 
