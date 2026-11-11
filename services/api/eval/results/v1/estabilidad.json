@@ -1,0 +1,866 @@
+{
+  "semilla": 20261108,
+  "muestra_juez": [
+    [
+      "5e24b12b-92bb-4c8a-b787-bf577d4b2b1b",
+      "facil-01"
+    ],
+    [
+      "0a44df76-c047-44d8-9e79-c6e0e167ce3e",
+      "medio-01"
+    ],
+    [
+      "318a74a4-7ebb-4dad-b9df-a224836d40a6",
+      "facil-05"
+    ],
+    [
+      "5e24b12b-92bb-4c8a-b787-bf577d4b2b1b",
+      "facil-03"
+    ],
+    [
+      "0a44df76-c047-44d8-9e79-c6e0e167ce3e",
+      "facil-02"
+    ],
+    [
+      "318a74a4-7ebb-4dad-b9df-a224836d40a6",
+      "medio-01"
+    ],
+    [
+      "5e24b12b-92bb-4c8a-b787-bf577d4b2b1b",
+      "dificil-04"
+    ],
+    [
+      "0a44df76-c047-44d8-9e79-c6e0e167ce3e",
+      "facil-03"
+    ],
+    [
+      "318a74a4-7ebb-4dad-b9df-a224836d40a6",
+      "dificil-04"
+    ],
+    [
+      "5e24b12b-92bb-4c8a-b787-bf577d4b2b1b",
+      "dificil-05"
+    ]
+  ],
+  "lote_emparejador": "0a44df76-c047-44d8-9e79-c6e0e167ce3e",
+  "juez": [
+    {
+      "batch_id": "5e24b12b-92bb-4c8a-b787-bf577d4b2b1b",
+      "case_id": "facil-01",
+      "original": [
+        {
+          "criterio": "claridad",
+          "valor": 3,
+          "justificacion": "Las historias y criterios son comprensibles, pero la regla de que el retardo cuenta como asistencia no está confirmada y no se define cómo se asigna un profesor a un taller, lo que deja ambigüedades."
+        },
+        {
+          "criterio": "verificabilidad",
+          "valor": 4,
+          "justificacion": "Los criterios y casos tienen resultados observables y valores concretos, como el 90.00, el 75.00 y el 66.67. Se resta puntaje porque la regla de retardo que determina esos valores sigue pendiente de confirmación."
+        },
+        {
+          "criterio": "completitud",
+          "valor": 3,
+          "justificacion": "Todas las historias tienen criterios y casos, pero faltan reglas para sesiones duplicadas, edición de registros guardados y asignación de profesores a talleres, según las observaciones pendientes."
+        },
+        {
+          "criterio": "consistencia",
+          "valor": 3,
+          "justificacion": "CA-9, CP-09, CP-11 y CP-14 concuerdan con la regla del supuesto, pero esa regla no está confirmada por la escuela. Además, el número de sesiones registradas depende de reglas de duplicados que no se han definido."
+        }
+      ],
+      "repetida": [
+        {
+          "criterio": "claridad",
+          "valor": 3,
+          "justificacion": "Los artefactos son comprensibles, pero la regla de que el retardo cuenta como asistencia la fijó el Analista sin confirmación de la escuela, y esa decisión sigue sin resolverse en los criterios."
+        },
+        {
+          "criterio": "verificabilidad",
+          "valor": 4,
+          "justificacion": "Casi todos los criterios y casos tienen resultados observables y cálculos verificables, como el 90.00, el 75.00 y el 66.67. El porcentaje depende de una regla aún no confirmada."
+        },
+        {
+          "criterio": "completitud",
+          "valor": 2,
+          "justificacion": "Faltan reglas sobre qué profesores pueden registrar cada taller y sobre sesiones duplicadas o edición de registros guardados, lo que afecta el denominador de CA-9. Son observaciones pendientes sin resolver."
+        },
+        {
+          "criterio": "consistencia",
+          "valor": 3,
+          "justificacion": "Historias, criterios y casos concuerdan entre sí, pero el denominador de CA-9 queda indefinido ante sesiones duplicadas y la regla de retardo no está confirmada con la escuela."
+        }
+      ]
+    },
+    {
+      "batch_id": "0a44df76-c047-44d8-9e79-c6e0e167ce3e",
+      "case_id": "medio-01",
+      "original": [
+        {
+          "criterio": "claridad",
+          "valor": 4,
+          "justificacion": "Historias y casos se entienden en general, con redacción consistente. Hay ambigüedad menor: CA-9 no define 'tiempo real' y CP-09 menciona una fecha estimada que no aparece en ninguna historia ni criterio."
+        },
+        {
+          "criterio": "verificabilidad",
+          "valor": 3,
+          "justificacion": "La mayoría de casos tienen resultados observables. CA-9 ('tiempo real') y CA-6 ('monto correcto' sin regla explícita) no se pueden comprobar sin precisar, y CP-09 usa una fecha estimada no definida en los criterios."
+        },
+        {
+          "criterio": "completitud",
+          "valor": 3,
+          "justificacion": "Todas las historias tienen al menos un caso, pero faltan pruebas del flujo de corrección y reenvío, de la verificación del QR, de que el pago no avance con documentos pendientes de todos los tipos y del caso feliz de HU-10. La numeración salta CP-11."
+        },
+        {
+          "criterio": "consistencia",
+          "valor": 3,
+          "justificacion": "Hay discrepancias: CP-09 agrega fecha estimada no presente en las historias, CP-18 ubica el bloqueo de pago bajo HU-6 cuando HU-4 lo exige, y CP-16 prueba HU-10 solo con rechazo. Las demás reglas (PDF, 5 MB, horario, monto 1500.00) sí concuerdan."
+        }
+      ],
+      "repetida": [
+        {
+          "criterio": "claridad",
+          "valor": 3,
+          "justificacion": "Las historias y casos se entienden en lo general, pero CA-6 no define la tabla de tarifas ni el monto esperado, y HU-5 usa el beneficio vago 'ahorrar tiempo'. HU-3 y HU-10 se traslapan."
+        },
+        {
+          "criterio": "verificabilidad",
+          "valor": 3,
+          "justificacion": "La mayoría de los casos tiene resultado observable, pero CA-9 'tiempo real' no es medible y CP-09 pide una fecha estimada que ningún criterio define. CA-6 no tiene un monto verificable sin la tabla."
+        },
+        {
+          "criterio": "completitud",
+          "valor": 2,
+          "justificacion": "Faltan criterios y casos para el bloqueo del avance en HU-4 y HU-6 y para la vista del revisor en HU-10. HU-8 no tiene caso que verifique el QR. No hay casos para la dirección vacía ni para la superficie no positiva de HU-2."
+        },
+        {
+          "criterio": "consistencia",
+          "valor": 3,
+          "justificacion": "CP-18 se asocia a HU-6, cuyo alcance es el cálculo y la línea de captura, no la confirmación de pago. CP-15 exige reglas de contraseña que CA-1 no contempla. CP-09 agrega fecha estimada no pedida en HU-9."
+        }
+      ]
+    },
+    {
+      "batch_id": "318a74a4-7ebb-4dad-b9df-a224836d40a6",
+      "case_id": "facil-05",
+      "original": [
+        {
+          "criterio": "claridad",
+          "valor": 2,
+          "justificacion": "Las historias son entendibles, pero la nota, categoría y fecha no tienen especificación de visualización en el resumen, y los casos mezclan pasos Gherkin de escenarios distintos."
+        },
+        {
+          "criterio": "verificabilidad",
+          "valor": 2,
+          "justificacion": "Muchos criterios son genéricos ('se muestra correctamente en la interfaz') sin resultado observable concreto ni datos de entrada verificables."
+        },
+        {
+          "criterio": "completitud",
+          "valor": 2,
+          "justificacion": "Las historias cubren el requerimiento, pero faltan pruebas de validación de monto y de casos de borde del mes; las observaciones pendientes dejan huecos sin resolver."
+        },
+        {
+          "criterio": "consistencia",
+          "valor": 1,
+          "justificacion": "Hay criterios duplicados (CA-1 y CA-25, etc.), casos con pasos ajenos a su historia y observaciones pendientes de totales y desgloses al editar o borrar sin corregir."
+        }
+      ],
+      "repetida": [
+        {
+          "criterio": "claridad",
+          "valor": 2,
+          "justificacion": "Las historias son entendibles, pero hay criterios duplicados (CA-1/CA-25 etc.) y los casos mezclan escenarios sin sentido, lo que genera ambigüedad. Observaciones pendientes de HU-6 y HU-7 sin resolver."
+        },
+        {
+          "criterio": "verificabilidad",
+          "valor": 2,
+          "justificacion": "Muchos criterios son genéricos ('se muestra correctamente en la interfaz') sin resultado observable concreto. Los gherkin de CP-01 a CP-12 incluyen pasos ajenos al caso, como editar o borrar en escenarios de lectura."
+        },
+        {
+          "criterio": "completitud",
+          "valor": 2,
+          "justificacion": "El requerimiento está cubierto por historias, pero no hay pruebas para el manejo del mes en curso ni para validaciones de monto y fecha. La exportación no está en el requerimiento. Observaciones de faltantes sin resolver."
+        },
+        {
+          "criterio": "consistencia",
+          "valor": 1,
+          "justificacion": "Los casos mezclan escenarios de distintas historias (CP-01 incluye editar, borrar y filtrar). Hay criterios duplicados y el total y desglose no contemplan edición ni borrado, según observaciones pendientes."
+        }
+      ]
+    },
+    {
+      "batch_id": "5e24b12b-92bb-4c8a-b787-bf577d4b2b1b",
+      "case_id": "facil-03",
+      "original": [
+        {
+          "criterio": "claridad",
+          "valor": 3,
+          "justificacion": "La regla de antelación de menos de un día es ambigua (24 h o hora de envío ya pasada), como señala la observación del analista sobre CA-13 y CP-13. Los demás artefactos se entienden bien."
+        },
+        {
+          "criterio": "verificabilidad",
+          "valor": 3,
+          "justificacion": "La mayoría de criterios y casos tienen resultados observables. CP-16 exige que no se envíe ningún mensaje sin respaldo en HU-3, y CP-13 depende de una regla de antelación no definida."
+        },
+        {
+          "criterio": "completitud",
+          "valor": 3,
+          "justificacion": "No hay criterio ni caso que pruebe la asociación de CONFIRMO o CANCELO a la cita más próxima cuando el paciente tiene varias citas, lo que deja sin cubrir una regla de HU-2 y HU-3."
+        },
+        {
+          "criterio": "consistencia",
+          "valor": 3,
+          "justificacion": "CP-13 se apoya en una regla de antelación no resuelta y CP-16 contradice el silencio de HU-3 sobre respuestas automáticas. Por eso las historias, criterios y casos no concuerdan del todo."
+        }
+      ],
+      "repetida": [
+        {
+          "criterio": "claridad",
+          "valor": 3,
+          "justificacion": "Las historias y criterios son mayormente comprensibles, pero la regla de cita de menos de un día es ambigua (antelación frente a hora de envío ya pasada), como señala la observación pendiente del analista."
+        },
+        {
+          "criterio": "verificabilidad",
+          "valor": 4,
+          "justificacion": "Casi todos los criterios y casos tienen resultados observables (SMS registrado, estado de la cita, marca en agenda). CP-16 afirma ausencia de mensajes sin respaldo en ningún criterio."
+        },
+        {
+          "criterio": "completitud",
+          "valor": 3,
+          "justificacion": "Cubre el requerimiento principal, pero falta un caso y criterio para asociar respuestas cuando el paciente tiene varias citas, según la observación pendiente de QA."
+        },
+        {
+          "criterio": "consistencia",
+          "valor": 3,
+          "justificacion": "CA-13 y CP-13 dependen de una regla de antelación no resuelta, y CP-16 exige ausencia de mensajes sin respaldo en HU-3. Hay problemas de consistencia que siguen abiertos."
+        }
+      ]
+    },
+    {
+      "batch_id": "0a44df76-c047-44d8-9e79-c6e0e167ce3e",
+      "case_id": "facil-02",
+      "original": [
+        {
+          "criterio": "claridad",
+          "valor": 3,
+          "justificacion": "Los artefactos son mayormente comprensibles, pero 'disponibilidad' no se define (existencias, stock) y CP-07 mezcla un resultado esperado ambiguo con su escenario Gherkin."
+        },
+        {
+          "criterio": "verificabilidad",
+          "valor": 3,
+          "justificacion": "La mayoría de criterios y casos tienen resultados observables. CP-07 verifica un comportamiento incorrecto (sin segundo correo) y no comprueba el envío por cada baja, por lo que no es verificable contra el requisito."
+        },
+        {
+          "criterio": "completitud",
+          "valor": 2,
+          "justificacion": "Todas las historias tienen criterios, pero HU-6 solo se prueba con CP-07, que es incorrecto. Falta el caso CP-06 (salto en la numeración) y no hay pruebas para la notificación de baja de precio con varios productos."
+        },
+        {
+          "criterio": "consistencia",
+          "valor": 1,
+          "justificacion": "CP-07 contradice el requisito, que pide un aviso por cada baja, y tiene origen 'revisor' frente a 'qa' en los demás casos. Ambas observaciones pendientes siguen sin corregir."
+        }
+      ],
+      "repetida": [
+        {
+          "criterio": "claridad",
+          "valor": 4,
+          "justificacion": "Historias, criterios y casos se entienden sin ambigüedad relevante. Los pasos y resultados esperados son directos, aunque CP-07 usa un origen inconsistente que resta claridad sobre su procedencia."
+        },
+        {
+          "criterio": "verificabilidad",
+          "valor": 3,
+          "justificacion": "La mayoría de criterios y casos tienen resultados observables. CA-6 y CP-07 no precisan cómo verificar el envío del correo, su contenido ni el momento de la comprobación, y CP-07 no es verificable frente al requisito."
+        },
+        {
+          "criterio": "completitud",
+          "valor": 2,
+          "justificacion": "Las historias HU-1 a HU-6 tienen criterios y casos, pero HU-6 solo tiene CP-07 y éste contradice el requisito. Falta CP-06 en la numeración y no hay casos para el contenido del correo ni para usuarios sin cambios de precio."
+        },
+        {
+          "criterio": "consistencia",
+          "valor": 2,
+          "justificacion": "CP-07 espera un solo correo tras dos bajas de precio, lo que contradice el requisito de un aviso por cada baja. Además su origen es revisor, no qa, como indica la observación pendiente sin corregir."
+        }
+      ]
+    },
+    {
+      "batch_id": "318a74a4-7ebb-4dad-b9df-a224836d40a6",
+      "case_id": "medio-01",
+      "original": [
+        {
+          "criterio": "claridad",
+          "valor": 2,
+          "justificacion": "Varias historias usan 'rápida y eficiente' sin definirlo, HU-12 repite HU-1 y los pasos de los casos repiten 'permitir la obtención de la licencia' sin sentido. La observación sobre HU-3 indica datos del negocio poco precisos."
+        },
+        {
+          "criterio": "verificabilidad",
+          "valor": 2,
+          "justificacion": "'Rápida y eficiente' no es comprobable, y la verificación por QR (CA-25, CP-13) no define un resultado observable concreto. Varios resultados esperados son genéricos y no precisan el dato a comprobar."
+        },
+        {
+          "criterio": "completitud",
+          "valor": 2,
+          "justificacion": "Faltan casos para HU-12 según la observación pendiente, no hay escenarios para el motivo de rechazo ni para el cálculo por giro y superficie, y el requerimiento de consulta continua del estado tiene una sola prueba básica."
+        },
+        {
+          "criterio": "consistencia",
+          "valor": 2,
+          "justificacion": "HU-12 duplica HU-1 con otro enfoque y la contradicción HU-1/CA-1 sigue pendiente. CP-08 a CP-12 asumen aprobación previa sin que el flujo de validación lo garantice, y CA-25 no tiene historia propia."
+        }
+      ],
+      "repetida": [
+        {
+          "criterio": "claridad",
+          "valor": 2,
+          "justificacion": "HU-3 no precisa qué datos del negocio capturar, HU-12 y CA-12 usan 'rápida y eficiente' sin medida, y el supuesto de HU-6 tiene una falta gramatical ('la rechaza')."
+        },
+        {
+          "criterio": "verificabilidad",
+          "valor": 2,
+          "justificacion": "Criterios como 'rápida y eficiente' (CA-12, CA-24) y 'en todo momento' (CA-10) no tienen resultado observable. Los casos CP-08 a CP-12 solo repiten 'permite la obtención de la licencia' sin comprobar nada concreto."
+        },
+        {
+          "criterio": "completitud",
+          "valor": 2,
+          "justificacion": "No hay casos para HU-12, como señala la observación pendiente. Tampoco se cubren el flujo de corrección tras rechazo con reenvío, la validación del PDF y el pago confirmado, y HU-11 no tiene caso para la emisión con QR."
+        },
+        {
+          "criterio": "consistencia",
+          "valor": 2,
+          "justificacion": "HU-1 y CA-1 se contradicen, como indica la observación pendiente. HU-12 duplica el objetivo de HU-1, CA-25 no tiene historia propia, y CP-08 exige 'ha sido aprobado' sin que el requerimiento defina esa precondición."
+        }
+      ]
+    },
+    {
+      "batch_id": "5e24b12b-92bb-4c8a-b787-bf577d4b2b1b",
+      "case_id": "dificil-04",
+      "original": [
+        {
+          "criterio": "claridad",
+          "valor": 3,
+          "justificacion": "Varias reglas siguen ambiguas: rango de penalización, tipos y tamaño de archivo, y si la publicación grupal aplica a alumnos. Estas observaciones pendientes reducen la claridad."
+        },
+        {
+          "criterio": "verificabilidad",
+          "valor": 3,
+          "justificacion": "La mayoría de criterios y casos tienen resultados observables, pero CP-29 depende de un rango provisional y CP-11 usa un estado previo no definido en sus pasos, lo que limita la comprobación."
+        },
+        {
+          "criterio": "completitud",
+          "valor": 3,
+          "justificacion": "Cubre el requerimiento principal, pero faltan criterios para corregir comentarios o calificaciones ya vistas, para el estado de publicación grupal ante padres y para restricciones de archivo."
+        },
+        {
+          "criterio": "consistencia",
+          "valor": 2,
+          "justificacion": "HU-7 y HU-8 chocan sobre la visibilidad para alumnos, y las penalizaciones usan porcentaje en CP-07 y puntos en CP-25. Estas contradicciones pendientes afectan el conjunto."
+        }
+      ],
+      "repetida": [
+        {
+          "criterio": "claridad",
+          "valor": 3,
+          "justificacion": "Las historias dejan pendientes el tipo y tamaño de archivo, el rango de penalización y si la publicación grupal aplica a alumnos, lo que genera ambigüedad en varios artefactos."
+        },
+        {
+          "criterio": "verificabilidad",
+          "valor": 3,
+          "justificacion": "La mayoría de criterios y casos tienen resultados observables, pero CP-25 y CP-29 usan rangos o unidades provisionales y CP-07 y CP-25 mezclan porcentaje y puntos, lo que dificulta comprobarlos."
+        },
+        {
+          "criterio": "completitud",
+          "valor": 2,
+          "justificacion": "Faltan criterios y casos para editar comentarios o calificaciones ya vistas por el alumno y para el estado de publicación grupal ante padres, según las observaciones pendientes del Revisor."
+        },
+        {
+          "criterio": "consistencia",
+          "valor": 2,
+          "justificacion": "HU-7 y CA-13 muestran la calificación de inmediato, mientras que HU-8 y el requerimiento piden publicación grupal; además la penalización se expresa en porcentaje en unas pruebas y en puntos en otras."
+        }
+      ]
+    },
+    {
+      "batch_id": "0a44df76-c047-44d8-9e79-c6e0e167ce3e",
+      "case_id": "facil-03",
+      "original": [
+        {
+          "criterio": "claridad",
+          "valor": 3,
+          "justificacion": "Los artefactos son mayormente comprensibles, pero CP-03 introduce 'bloqueada' sin definirlo y no se aclara qué ocurre con respuestas distintas de CONFIRMO o CANCELO ni si hay plazo de respuesta."
+        },
+        {
+          "criterio": "verificabilidad",
+          "valor": 4,
+          "justificacion": "Los criterios CA-1 a CA-4 y los casos CP-01 a CP-04 describen resultados observables como SMS con fecha, hora y dentista, o estado de la cita en agenda; faltan umbrales para la disponibilidad del horario."
+        },
+        {
+          "criterio": "completitud",
+          "valor": 3,
+          "justificacion": "Cada historia tiene al menos un caso, pero no hay pruebas para respuestas inválidas, respuestas fuera de plazo ni para el envío de recordatorio cuando el paciente no tiene teléfono registrado, pese al supuesto de HU-1."
+        },
+        {
+          "criterio": "consistencia",
+          "valor": 4,
+          "justificacion": "Historias, criterios y casos concuerdan con el requerimiento en confirmación, cancelación y liberación del horario; el término 'bloqueada' de CP-03 no aparece en CA-3, que solo exige confirmada."
+        }
+      ],
+      "repetida": [
+        {
+          "criterio": "claridad",
+          "valor": 3,
+          "justificacion": "Las historias y criterios son comprensibles, pero CP-03 usa 'bloqueada' sin definir qué significa y HU-4 mezcla 'marcar' con 'liberar' el horario sin precisar el estado final."
+        },
+        {
+          "criterio": "verificabilidad",
+          "valor": 3,
+          "justificacion": "CP-01, CP-02 y CP-04 tienen resultados observables. CP-03 depende del término 'bloqueada', que no es comprobable de forma precisa, y CA-3 y CA-4 no especifican el estado visible en la agenda."
+        },
+        {
+          "criterio": "completitud",
+          "valor": 2,
+          "justificacion": "Cada historia tiene al menos un caso, pero no hay pruebas para respuestas no válidas, ausencia de respuesta ni cancelación fuera de plazo. El requerimiento deja esos escenarios sin cubrir."
+        },
+        {
+          "criterio": "consistencia",
+          "valor": 3,
+          "justificacion": "Historias, criterios y casos se corresponden entre sí. Sin embargo, 'bloqueada' en CP-03 no aparece en el requerimiento ni en CA-3, y CP-04 usa 'nuevas reservas' en lugar de 'ofrecer a otro paciente'."
+        }
+      ]
+    },
+    {
+      "batch_id": "318a74a4-7ebb-4dad-b9df-a224836d40a6",
+      "case_id": "dificil-04",
+      "original": [
+        {
+          "criterio": "claridad",
+          "valor": 2,
+          "justificacion": "Hay historias ambiguas (HU-2, HU-12 sin criterios medibles) y observaciones pendientes de descripciones contradictorias entre historias y casos (HU-9/CP-14, HU-11/CP-16, HU-12/CP-17)."
+        },
+        {
+          "criterio": "verificabilidad",
+          "valor": 2,
+          "justificacion": "Muchos criterios como 'fácil de usar' o 'funciona bien en cualquier dispositivo' no tienen resultado observable; los casos CP-03, CP-13 y CP-17 solo dicen que la plataforma se comporta correctamente."
+        },
+        {
+          "criterio": "completitud",
+          "valor": 2,
+          "justificacion": "Faltan casos para entregas tardías con penalización, publicación de calificaciones a padres, equipos con varios integrantes y el cálculo de penalización; además la publicación diferida no tiene caso propio verificable."
+        },
+        {
+          "criterio": "consistencia",
+          "valor": 2,
+          "justificacion": "Hay historias duplicadas (HU-4 y HU-1, HU-12 y HU-2), criterios repetidos (CA-2 y CA-5, CA-3, CA-13 y CA-17) y las observaciones pendientes de inconsistencia no se corrigieron."
+        }
+      ],
+      "repetida": [
+        {
+          "criterio": "claridad",
+          "valor": 2,
+          "justificacion": "Hay criterios duplicados y textos truncados en observaciones (HU-9/CP-14). Las historias y casos son comprensibles, pero las observaciones pendientes muestran descripciones ambiguas sin resolver."
+        },
+        {
+          "criterio": "verificabilidad",
+          "valor": 2,
+          "justificacion": "Muchos criterios como fácil de usar, funciona bien en cualquier dispositivo o protege la información no tienen resultado observable. Los casos de usabilidad solo dicen que la plataforma se comporta correctamente."
+        },
+        {
+          "criterio": "completitud",
+          "valor": 2,
+          "justificacion": "Faltan casos para penalización por entrega tardía, entrega antes de fecha límite, publicación de calificaciones y visibilidad para padres. Además, CP-02 y CP-05 duplican el mismo flujo."
+        },
+        {
+          "criterio": "consistencia",
+          "valor": 1,
+          "justificacion": "Hay criterios y casos duplicados con redacciones distintas, y las observaciones pendientes de inconsistencia HU/CP siguen abiertas. HU-11 y CP-16 o CP-18 no concuerdan entre sí."
+        }
+      ]
+    },
+    {
+      "batch_id": "5e24b12b-92bb-4c8a-b787-bf577d4b2b1b",
+      "case_id": "dificil-05",
+      "original": [
+        {
+          "criterio": "claridad",
+          "valor": 3,
+          "justificacion": "Varios artefactos son ambiguos: CA-7 no define el quirófano de la urgencia, no se distingue urgencia con y sin prioridad (CA-17) y HU-7 y CA-14 contradicen la aprobación. Las observaciones pendientes lo confirman."
+        },
+        {
+          "criterio": "verificabilidad",
+          "valor": 3,
+          "justificacion": "La mayoría de criterios tienen resultados observables, como estados y avisos. CA-7 y CA-17 dependen de conceptos sin definir y el solapamiento por delante no tiene criterio ni caso."
+        },
+        {
+          "criterio": "completitud",
+          "valor": 2,
+          "justificacion": "Falta cubrir que la limpieza depende del tipo de cirugía, el solapamiento de una cirugía nueva que termina dentro de una programada, y la reubicación o elección de quirófano para urgencias. Son problemas graves."
+        },
+        {
+          "criterio": "consistencia",
+          "valor": 2,
+          "justificacion": "CA-3 y CA-14/CP-16 se contradicen sobre si la aprobación sin anestesiólogo confirma la cirugia. CA-11 da por definido un límite de término que HU-8 deja pendiente. Estas inconsistencias son graves."
+        }
+      ],
+      "repetida": [
+        {
+          "criterio": "claridad",
+          "valor": 3,
+          "justificacion": "Varios artefactos son ambiguos: no se define cómo se elige el quirófano de una urgencia ni qué distingue una urgencia con prioridad de una sin prioridad (CA-7, CA-17)."
+        },
+        {
+          "criterio": "verificabilidad",
+          "valor": 3,
+          "justificacion": "La mayoría de criterios tiene resultado observable, pero CA-7 no precisa el quirófano y CA-11 no puede comprobarse frente al límite de término pendiente de negocio (HU-8)."
+        },
+        {
+          "criterio": "completitud",
+          "valor": 2,
+          "justificacion": "Falta cubrir que la limpieza depende del tipo de cirugía, sin tipos ni tiempos definidos, y falta el criterio de solapamiento por delante de una cirugia programada posterior (CA-6, CP-06)."
+        },
+        {
+          "criterio": "consistencia",
+          "valor": 2,
+          "justificacion": "CA-3 y CA-14/CP-16 se contradicen sobre si aprobar sin anestesiólogo confirma la cirugía, y CA-11 da por definido un límite de término que HU-8 declara pendiente."
+        }
+      ]
+    }
+  ],
+  "emparejador": [
+    {
+      "case_id": "dificil-01",
+      "original": [
+        {
+          "problema": 0,
+          "detectado": false,
+          "observacion": null,
+          "justificacion": "Ninguna observación señala que 'rutas óptimas' no define qué se optimiza (distancia, tiempo, costo o número de camiones). Las observaciones tratan límites, criterios y casos de prueba, no el objetivo de optimización."
+        },
+        {
+          "problema": 1,
+          "detectado": true,
+          "observacion": 9,
+          "justificacion": "La observación 9 señala que 'lo antes posible' no tiene un criterio que garantice la optimización del tiempo de entrega. Es el mismo hecho sembrado: la expresión temporal sin ventana ni horario fijo, aunque la observación lo enfoque como cobertura faltante."
+        },
+        {
+          "problema": 2,
+          "detectado": true,
+          "observacion": 1,
+          "justificacion": "La observación 1 señala la contradicción entre el máximo de 30 paradas por repartidor por día y el máximo de 40 entregas por ruta, que es la misma inconsistencia sembrada."
+        },
+        {
+          "problema": 3,
+          "detectado": false,
+          "observacion": null,
+          "justificacion": "Ninguna observación menciona qué ocurre con una entrega fallida, como tienda cerrada, pedido rechazado o devolución. Las observaciones no tratan ese caso."
+        },
+        {
+          "problema": 4,
+          "detectado": false,
+          "observacion": null,
+          "justificacion": "La observación 6 indica que falta cubrir la capacidad máxima en kilos de los camiones, pero no señala qué hacer si los pedidos exceden la capacidad disponible. Es un hecho distinto."
+        }
+      ],
+      "repetida": [
+        {
+          "problema": 0,
+          "detectado": false,
+          "observacion": null,
+          "justificacion": "Ninguna observación señala que 'rutas óptimas' no defina el criterio de optimización (distancia, tiempo, costo o camiones). La observación 9 trata el tiempo de entrega, otro aspecto."
+        },
+        {
+          "problema": 1,
+          "detectado": true,
+          "observacion": 9,
+          "justificacion": "La observación 9 señala que 'lo antes posible' no tiene un criterio que lo garantice y pide definir la entrega en términos de optimización del tiempo, lo que cubre la falta de ventana u horario."
+        },
+        {
+          "problema": 2,
+          "detectado": true,
+          "observacion": 1,
+          "justificacion": "La observación 1 señala la contradicción entre el máximo de 30 paradas por repartidor y el máximo de 40 entregas por ruta, el mismo hecho sembrado."
+        },
+        {
+          "problema": 3,
+          "detectado": false,
+          "observacion": null,
+          "justificacion": "Ninguna observación menciona qué ocurre con una entrega fallida (tienda cerrada, pedido rechazado o devolución)."
+        },
+        {
+          "problema": 4,
+          "detectado": false,
+          "observacion": null,
+          "justificacion": "La observación 6 señala que la capacidad en kilos no tiene historia que la cubra, pero no que falte decidir qué hacer si los pedidos exceden los camiones. Ninguna observación trata ese caso."
+        }
+      ]
+    },
+    {
+      "case_id": "dificil-02",
+      "original": [
+        {
+          "problema": 0,
+          "detectado": true,
+          "observacion": 2,
+          "justificacion": "La observación 2 señala que el límite de 10,000 pesos por productor no es alcanzable porque las historias y criterios aplican solo el tope de 5 hectáreas (máximo 7,500 pesos), la misma contradicción del requerimiento."
+        },
+        {
+          "problema": 1,
+          "detectado": true,
+          "observacion": 8,
+          "justificacion": "La observación 8 señala que CA-5 y CA-6 no aclaran si la prioridad de alta marginación supera al orden de llegada o se aplica dentro de cada nivel, que es el mismo hecho sembrado."
+        },
+        {
+          "problema": 2,
+          "detectado": false,
+          "observacion": null,
+          "justificacion": "Ninguna observación señala la falta de un criterio para definir 'pequeños productores' (superficie, ingresos u otro); las observaciones tratan montos, prioridad y pruebas de presupuesto."
+        },
+        {
+          "problema": 3,
+          "detectado": false,
+          "observacion": null,
+          "justificacion": "Ninguna observación señala que falte el plazo o la forma de comprobar el uso del apoyo ni las consecuencias si no se comprueba."
+        },
+        {
+          "problema": 4,
+          "detectado": false,
+          "observacion": null,
+          "justificacion": "Ninguna observación señala qué ocurre si el técnico encuentra una superficie distinta a la declarada; no hay observación sobre la confirmación de superficie."
+        }
+      ],
+      "repetida": [
+        {
+          "problema": 0,
+          "detectado": true,
+          "observacion": 2,
+          "justificacion": "La observación 2 señala que el límite de 10,000 pesos no se concilia con el máximo de 5 ha (7,500 pesos) y que no se prueba ese límite, que es la misma contradicción sembrada."
+        },
+        {
+          "problema": 1,
+          "detectado": true,
+          "observacion": 8,
+          "justificacion": "La observación 8 señala la ambigüedad entre el orden de llegada y la prioridad de zonas de alta marginación, sin definir si la prioridad sobrepasa el orden de llegada. Es el mismo hecho sembrado."
+        },
+        {
+          "problema": 2,
+          "detectado": false,
+          "observacion": null,
+          "justificacion": "Ninguna observación señala la falta de criterio para definir a un pequeño productor (superficie, ingresos u otro)."
+        },
+        {
+          "problema": 3,
+          "detectado": false,
+          "observacion": null,
+          "justificacion": "Ninguna observación trata la comprobación del uso del apoyo, su plazo ni las consecuencias si no se comprueba."
+        },
+        {
+          "problema": 4,
+          "detectado": false,
+          "observacion": null,
+          "justificacion": "Ninguna observación aborda qué ocurre si el técnico encuentra una superficie distinta a la declarada."
+        }
+      ]
+    },
+    {
+      "case_id": "dificil-03",
+      "original": [
+        {
+          "problema": 0,
+          "detectado": false,
+          "observacion": null,
+          "justificacion": "Las observaciones 0 y 5 tratan la discrepancia entre el caso CP-04 y el requerimiento, pero no señalan que \"tasa baja\" y \"aprobación rápida\" carezcan de valores. La 0 además atribuye al requerimiento un plazo de 24 horas que no aparece."
+        },
+        {
+          "problema": 1,
+          "detectado": false,
+          "observacion": null,
+          "justificacion": "Ninguna observación señala la contradicción entre no tener otro préstamo activo y poder tener dos si el segundo es de emergencia. La 1 aplica la regla a CP-05 y la 10 trata la revisión por comité."
+        },
+        {
+          "problema": 2,
+          "detectado": false,
+          "observacion": null,
+          "justificacion": "Ninguna observación señala que el requerimiento no define qué es un préstamo de emergencia. La 10 solo menciona el término al describir CP-10."
+        },
+        {
+          "problema": 3,
+          "detectado": false,
+          "observacion": null,
+          "justificacion": "La observación 3 señala que CP-08 exige agotar los ahorros, pero no que el requerimiento no diga qué pasa si los ahorros no alcanzan el saldo pendiente."
+        },
+        {
+          "problema": 4,
+          "detectado": true,
+          "observacion": 2,
+          "justificacion": "La observación 2 señala que el requerimiento no especifica la duración del préstamo ni el monto de la deducción quincenal, lo que cubre el plazo no fijado y el descuento sin verificar frente al salario."
+        }
+      ],
+      "repetida": [
+        {
+          "problema": 0,
+          "detectado": true,
+          "observacion": 0,
+          "justificacion": "La observación 0 señala que el requerimiento solo dice que la tasa es baja y la aprobación rápida, sin valores concretos, al cuestionar los valores fijos que CP-04 exige (5 % y 24 horas exactas)."
+        },
+        {
+          "problema": 1,
+          "detectado": false,
+          "observacion": null,
+          "justificacion": "Ninguna observación señala la contradicción entre prohibir otro préstamo activo y permitir dos con préstamo de emergencia. La 10 usa esa regla como válida y critica solo la revisión por comité."
+        },
+        {
+          "problema": 2,
+          "detectado": false,
+          "observacion": null,
+          "justificacion": "Ninguna observación señala que no se define qué es un préstamo de emergencia; la 10 solo menciona el término sin cuestionarlo."
+        },
+        {
+          "problema": 3,
+          "detectado": false,
+          "observacion": null,
+          "justificacion": "Ninguna observación trata el caso en que los ahorros no alcanzan para cubrir el saldo pendiente. La 3 solo cuestiona que CP-08 exija dejar los ahorros en cero."
+        },
+        {
+          "problema": 4,
+          "detectado": true,
+          "observacion": 2,
+          "justificacion": "La observación 2 indica que el requerimiento no especifica la duración del préstamo ni el monto de la deducción quincenal, lo que cubre la falta de plazo máximo y de verificación del descuento frente al salario."
+        }
+      ]
+    },
+    {
+      "case_id": "dificil-04",
+      "original": [
+        {
+          "problema": 0,
+          "detectado": true,
+          "observacion": 1,
+          "justificacion": "La observación 1 señala que CP-03 usa una penalización del 20% que no está definida en el requerimiento ni en HU-3, lo que refleja que el requerimiento no fija la penalización por entrega tardía."
+        },
+        {
+          "problema": 1,
+          "detectado": false,
+          "observacion": null,
+          "justificacion": "Ninguna observación cuestiona la falta de verificabilidad de 'fácil de usar' o 'funcionar bien en cualquier dispositivo'. Las observaciones tratan entregas grupales y penalizaciones."
+        },
+        {
+          "problema": 2,
+          "detectado": false,
+          "observacion": null,
+          "justificacion": "Ninguna observación señala la contradicción entre la publicación de calificaciones al terminar el grupo y la visualización inmediata por cada alumno."
+        },
+        {
+          "problema": 3,
+          "detectado": false,
+          "observacion": null,
+          "justificacion": "La observación 0 trata quién puede entregar una tarea grupal, no cómo se forman los equipos ni qué pasa si un integrante no participó. Es otro aspecto."
+        },
+        {
+          "problema": 4,
+          "detectado": false,
+          "observacion": null,
+          "justificacion": "Ninguna observación menciona el vínculo entre padres e hijos ni los tipos y tamaños de archivo permitidos."
+        }
+      ],
+      "repetida": [
+        {
+          "problema": 0,
+          "detectado": true,
+          "observacion": 1,
+          "justificacion": "La observación 1 señala que la penalización por entrega tardía no está definida en el requerimiento ni en HU-3, y que CP-03 usa un 20% sin base. Cubre el dato faltante de la penalización; no menciona el plazo límite de aceptación."
+        },
+        {
+          "problema": 1,
+          "detectado": false,
+          "observacion": null,
+          "justificacion": "Ninguna observación señala la ambigüedad de 'fácil de usar' o 'funcionar bien en cualquier dispositivo'."
+        },
+        {
+          "problema": 2,
+          "detectado": false,
+          "observacion": null,
+          "justificacion": "Ninguna observación señala la contradicción entre la publicación al terminar todo el grupo y la visualización inmediata de la calificación por cada alumno."
+        },
+        {
+          "problema": 3,
+          "detectado": false,
+          "observacion": null,
+          "justificacion": "La observación 0 trata de quién puede entregar una tarea grupal, no de cómo se forman los equipos ni de qué pasa si un integrante no participó. Es otro aspecto."
+        },
+        {
+          "problema": 4,
+          "detectado": false,
+          "observacion": null,
+          "justificacion": "Ninguna observación señala cómo se vincula a un padre con su hijo ni los tipos y tamaños de archivo aceptados."
+        }
+      ]
+    },
+    {
+      "case_id": "dificil-05",
+      "original": [
+        {
+          "problema": 0,
+          "detectado": true,
+          "observacion": 0,
+          "justificacion": "La observación 0 señala que CA-3 fija la limpieza en 30 minutos mientras CA-4 dice que depende del tipo de cirugía, la misma contradicción del requerimiento."
+        },
+        {
+          "problema": 1,
+          "detectado": false,
+          "observacion": null,
+          "justificacion": "Ninguna observación trata el límite ni la autorización para que las cirugías largas terminen después del horario de 21:00."
+        },
+        {
+          "problema": 2,
+          "detectado": true,
+          "observacion": 7,
+          "justificacion": "La observación 7 indica que ni HU-5 ni CA-5 abordan la reprogramación de cirugías programadas cuando una urgencia las desplaza, lo que cubre el hecho faltante sembrado."
+        },
+        {
+          "problema": 3,
+          "detectado": false,
+          "observacion": null,
+          "justificacion": "Ninguna observación pide criterios de aprobación de la coordinación ni resolución de solicitudes que coinciden en el mismo horario."
+        },
+        {
+          "problema": 4,
+          "detectado": false,
+          "observacion": null,
+          "justificacion": "La observación 5 solo señala que no se mencionan los cuatro quirófanos; no trata el registro del equipo ni la asignación del anestesiólogo."
+        }
+      ],
+      "repetida": [
+        {
+          "problema": 0,
+          "detectado": true,
+          "observacion": 0,
+          "justificacion": "La observación 0 señala que CA-3 fija la limpieza en 30 minutos mientras CA-4 la hace depender del tipo de cirugía, que es la misma contradicción sembrada."
+        },
+        {
+          "problema": 1,
+          "detectado": false,
+          "observacion": null,
+          "justificacion": "Ninguna observación trata el límite ni la autorización de las cirugías largas que terminan después del horario; las observaciones se centran en limpieza, urgencias y quirófanos."
+        },
+        {
+          "problema": 2,
+          "detectado": true,
+          "observacion": 7,
+          "justificacion": "La observación 7 señala que no se aborda la reprogramación de cirugías programadas cuando una urgencia las desplaza, que es el mismo hecho faltante sembrado."
+        },
+        {
+          "problema": 3,
+          "detectado": false,
+          "observacion": null,
+          "justificacion": "Ninguna observación menciona los criterios de aprobación de la coordinación ni el conflicto de dos solicitudes para el mismo horario."
+        },
+        {
+          "problema": 4,
+          "detectado": false,
+          "observacion": null,
+          "justificacion": "La observación 5 solo señala que no se menciona el número de quirófanos; no trata el registro del equipo por quirófano ni la asignación del anestesiólogo."
+        }
+      ]
+    }
+  ],
+  "costo_usd": 0.019599
+}
