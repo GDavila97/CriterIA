@@ -8,7 +8,7 @@ from uuid import UUID
 from criteria.domain.artifacts import TipoObservacion
 from criteria.domain.evaluation import DIFICULTADES, Dificultad, EvalBatch, EvalCase
 
-RUNS_PER_MODEL = 2
+SAMPLE_RUNS = 8
 MATCH_CHECKS = 10
 STABILITY_RUNS = 10
 CASES_PER_DIFFICULTY = 5
@@ -18,10 +18,17 @@ def _difficulty(case_id: str) -> Dificultad:
     return next(d for d in DIFICULTADES if case_id.startswith(d))
 
 
+def _quotas(batches: Sequence[EvalBatch], size: int, rng: random.Random) -> list[int]:
+    """Split size as evenly as possible; the seed decides which models get the extra runs."""
+    base, extra = divmod(size, len(batches)) if batches else (0, 0)
+    lucky = set(rng.sample(range(len(batches)), extra))
+    return [base + (i in lucky) for i in range(len(batches))]
+
+
 def judge_sample(
-    batches: Sequence[EvalBatch], seed: int, per_model: int = RUNS_PER_MODEL
+    batches: Sequence[EvalBatch], seed: int, size: int = SAMPLE_RUNS
 ) -> list[tuple[UUID, str]]:
-    """Graded runs to score by hand: per_model per batch, spread over the difficulties.
+    """Graded runs to score by hand: size runs split evenly among batches, spread over difficulties.
 
     Each model walks a seeded cycle of the three difficulties, so its runs never share one and
     the whole sample stays balanced. Cases already taken by another model are avoided when
@@ -30,13 +37,14 @@ def judge_sample(
     rng = random.Random(seed)  # noqa: S311  reproducible sample, not security
     cycle = list(DIFICULTADES)
     rng.shuffle(cycle)
+    ordered = sorted(batches, key=lambda b: b.clave)
     taken: set[str] = set()
     sample: list[tuple[UUID, str]] = []
     position = 0
-    for batch in sorted(batches, key=lambda b: b.clave):
+    for batch, quota in zip(ordered, _quotas(ordered, size, rng), strict=True):
         graded = sorted(cid for cid, r in batch.resultados.items() if r.calificada)
         mine: list[str] = []
-        for _ in range(per_model):
+        for _ in range(quota):
             wanted = cycle[position % len(cycle)]
             position += 1
             pool = [c for c in graded if c not in mine and _difficulty(c) == wanted] or [

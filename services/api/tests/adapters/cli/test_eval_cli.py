@@ -337,17 +337,17 @@ class TestEvalScore:
         session_store = JsonSessionStore(eval_dir / "results" / "v1" / "human.json")
         paused = session_store.load()
         assert paused is not None
-        assert (len(paused.muestra), paused.puntajes) == (4, [])
+        assert (len(paused.muestra), paused.puntajes) == (8, [])
 
         code, err, _ = run(["eval", "score"], answers())
 
         assert code == EXIT_OK
         done = session_store.load()
         assert done is not None
-        assert len(done.puntajes) == 16
+        assert len(done.puntajes) == 32
         assert len(done.emparejamientos) == 10
         assert all(c.acierta for c in done.emparejamientos)
-        assert "Sesión completa: 16 puntajes y 10 emparejamientos revisados." in err
+        assert "Sesión completa: 32 puntajes y 10 emparejamientos revisados." in err
         # Neither the model nor the judge's justification reach the screen; the matcher's does.
         for hidden in ("gpt-6-luna", "gpt-oss", "groq", "openai", "Simulada"):
             assert hidden not in err

@@ -25,7 +25,7 @@ def four_batches() -> list[EvalBatch]:
 
 
 class TestJudgeSample:
-    def test_two_runs_per_model_spread_over_difficulties(self) -> None:
+    def test_four_models_get_two_runs_each_spread_over_difficulties(self) -> None:
         batches = four_batches()
 
         sample = judge_sample(batches, seed=42)
@@ -37,6 +37,26 @@ class TestJudgeSample:
             levels = [c.split("-")[0] for b, c in sample if b == batch_id]
             assert len(set(levels)) == 2
         assert sorted(Counter(c.split("-")[0] for _, c in sample).values()) == [2, 3, 3]
+
+    def test_eight_runs_split_three_three_two_among_three_models(self) -> None:
+        batches = four_batches()[1:]
+
+        sample = judge_sample(batches, seed=20261108)
+
+        assert len(sample) == 8
+        per_batch = Counter(batch_id for batch_id, _ in sample)
+        assert sorted(per_batch.values()) == [2, 3, 3]
+        for batch_id, count in per_batch.items():
+            levels = [c.split("-")[0] for b, c in sample if b == batch_id]
+            assert len(set(levels)) == count
+        assert sorted(Counter(c.split("-")[0] for _, c in sample).values()) == [2, 3, 3]
+        smaller = {
+            next(
+                b for b, n in Counter(b for b, _ in judge_sample(batches, seed=s)).items() if n == 2
+            )
+            for s in range(10)
+        }
+        assert len(smaller) > 1
 
     def test_the_same_seed_gives_the_same_sample(self) -> None:
         batches = four_batches()
@@ -54,6 +74,7 @@ class TestJudgeSample:
 
     def test_a_batch_without_graded_runs_adds_nothing(self) -> None:
         assert judge_sample([batch(results=[result("facil-01", scores=None)])], seed=1) == []
+        assert judge_sample([], seed=1) == []
 
 
 class TestDetection:

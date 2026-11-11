@@ -86,12 +86,12 @@ class TestHumanSession:
             ),
         ]
         session = new_session(batches, seed=9)
-        assert len(session.muestra) == 4
+        assert len(session.muestra) == 8
         assert session.revisiones_emparejador == [(batches[1].batch_id, "dificil-01", 0)]
 
         pending = next_score(session)
         assert pending is not None
-        assert (pending.numero, pending.total, pending.criterios) == (1, 4, CRITERIOS)
+        assert (pending.numero, pending.total, pending.criterios) == (1, 8, CRITERIOS)
         session = with_score(session, pending.batch_id, pending.case_id, "claridad", 3)
         again = next_score(session)
         assert again is not None
@@ -105,7 +105,7 @@ class TestHumanSession:
                 ):
                     session = with_score(session, batch_id, case_id, criterio, 4)
         assert next_score(session) is None
-        assert len(session.puntajes) == 16
+        assert len(session.puntajes) == 32
 
         check = next_check(session)
         assert check is not None
