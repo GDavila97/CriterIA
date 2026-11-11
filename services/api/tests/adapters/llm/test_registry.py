@@ -471,6 +471,16 @@ class TestConsumptionProfile:
         assert catalog.estimate_agent("qa", ("groq", "razona")) is None
         assert catalog.profile_for("groq", "desconocido") == general
 
+    def test_gpt_oss_uses_its_calibrated_profile_and_the_judge_keeps_the_general_one(self) -> None:
+        own = SHIPPED.profile_for("groq", "openai/gpt-oss-20b")
+
+        assert own["revisor"] == TokenProfile(input_tokens=9318, output_tokens=10854)
+        assert own["revisor"].output_tokens > SHIPPED.consumption_profile["revisor"].output_tokens
+        assert own["evaluador"] == SHIPPED.consumption_profile["evaluador"]
+        assert SHIPPED.estimate_agent("revisor", ("groq", "openai/gpt-oss-20b")) == pytest.approx(
+            (9318 * 0.075 + 10854 * 0.30) / 1e6, abs=1e-6
+        )
+
 
 class TestOutputMode:
     def test_local_models_and_gpt_oss_use_native_output_and_the_rest_tool_calls(self) -> None:

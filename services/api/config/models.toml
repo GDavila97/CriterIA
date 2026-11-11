@@ -73,6 +73,20 @@ output_mode = "native"
 input_usd_per_million = 0.075
 output_usd_per_million = 0.30
 
+# Its reasoning tokens make it spend far more than the general profile. Medians of the 14 complete
+# runs of its native v1 batch with a 16,384 cap (eval/results/v1, 2026-11-10).
+[models.consumption_profile.analista]
+input_tokens = 880
+output_tokens = 1290
+
+[models.consumption_profile.qa]
+input_tokens = 8253
+output_tokens = 8870
+
+[models.consumption_profile.revisor]
+input_tokens = 9318
+output_tokens = 10854
+
 # Local models have no API charge.
 # Default local model, chosen in F2b (docs/evaluation.md, "Selección del modelo local").
 [[models]]
