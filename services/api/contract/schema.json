@@ -1270,6 +1270,19 @@
             }
           ]
         },
+        "common_cases": {
+          "type": "integer"
+        },
+        "score_mean_common": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "cases": {
           "type": "integer"
         },
@@ -1327,6 +1340,8 @@
         "output_mode",
         "completed",
         "score_mean",
+        "common_cases",
+        "score_mean_common",
         "cases",
         "valid_rate",
         "latency_p50_ms",

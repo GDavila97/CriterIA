@@ -1,4 +1,4 @@
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Mapping, Sequence
 from contextlib import asynccontextmanager
 from datetime import UTC, date, datetime, timedelta
 from typing import Any, cast
@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 
 from criteria.adapters.postgres import database as t
 from criteria.domain.artifacts import CRITERIOS
+from criteria.domain.eval_metrics import common_keys, mean
 from criteria.domain.events import ProveedorId
 from criteria.domain.run_config import Nivel
 from criteria.ports.credentials import Sealed, StoredCredential
@@ -519,6 +520,20 @@ class PostgresHistoryStore:
         return int(result.rowcount)
 
 
+def _common_by_version(
+    rows: Sequence[sa.RowMapping], scores: Mapping[Any, Mapping[Any, float]]
+) -> dict[Any, frozenset[Any]]:
+    """The cases every batch of the same prompt and judge versions completed and had scored."""
+    groups: dict[tuple[str, str], list[Any]] = {}
+    for row in rows:
+        groups.setdefault((row["prompt_version"], row["judge_version"]), []).append(row["id"])
+    return {
+        batch: common_keys(scores[b] for b in members)
+        for members in groups.values()
+        for batch in members
+    }
+
+
 class PostgresEvaluationReader:
     def __init__(self, engine: AsyncEngine) -> None:
         self._engine = engine
@@ -561,14 +576,15 @@ class PostgresEvaluationReader:
             .group_by(b.id)
             .order_by(b.created_at.desc())
         )
-        scores = sa.select(r.batch_id, r.scores)
+        scores = sa.select(r.batch_id, r.case_id, r.scores)
         async with self._engine.connect() as conn:
             rows = list((await conn.execute(summary)).mappings())
-            by_batch: dict[Any, list[float]] = {}
+            by_batch: dict[Any, dict[Any, float]] = {row["id"]: {} for row in rows}
             for row in (await conn.execute(scores)).mappings():
                 values = [float(s["valor"]) for s in row["scores"]]
                 if len(values) == len(CRITERIOS):
-                    by_batch.setdefault(row["batch_id"], []).append(sum(values) / len(values))
+                    by_batch[row["batch_id"]][row["case_id"]] = sum(values) / len(values)
+        common = _common_by_version(rows, by_batch)
         return [
             {
                 **{k: row[k] for k in ("id", "created_at", "provider", "model")},
@@ -584,10 +600,10 @@ class PostgresEvaluationReader:
                 "latency_p50_ms": row["latency_p50_ms"],
                 "latency_p95_ms": row["latency_p95_ms"],
                 "cost_usd_avg": None if row["cost_usd_avg"] is None else float(row["cost_usd_avg"]),
-                "score_mean": (
-                    sum(by_batch[row["id"]]) / len(by_batch[row["id"]])
-                    if row["id"] in by_batch
-                    else None
+                "score_mean": mean(list(by_batch[row["id"]].values())),
+                "common_cases": len(common[row["id"]]),
+                "score_mean_common": mean(
+                    [by_batch[row["id"]][case] for case in common[row["id"]]]
                 ),
             }
             for row in rows

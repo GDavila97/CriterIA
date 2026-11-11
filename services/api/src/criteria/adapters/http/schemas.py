@@ -206,6 +206,9 @@ class EvaluationBatchBody(Body):
     output_mode: str
     completed: int
     score_mean: float | None
+    # Mean over the cases every batch of the same versions completed, to compare on equal ground.
+    common_cases: int
+    score_mean_common: float | None
     cases: int
     valid_rate: float | None
     latency_p50_ms: float | None

@@ -143,3 +143,40 @@ async def test_the_board_shows_published_batches_with_the_judge_agreement(
     assert sorted(p for p in pairs if p[0] in {"claridad", "verificabilidad", "completitud"})[
         -3:
     ] == [("claridad", 4, 4), ("completitud", 3, 3), ("verificabilidad", 4, 3)]
+
+
+async def test_each_batch_also_scores_on_the_cases_every_batch_of_its_version_completed(
+    database: Database,
+) -> None:
+    complete = batch(
+        "anthropic",
+        "comun-a",
+        [result("medio-05", scores=(4, 4, 4, 4)), result("facil-05", scores=(2, 2, 2, 2))],
+    )
+    partial = batch(
+        "ollama",
+        "comun-b",
+        [result("medio-05", scores=(3, 3, 3, 3)), result("facil-05", estado="error", scores=None)],
+    )
+    other_version = batch("groq", "comun-c", [result("facil-01")])
+    engine = create_engine(database.eval_writer, pool_size=2)
+    try:
+        for published in (complete, partial):
+            await PostgresEvalPublisher(engine).publish(
+                published.model_copy(update={"version_prompts": "v7"}), all_cases()
+            )
+        await PostgresEvalPublisher(engine).publish(
+            other_version.model_copy(update={"version_prompts": "v8"}), all_cases()
+        )
+    finally:
+        await engine.dispose()
+    reader_engine = create_engine(database.api, pool_size=2)
+    try:
+        lotes = {b["id"]: b for b in await PostgresEvaluationReader(reader_engine).batches()}
+    finally:
+        await reader_engine.dispose()
+
+    a, b, c = (lotes[x.batch_id] for x in (complete, partial, other_version))
+    assert (a["score_mean"], a["common_cases"], a["score_mean_common"]) == (3.0, 1, 4.0)
+    assert (b["common_cases"], b["score_mean_common"]) == (1, 3.0)
+    assert (c["common_cases"], c["score_mean_common"]) == (1, 4.0)
