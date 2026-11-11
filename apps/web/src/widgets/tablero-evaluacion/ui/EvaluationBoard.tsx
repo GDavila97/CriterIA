@@ -104,8 +104,9 @@ export function EvaluationBoard({
     .filter((l) => l.latency_p50_ms !== null)
     .sort((a, b) => (a.latency_p50_ms ?? 0) - (b.latency_p50_ms ?? 0))[0];
   const best = [...shown]
-    .filter((l) => l.score_mean !== null)
-    .sort((a, b) => (b.score_mean ?? 0) - (a.score_mean ?? 0))[0];
+    .filter((l) => l.score_mean_common !== null)
+    .sort((a, b) => (b.score_mean_common ?? 0) - (a.score_mean_common ?? 0))[0];
+  const common = Math.min(...shown.map((l) => l.common_cases));
   const mostValid = [...shown]
     .filter((l) => l.valid_rate !== null)
     .sort((a, b) => (b.valid_rate ?? 0) - (a.valid_rate ?? 0))[0];
@@ -143,8 +144,8 @@ export function EvaluationBoard({
         <>
           <div className={styles.kpis}>
             <section className={styles.card} aria-label="Mejor puntaje">
-              <p className={styles.kpiLabel}>Mejor puntaje medio (de 1 a 5)</p>
-              <p className={styles.kpiValue}>{score(best?.score_mean ?? null)}</p>
+              <p className={styles.kpiLabel}>Mejor puntaje en los casos comunes (de 1 a 5)</p>
+              <p className={styles.kpiValue}>{score(best?.score_mean_common ?? null)}</p>
               <p className={styles.kpiLabel}>{best ? name(best) : '—'}</p>
             </section>
             <section className={styles.card} aria-label="Más rápido">
@@ -174,6 +175,7 @@ export function EvaluationBoard({
                     <th scope="col">Modelo</th>
                     <th scope="col">Completas</th>
                     <th scope="col">Puntaje medio</th>
+                    <th scope="col">En casos comunes</th>
                     <th scope="col">Válidas a la primera</th>
                     <th scope="col">Latencia p50</th>
                     <th scope="col">Latencia p95</th>
@@ -193,6 +195,7 @@ export function EvaluationBoard({
                         {l.completed} de {l.cases}
                       </td>
                       <td>{score(l.score_mean)}</td>
+                      <td>{score(l.score_mean_common)}</td>
                       <td>{percent(l.valid_rate)}</td>
                       <td>{seconds(l.latency_p50_ms)}</td>
                       <td>{seconds(l.latency_p95_ms)}</td>
@@ -203,6 +206,11 @@ export function EvaluationBoard({
                 </tbody>
               </table>
             </div>
+            <p className={styles.note}>
+              El puntaje medio usa todas las corridas completas de cada modelo; el de casos comunes,
+              solo los {common} casos que todos los modelos de esta versión completaron, para
+              compararlos sobre el mismo terreno.
+            </p>
             <p className={styles.note}>
               * El juez es del mismo proveedor que este modelo; su puntaje puede tener sesgo de
               autopreferencia.

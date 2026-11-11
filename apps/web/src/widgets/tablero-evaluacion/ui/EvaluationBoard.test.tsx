@@ -18,6 +18,8 @@ const batch = (over: Partial<EvaluationBatchBody>): EvaluationBatchBody => ({
   output_mode: 'tool',
   completed: 15,
   score_mean: 3.2,
+  common_cases: 11,
+  score_mean_common: 3.1,
   cases: 15,
   valid_rate: 0.93,
   latency_p50_ms: 14_000,
@@ -48,6 +50,7 @@ describe('EvaluationBoard', () => {
             model_display_name: 'Claude Haiku 5.5',
             judge_same_provider: true,
             score_mean: 3.85,
+            score_mean_common: 3.9,
             completed: 14,
             valid_rate: 1,
             latency_p50_ms: 33_000,
@@ -56,6 +59,8 @@ describe('EvaluationBoard', () => {
             provider: 'ollama',
             model: 'llama3.1:8b',
             model_display_name: 'Llama 3.1 8B',
+            score_mean: 3.95,
+            score_mean_common: 2.5,
             valid_rate: null,
             latency_p50_ms: null,
             latency_p95_ms: null,
@@ -73,7 +78,10 @@ describe('EvaluationBoard', () => {
     const haiku = within(table)
       .getByText(/Anthropic · Claude Haiku 5\.5/)
       .closest('tr');
-    expect(haiku).toHaveTextContent('Anthropic · Claude Haiku 5.5 *salida tool14 de 153.85100%');
+    expect(haiku).toHaveTextContent(
+      'Anthropic · Claude Haiku 5.5 *salida tool14 de 153.853.90100%',
+    );
+    expect(screen.getByText(/solo los 11 casos que todos los modelos/)).toBeInTheDocument();
     expect(
       within(screen.getByRole('region', { name: 'Mejor puntaje' })).getByText(
         'Anthropic · Claude Haiku 5.5',

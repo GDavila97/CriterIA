@@ -464,6 +464,8 @@ export interface EvaluationBatchBody {
   output_mode: string;
   completed: number;
   score_mean: number | null;
+  common_cases: number;
+  score_mean_common: number | null;
   cases: number;
   valid_rate: number | null;
   latency_p50_ms: number | null;
