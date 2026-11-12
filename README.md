@@ -30,7 +30,7 @@ Flujo: Analista → pausa para que la persona apruebe o edite → QA → Revisor
 
 ## Estado
 
-Fase F4 (web y autenticación): la web en Next.js está conectada a la API real. Incluye registro con GitHub o con correo y contraseña, la vista clásica con la pausa humana en línea, el panel del agente con parámetros por agente, el historial, "Modelos y claves", "Privacidad y datos" y el tablero de evaluación. La vista oficina llega en F9 y el despliegue en F6.
+Fase F5 (evaluación v1): la web en Next.js está conectada a la API real, con registro, vista clásica, panel del agente, historial, "Modelos y claves", "Privacidad y datos" y el tablero de evaluación. La evaluación v1 comparó Claude Haiku 5.5, GPT-OSS 20B (Groq) y Llama 3.1 8B (local) sobre 15 requerimientos. Los resultados están en el [reporte v1](docs/evaluation/report-v1.md) y en el tablero. La vista oficina llega en F9 y el despliegue en F6.
 
 ## Stack
 
@@ -250,6 +250,7 @@ Las listas completas, con la fase en que se usa cada variable, están en [servic
 - [Decisiones de arquitectura (ADRs)](docs/adr/README.md)
 - [Despliegue](docs/deploy.md)
 - [Evaluación de modelos](docs/evaluation.md)
+- [Reporte de evaluación v1](docs/evaluation/report-v1.md)
 - [Overrides de auditoría de dependencias](docs/audit-exceptions.md)
 
 ## Licencia

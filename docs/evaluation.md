@@ -1,6 +1,6 @@
 # Evaluación
 
-Comparación de cuatro modelos sobre el mismo conjunto de requerimientos, con el mismo grafo y el mismo juez, más la validación del juez contra una calificación humana. Los números de la versión 1 están en [Resultados v1](#resultados-v1) y el reporte autocontenido en [evaluation/report-v1.md](evaluation/report-v1.md).
+Comparación de tres modelos sobre el mismo conjunto de requerimientos, con el mismo grafo y el mismo juez, más la validación del juez contra una calificación humana. Los números de la versión 1 están en [Resultados v1](#resultados-v1) y el reporte autocontenido en [evaluation/report-v1.md](evaluation/report-v1.md).
 
 ## Objetivo
 
@@ -153,7 +153,6 @@ El modelo local de la evaluación es **`llama3.1:8b`** con salida nativa: comple
 Desde `services/api`, con las claves en el `.env` local y los proveedores en `SERVER_KEY_PROVIDERS`:
 
 ```bash
-uv run criteria eval run --provider openai --model gpt-6-luna
 uv run criteria eval run --provider anthropic --model claude-haiku-5-5
 uv run criteria eval run --provider groq --model openai/gpt-oss-20b
 uv run criteria eval run --provider ollama --model llama3.1:8b \
@@ -170,15 +169,170 @@ Todos los comandos se reanudan donde se quedaron. `publish` es idempotente: los 
 
 ## Resultados v1
 
-Pendiente.
+Lotes del 10 y 11 de noviembre de 2026, prompts v1 y juez v1. Los archivos de cada lote, la sesión humana y la estabilidad están en `services/api/eval/results/v1/`; `tablas.md` y `reporte.json` son la salida de `criteria eval report`. Los puntajes van de 1 a 5, con un juez que pide severidad, y `*` marca el lote cuyo juez es del mismo proveedor.
+
+### Calidad según el juez
+
+| Modelo | Completas | Global (todas) | Global (11 comunes) | Claridad | Verificabilidad | Completitud | Consistencia |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Anthropic · Claude Haiku 5.5 (tool) * | 15 de 15 | 2.73 | 2.70 | 3.00 | 2.87 | 2.47 | 2.60 |
+| Groq · GPT-OSS 20B (native) | 14 de 15 | 2.82 | 2.82 | 3.07 | 3.07 | 2.50 | 2.64 |
+| Ollama · Llama 3.1 8B (native) | 11 de 15 | 2.05 | 2.05 | 2.18 | 2.18 | 2.00 | 1.82 |
+
+Los criterios son los promedios de todas las corridas completas. Los 11 casos comunes son los que los tres modelos completaron: `dificil-01`, `dificil-03`, `dificil-04`, `facil-02` a `facil-05`, `medio-01`, `medio-02`, `medio-04` y `medio-05`. Sobre ellos, los criterios de Haiku son 3.00, 2.82, 2.45 y 2.55; los de GPT-OSS, 3.09, 3.09, 2.45 y 2.64; los de Llama no cambian.
+
+![Puntaje medio por criterio y modelo](evaluation/criterios-v1.svg)
+
+| Modelo | Fáciles | Medios | Difíciles |
+| --- | --- | --- | --- |
+| Anthropic · Claude Haiku 5.5 (tool) * | 5 de 5 · 3.00 | 5 de 5 · 2.70 | 5 de 5 · 2.50 |
+| Groq · GPT-OSS 20B (native) | 5 de 5 · 2.90 | 4 de 5 · 2.94 | 5 de 5 · 2.65 |
+| Ollama · Llama 3.1 8B (native) | 4 de 5 · 2.19 | 4 de 5 · 1.94 | 3 de 5 · 2.00 |
+
+Cada celda da las corridas completas y su puntaje global.
+
+### Operación
+
+| Modelo | Válidas a la primera | Rondas medias | Latencia p50 | Latencia p95 | Tokens por corrida | Costo por corrida (USD) | Costo del lote (USD) | Errores |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Anthropic · Claude Haiku 5.5 (tool) * | 97% (145 de 149) | 2.0 | 148 s | 207 s | 127,841 | 0.0296 | 0.4442 | ninguno |
+| Groq · GPT-OSS 20B (native) | 96% (102 de 106) | 1.6 | 33 s | 61 s | 47,129 | 0.0089 | 0.1264 | `salida_invalida`: 1 |
+| Ollama · Llama 3.1 8B (native) | 90% (111 de 123) | 2.0 | 329 s | 476 s | 54,328 | 0.0015 | 0.0160 | `proveedor_no_disponible`: 4 |
+
+Las válidas a la primera cuentan cada llamada a un agente. Latencia, tokens y costo por corrida son de las corridas completas; el costo incluye el juez y, en el lote local, es solo el juez. El de Groq es un mínimo, porque sus rechazos no devuelven uso. Tope de tokens: 16,384 para Haiku y GPT-OSS, 8,192 para Llama ([Modelos comparados](#modelos-comparados)).
+
+### Detección de problemas sembrados
+
+| Modelo | Casos emparejados | Total | Ambigüedad | Inconsistencia | Faltante | En los 3 difíciles comunes |
+| --- | --- | --- | --- | --- | --- | --- |
+| Anthropic · Claude Haiku 5.5 (tool) * | 5 de 5 | 52% (13 de 25) | 71% (5 de 7) | 67% (4 de 6) | 33% (4 de 12) | 60% (9 de 15) |
+| Groq · GPT-OSS 20B (native) | 5 de 5 | 32% (8 de 25) | 14% (1 de 7) | 67% (4 de 6) | 25% (3 de 12) | 27% (4 de 15) |
+| Ollama · Llama 3.1 8B (native) | 3 de 5 † | 7% (1 de 15) | 20% (1 de 5) | 0% (0 de 3) | 0% (0 de 7) | 7% (1 de 15) |
+
+† No directamente comparable: Llama no completó `dificil-02` ni `dificil-05`, y el emparejador solo lee corridas completas. La última columna compara a los tres sobre `dificil-01`, `dificil-03` y `dificil-04`.
+
+Ningún modelo detectó 9 de los 25 problemas, 7 de ellos faltantes, como qué pasa con una entrega fallida en `dificil-01` o cómo se resuelven dos solicitudes para el mismo quirófano en `dificil-05`. La lista completa está en `tablas.md`. Los faltantes son el tipo más difícil para los tres modelos: el Revisor señala lo que está escrito mal más que lo que no está escrito.
+
+### Acuerdo del juez con la calificación humana
+
+| Criterio | Pares | Kappa ponderada | Spearman | Exacto | ±1 | Juez menos humano |
+| --- | --- | --- | --- | --- | --- | --- |
+| Todos | 32 | -0.02 [-0.08, 0.05] | -0.12 [-0.46, 0.23] | 9% [0%, 22%] | 38% [22%, 56%] | -1.78 [-2.09, -1.47] |
+| Claridad | 8 | 0.03 [-0.02, 0.08] | 0.27 [-0.15, 1.00] | 12% [0%, 38%] | 38% [12%, 75%] | -1.50 [-1.88, -1.00] |
+| Verificabilidad | 8 | -0.17 [-0.31, 0.00] | -0.58 [-0.96, -0.14] | 25% [0%, 62%] | 75% [38%, 100%] | -1.12 [-1.75, -0.50] |
+| Completitud | 8 | 0.01 [0.00, 0.05] | 0.29 [0.14, 0.75] | 0% [0%, 0%] | 0% [0%, 0%] | -2.50 [-2.88, -2.12] |
+| Consistencia | 8 | 0.05 [-0.05, 0.25] | 0.18 [-0.58, 0.72] | 0% [0%, 0%] | 38% [0%, 75%] | -2.00 [-2.62, -1.38] |
+
+Muestra de 8 corridas (3 de Haiku, 3 de GPT-OSS y 2 de Llama), 4 criterios cada una, calificadas a ciegas por una persona: el autor del proyecto. Intervalos al 95 % por bootstrap.
+
+Distribución de los 32 puntajes:
+
+| Quién | 1 | 2 | 3 | 4 | 5 | Media |
+| --- | --- | --- | --- | --- | --- | --- |
+| Juez | 0 | 14 | 15 | 3 | 0 | 2.66 |
+| Persona | 0 | 0 | 2 | 14 | 16 | 4.44 |
+
+**Observación del evaluador.** Las 8 corridas le parecieron de buena calidad y le costó distinguirlas, así que sus puntajes probablemente se concentran en 4 y 5.
+
+**Lectura.** La distribución lo confirma: 30 de los 32 puntajes humanos son 4 o 5, y la mitad son 5. Hay efecto techo. Pero la falta de acuerdo no se explica solo por él, porque el juez usa la otra mitad de la escala: 29 de sus 32 puntajes son 2 o 3, y ninguno es 5. Son dos rangos estrechos que casi no se tocan, separados por 1.78 puntos en promedio.
+
+- **Kappa y Spearman.** La kappa ponderada mide el acuerdo más allá del que darían las dos distribuciones por azar. Con tan poca variación dentro de cada calificador (la persona casi solo usa 4 y 5; el juez, 2 y 3), queda poca señal que ordenar, y la kappa y Spearman no pueden salir altas aunque los dos coincidieran en qué corrida es mejor. El techo limita estas dos métricas, y sus intervalos, anchos y alrededor de cero, no dicen si el juez ordena las corridas como la persona.
+- **Acuerdo exacto y a ±1.** Estas métricas no dependen de la variación, pero sí del nivel. El juez coincide en el valor exacto en 3 de 32 pares (9 %) y queda a un punto o menos en 12 (38 %). La causa es un desfase sistemático: el juez califica 1.78 puntos más bajo en promedio, y hasta 2.5 en completitud. Su prompt le pide severidad («un 5 es excepcional y, si duda entre dos valores, elige el menor»); la persona usó la escala con otro punto de referencia.
+- **Qué se puede afirmar.** En v1, la escala absoluta del juez no está calibrada con la de esta persona: un 2.7 del juez no equivale a «regular» para quien leyó las corridas. Las comparaciones entre modelos siguen siendo internamente consistentes, porque es el mismo juez para todos y su estabilidad es alta (kappa 0.74), pero su validez frente a una persona no quedó demostrada con esta muestra: un solo calificador, 8 corridas y casi sin variación.
+
+### Acuerdo del emparejador con la revisión humana
+
+La persona confirmó las 10 decisiones revisadas (10 de 10). El bootstrap da [100 %, 100 %] porque no hay variación que remuestrear; el intervalo exacto de Clopper-Pearson al 95 % va de 69 % a 100 %.
+
+### Estabilidad
+
+| Quién | Pares | Kappa | Acuerdo exacto |
+| --- | --- | --- | --- |
+| Juez (puntaje por criterio, ponderada cuadrática) | 40 | 0.74 [0.59, 0.85] | 72% [57%, 85%] |
+| Emparejador (detectado o no) | 25 | 0.91 [0.69, 1.00] | 96% [88%, 100%] |
+
+Al volver a calificar las mismas 10 corridas, el juez cambia 11 de 40 puntajes individuales, siempre por un punto. El emparejador cambió 1 de 25 decisiones.
+
+### Costo real
+
+| Concepto | USD |
+| --- | --- |
+| Lote de Haiku (generación y juez) | 0.4442 |
+| Lote de GPT-OSS 20B (generación y juez) | 0.1264 |
+| Lote de Llama 3.1 8B (solo juez) | 0.0160 |
+| Emparejador (los tres lotes) | 0.0146 |
+| Estabilidad del juez y del emparejador | 0.0196 |
+| **Resultados v1** | **0.6208** |
+| Lotes descartados por los [hallazgos de integración](#hallazgos-de-integración-antes-de-los-lotes-v1) | 0.5782 |
+| Diagnósticos (reproducir los rechazos de Groq), estimado | ~0.04 |
+| **Total de la fase** | **~1.24** |
+
+Los lotes descartados se guardaron fuera del repositorio; el de salida por herramienta de Groq y el de OpenAI registran 0 porque terminaron antes de que el costo de las llamadas fallidas se contara.
+
+### Conclusiones
+
+- **Haiku y GPT-OSS 20B quedan parejos en calidad según el juez:** 2.70 contra 2.82 en los 11 casos comunes. La diferencia es menor que la variación del propio juez (1 de cada 4 puntajes cambia al recalificar), así que no permite elegir entre los dos por calidad.
+- **GPT-OSS 20B es mucho más rápido y barato:** mediana de 33 s contra 148 s, y 0.0089 contra 0.0296 USD por corrida. Esto respalda que sea el modelo del modo gratuito.
+- **Haiku detecta más problemas sembrados:** 13 de 25 contra 8 de 25 en los mismos 5 casos. La ventaja está en las ambigüedades (5 de 7 contra 1 de 7). Con 25 problemas la diferencia es indicativa, no concluyente.
+- **El modelo local queda claramente detrás:** completa 11 de 15 corridas, tiene un global de 2.05 y detecta 1 de 15 problemas, con unos 5.5 minutos por corrida en una RTX 4060. Sirve como opción sin costo de generación, no como equivalente.
+- **Sin señales de autopreferencia:** el lote de Haiku, calificado por un juez de su mismo proveedor, no puntúa por encima de GPT-OSS. Eso no la descarta.
+- **El juez no está validado contra una persona:** la conclusión metodológica principal de v1 es que hace falta una rúbrica más fina y un juez calibrado antes de leer sus puntajes en escala absoluta.
 
 ## Comparación v1 contra v2
 
 Pendiente: comparación pareada (Wilcoxon) con tamaño del efecto. Se hará solo con Haiku y GPT-OSS 20B: el modelo local completó 11 de 15 casos en v1 y su tiempo límite corta salidas largas, así que no aporta una base pareada estable.
 
-## Limitaciones
+## Limitaciones y amenazas a la validez
 
-- La selección del modelo local usó tres requerimientos por modelo y una sola corrida de cada uno; no permite afirmar diferencias de calidad entre `llama3.1:8b` y `qwen3:8b`.
-- La latencia local depende del equipo (RTX 4060 de 8 GB) y de la configuración de Ollama descrita arriba.
+**Del conjunto y del diseño**
 
-Pendiente: el resto de las limitaciones de la evaluación formal.
+- 15 casos, escritos por el autor del proyecto, en español y de dominios administrativos. Los resultados no se generalizan a requerimientos técnicos, largos o en otros idiomas.
+- Una corrida por caso. No se mide la variación de cada modelo, y Haiku no acepta `temperature`, así que su generación usa el muestreo predeterminado.
+- La aprobación humana es automática: no mide cómo cambia el resultado cuando una persona edita las historias.
+
+**Del juez**
+
+- Es un solo modelo (`claude-haiku-5-5`), del mismo proveedor que uno de los modelos evaluados (`*`).
+- Es deliberadamente severo, y en v1 su escala absoluta no coincide con la de la única persona que lo validó: kappa de −0.02 y una diferencia media de −1.78 puntos (ver [Acuerdo del juez](#acuerdo-del-juez-con-la-calificación-humana)).
+- Recalificar la misma corrida cambia 28 % de los puntajes individuales. Diferencias de unas décimas entre modelos están dentro de ese ruido.
+
+**De la validación humana**
+
+- Un solo calificador, que además es el autor del proyecto y escribió los casos.
+- Solo 8 corridas, que le parecieron todas de buena calidad, y puntajes concentrados en 4 y 5: el efecto techo limita la kappa y Spearman.
+- El emparejador se validó con 10 decisiones: 10 de 10, con un intervalo exacto de 69 % a 100 %.
+
+**De la comparación entre modelos**
+
+- El modelo local completó 11 de 15 corridas por el tiempo límite de 180 s, así que su detección cubre 3 de 5 casos difíciles.
+- Su tope de tokens es 8,192, frente a 16,384 de los modelos por API.
+- Las tasas de detección se calculan sobre 25 problemas o menos.
+
+**De la operación**
+
+- La latencia local depende del equipo (RTX 4060 de 8 GB) y de la configuración de Ollama. La de las API depende de la carga del proveedor en el momento del lote.
+- El costo de Groq es un mínimo, porque sus rechazos de esquema no devuelven uso.
+- Precios y modelos son los verificados el 8 de noviembre de 2026.
+- El lote local se reanudó en un commit posterior que no tocó el camino de una corrida ([Modelos comparados](#modelos-comparados)).
+
+**De la selección del modelo local**
+
+- Usó tres requerimientos por modelo y una sola corrida de cada uno, así que no permite afirmar diferencias de calidad entre `llama3.1:8b` y `qwen3:8b`.
+
+## Mejoras para v2
+
+**Método**
+
+- Una rúbrica con criterios más finos o con anclas por nivel: qué distingue un 3 de un 4 en cada criterio, con un ejemplo corto de cada nivel. Así el juez y las personas usan la misma escala y el desfase de v1 se vuelve medible.
+- Calibrar al juez con esas anclas antes de los lotes, y revisar si la instrucción de severidad se mantiene.
+- Validar con al menos dos personas y reportar también su acuerdo entre sí.
+- Usar una muestra más grande y con más variedad de calidad, que incluya corridas débiles, para que la kappa tenga rango que medir.
+- Hacer tres corridas por caso para estimar la variación de cada modelo.
+- Comparar v1 contra v2 solo con Haiku y GPT-OSS 20B, de forma pareada (Wilcoxon) y con tamaño del efecto.
+
+**Prompts y orquestación** (candidatas en el plan de F8)
+
+- Darle al Revisor sus observaciones de la ronda anterior.
+- Limitar los casos por historia en QA.
+- Acotar el razonamiento del Revisor de GPT-OSS.
+- Alinear el tiempo límite de Ollama con su tope de tokens.
