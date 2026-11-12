@@ -34,5 +34,5 @@ Hay que hacerlo sin salir de la capa gratuita, con una Mac de Apple Silicon que 
 **Consecuencias:**
 - **Medición:** con la imagen y modelos simulados, la API ocupó 209 MiB en reposo y 235 MiB con 20 corridas simultáneas.
 - **Límite por instancia:** más de unos 10 streams por instancia agotan el pool de SQLAlchemy, que es de 20 conexiones. La concurrencia de Cloud Run lo evita repartiendo entre 2 instancias, y lo que exceda espera en la cola de Cloud Run.
-- **`roles.sql`:** ahora da al dueño de la base `SET` e `INHERIT` sobre los roles que crea, porque en Postgres 16 un dueño no superusuario, como `neondb_owner`, no puede entregarles esquemas sin eso.
+- **`roles.sql`:** ahora da al dueño de la base `SET` e `INHERIT` sobre los roles que crea, porque en Postgres 16 un dueño no superusuario, como `criteria_owner` en Neon, no puede entregarles esquemas sin eso.
 - **Desplegar requiere que el SHA esté en `main`:** un cambio de `production.env`, como el dominio de la web, se publica con commit y push antes de desplegar.

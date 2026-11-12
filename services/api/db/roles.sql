@@ -1,5 +1,5 @@
 -- Roles and schemas for CriterIA with least privilege. Idempotent: safe to run again.
--- Run as the database owner (local superuser or neondb_owner in Neon), before the migrations.
+-- Run as the database owner (local superuser or criteria_owner in Neon), before the migrations.
 -- Passwords are not set here; see docs/deploy.md.
 
 DO $$
@@ -19,7 +19,7 @@ BEGIN
 END
 $$;
 
--- Postgres 16 gives a non-superuser creator (neondb_owner in Neon) only ADMIN on the new roles;
+-- Postgres 16 gives a non-superuser creator (criteria_owner in Neon) only ADMIN on the new roles;
 -- handing the schemas and default privileges to them needs SET and INHERIT as well.
 GRANT migrator_role, web_role TO CURRENT_USER WITH INHERIT TRUE, SET TRUE;
 

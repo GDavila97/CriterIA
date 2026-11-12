@@ -41,10 +41,19 @@ Límites de Cloud Run usados arriba: tiempo límite por defecto de 5 min y máxi
 
 - `gcloud` (Google Cloud CLI): `gcloud auth login` y `gcloud auth configure-docker us-central1-docker.pkg.dev`.
 - Docker Desktop con `buildx`, que ya trae la emulación de `amd64`.
-- `gh` con sesión iniciada, `jq`, `psql` (opcional) y el CLI de 1Password (`op`).
+- `gh` con sesión iniciada, `jq`, `psql` (para las contraseñas de Neon) y el CLI de 1Password (`op`).
 - CLI de Vercel: `pnpm add --global vercel` y `vercel login`.
 
-En 1Password, una bóveda `CriterIA` con un elemento por secreto; los comandos lo leen con `op read -n "op://CriterIA/<elemento>/<campo>"` (`-n` evita el salto de línea final).
+Los secretos viven en la bóveda `CriterIA` de 1Password y los comandos los leen con `op read -n "op://CriterIA/<elemento>/<campo>"` (`-n` evita el salto de línea final). Cada rol de Neon tiene su elemento:
+
+| Elemento | Rol | Campos |
+| --- | --- | --- |
+| `neon-migrator-role` | `migrator_role` | `password`, `url` |
+| `neon-api-role` | `api_role` | `password`, `url` |
+| `neon-eval-writer` | `eval_writer` | `password`, `url` |
+| `neon-web-role` | `web_role` | `password`, `url`, `url-pooler` |
+
+`url` es la URL directa y `url-pooler` la del pooler (sección 2). Groq, Sentry, la OAuth App, `BETTER_AUTH_SECRET` y `CREDENTIALS_KEYS` son elementos propios de la misma bóveda.
 
 ## 1. GCP
 
@@ -75,9 +84,9 @@ Una sola vez. Al terminar, `gcloud config set project <proyecto>` y `export GCP_
 
 6. **Secretos.** Cada uno se crea desde 1Password y solo la cuenta de la API puede leerlo:
 
-   | Secreto | Variable de la API | Elemento de 1Password |
+   | Secreto | Variable de la API | Origen en 1Password |
    | --- | --- | --- |
-   | `criteria-database-url` | `DATABASE_URL` | URL directa de `api_role` (paso 2) |
+   | `criteria-database-url` | `DATABASE_URL` | `op://CriterIA/neon-api-role/url` (sección 2) |
    | `criteria-credentials-keys` | `CREDENTIALS_KEYS` | Llave nueva, nunca la local |
    | `criteria-groq-api-key` | `GROQ_API_KEY` | Clave de Groq del modo gratuito |
    | `criteria-sentry-dsn` | `SENTRY_DSN` | DSN del proyecto de Sentry de la API |
@@ -90,7 +99,7 @@ Una sola vez. Al terminar, `gcloud config set project <proyecto>` y `export GCP_
    unset key
    ```
 
-   Después, por cada secreto:
+   Después, por cada secreto, con su ruta de la tabla (para la base, `op://CriterIA/neon-api-role/url`):
 
    ```bash
    op read -n "op://CriterIA/<elemento>/<campo>" | gcloud secrets create <secreto> \
@@ -106,34 +115,53 @@ Una sola vez. Al terminar, `gcloud config set project <proyecto>` y `export GCP_
 
 ## 2. Neon
 
-El proyecto ya existe en `aws-us-east-2` (Ohio) con Postgres 16, base `neondb`.
+El proyecto ya existe en `aws-us-east-2` (Ohio) con Postgres 16. La base se llama `criteria` y su dueño es `criteria_owner`; no se usan `neondb` ni `neondb_owner`.
 
-1. **Roles.** En el editor SQL de Neon, con `neondb_owner`, pegar y ejecutar `services/api/db/roles.sql` completo. El script es idempotente.
+1. **Roles.** En el editor SQL de Neon, sobre la base `criteria` y como `criteria_owner`, pegar y ejecutar `services/api/db/roles.sql` completo. El script es idempotente.
    - **Qué crea:**
      - los roles `migrator_role`, `api_role`, `eval_writer` y `web_role`, con `LOGIN` y sin contraseña;
      - los esquemas `app` y `graph`, de `migrator_role`, y `auth`, de `web_role`.
-   - **Permisos del dueño:** le da `SET` e `INHERIT` sobre `migrator_role` y `web_role`. En Postgres 16, quien crea un rol sin ser superusuario solo recibe `ADMIN` y no podría entregarle esquemas. Se probó como dueño no superusuario en un Postgres 16 desechable.
+   - **Permisos del dueño:** le da a `criteria_owner` `SET` e `INHERIT` sobre `migrator_role` y `web_role`. En Postgres 16, quien crea un rol sin ser superusuario solo recibe `ADMIN` y no podría entregarle esquemas. Se probó como dueño no superusuario en un Postgres 16 desechable.
    - **`search_path` de la web:** fija `search_path=auth` en `web_role`, porque el pooler de Neon trabaja por transacción y no conserva opciones por conexión.
-2. **Contraseñas.** Generar en 1Password una por rol, de 40 o más letras y números y sin símbolos, para que la URL no necesite escapes. Pegarlas en el editor SQL de Neon:
+2. **Contraseñas.** Generar en 1Password, en el campo `password` de cada elemento, una contraseña de 40 o más letras y números, sin símbolos, para que la URL no necesite escapes. Neon no acepta `\password` de `psql`, así que se asignan con `ALTER ROLE … PASSWORD` desde `psql` en la Mac:
 
-   ```sql
-   ALTER ROLE migrator_role PASSWORD '<desde 1Password>';
-   ALTER ROLE api_role PASSWORD '<desde 1Password>';
-   ALTER ROLE eval_writer PASSWORD '<desde 1Password>';
-   ALTER ROLE web_role PASSWORD '<desde 1Password>';
+   ```bash
+   printf 'URL directa de criteria_owner: '; read -rs owner_url; echo
+   for role in migrator_role api_role eval_writer web_role; do
+     printf 'Contraseña de %s: ' "$role"; read -rs pw; echo
+     printf "ALTER ROLE %s PASSWORD :'pw';\n" "$role" | psql "$owner_url" -X -q -v ON_ERROR_STOP=1 -v pw="$pw"
+   done
+   unset owner_url pw
    ```
 
-3. **URLs.** Con el host directo (`<endpoint>.us-east-2.aws.neon.tech`) y el del pooler (`<endpoint>-pooler.us-east-2.aws.neon.tech`), armar en 1Password, siempre con `?sslmode=require`:
+   - **URL del dueño:** la de `criteria_owner` sobre `criteria`, del botón Connect del panel de Neon, con el host directo.
+   - **Cada contraseña:** se pega desde el campo `password` de su elemento cuando el bloque la pide.
+   - **Por qué así:** `read -s` no muestra lo que se pega, y `psql` recibe la sentencia por la entrada estándar y cita la contraseña con `:'pw'`. Ni las contraseñas ni la URL quedan en el historial del shell, en el de `psql` (que solo guarda sesiones interactivas) ni en el editor SQL de Neon.
+   - **Probado:** el bloque funciona en zsh y en bash. Se probó en un Postgres 16 desechable, con `criteria_owner` como dueño no superusuario.
+3. **URLs.** Se arman a mano y se guardan en 1Password, siempre con la base `criteria` y `?sslmode=require`:
 
-   | URL | Rol | Host | Destino |
-   | --- | --- | --- | --- |
-   | API | `api_role` | directo | Secret Manager `criteria-database-url` |
-   | Migraciones de la API | `migrator_role` | directo | GitHub, `MIGRATION_DATABASE_URL` |
-   | Migraciones de Better Auth | `web_role` | directo | GitHub, `AUTH_MIGRATION_DATABASE_URL` |
-   | Web | `web_role` | pooler | Vercel, `AUTH_DATABASE_URL` |
-   | Evaluación | `eval_writer` | directo | Solo la Mac, al publicar |
+   ```text
+   postgresql://<rol>:<password>@<host>/criteria?sslmode=require
+   ```
 
-**Control:** en el editor SQL, `SELECT rolname, rolconfig FROM pg_roles WHERE rolname LIKE '%_role' OR rolname = 'eval_writer';` lista los cuatro roles y `web_role` con `{search_path=auth}`.
+   - **Host directo:** el del panel, por ejemplo `ep-<id>.c-8.us-east-2.aws.neon.tech`.
+   - **Host con pooler:** se inserta `-pooler` después del primer segmento: `ep-<id>-pooler.c-8.us-east-2.aws.neon.tech`.
+
+   | URL | Rol | Host | En 1Password | Destino |
+   | --- | --- | --- | --- | --- |
+   | API | `api_role` | directo | `op://CriterIA/neon-api-role/url` | Secret Manager `criteria-database-url` |
+   | Migraciones de la API | `migrator_role` | directo | `op://CriterIA/neon-migrator-role/url` | GitHub, `MIGRATION_DATABASE_URL` |
+   | Migraciones de Better Auth | `web_role` | directo | `op://CriterIA/neon-web-role/url` | GitHub, `AUTH_MIGRATION_DATABASE_URL` |
+   | Web | `web_role` | pooler | `op://CriterIA/neon-web-role/url-pooler` | Vercel, `AUTH_DATABASE_URL` |
+   | Evaluación | `eval_writer` | directo | `op://CriterIA/neon-eval-writer/url` | Solo la Mac, al publicar |
+
+**Control:**
+- En el editor SQL, `SELECT rolname, rolconfig FROM pg_roles WHERE rolname LIKE '%_role' OR rolname = 'eval_writer';` lista los cuatro roles y `web_role` con `{search_path=auth}`.
+- La URL de la web entra por el pooler y cae en `auth` sin opciones de conexión. Este comando debe imprimir `web_role|auth`:
+
+  ```bash
+  psql "$(op read -n 'op://CriterIA/neon-web-role/url-pooler')" -XAtc "SELECT current_user, current_setting('search_path')"
+  ```
 
 Conexiones: con 0.25 CU, Neon admite 112 (105 para la aplicación). Cada instancia de la API abre hasta 30 (`DATABASE_POOL_SIZE` 10, más 10 de desborde y 10 para los checkpoints), así que 2 instancias usan como mucho 60. La web pasa por el pooler.
 
@@ -150,8 +178,8 @@ Conexiones: con 0.25 CU, Neon admite 112 (105 para la aplicación). Cada instanc
    - **Secretos:**
 
      ```bash
-     op read -n "op://CriterIA/<migrator_role>/url" | gh secret set MIGRATION_DATABASE_URL --env production
-     op read -n "op://CriterIA/<web_role directa>/url" | gh secret set AUTH_MIGRATION_DATABASE_URL --env production
+     op read -n "op://CriterIA/neon-migrator-role/url" | gh secret set MIGRATION_DATABASE_URL --env production
+     op read -n "op://CriterIA/neon-web-role/url" | gh secret set AUTH_MIGRATION_DATABASE_URL --env production
      ```
 
 **Control:** `gh secret list --env production` lista los dos nombres y nada más.
@@ -190,7 +218,7 @@ Dos proyectos: uno de Python (FastAPI) para la API y uno de Next.js para la web.
 | `NEXT_PUBLIC_CONTACT_URL` | Vacía o un `mailto:` | Vacía enlaza `https://github.com/GDavila97` en "Privacidad y datos" |
 | `BETTER_AUTH_SECRET` | Nuevo, de 48 bytes (`openssl rand -base64 48` hacia 1Password) | Sensitive. Firma sesiones y cifra la llave privada del JWKS: cambiarlo invalida las sesiones y obliga a borrar `auth.jwks` |
 | `BETTER_AUTH_URL` | `https://criter-ia.vercel.app` | Origen público, sin barra final |
-| `AUTH_DATABASE_URL` | URL de `web_role` con pooler | Sensitive |
+| `AUTH_DATABASE_URL` | `op://CriterIA/neon-web-role/url-pooler` | Sensitive. URL de `web_role` con pooler |
 | `AUTH_JWT_ISSUER`, `AUTH_JWT_AUDIENCE` | Vacías | Usan `BETTER_AUTH_URL`, igual que `AUTH_ISSUER` y `AUTH_AUDIENCE` de la API |
 | `EMAIL_PROVIDER` | `none` | Sin dominio no hay envío ([ADR 0020](adr/0020-github-first-sign-in-without-email.md)) |
 | `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` | De la OAuth App de producción | El secreto, sensitive |
@@ -266,7 +294,7 @@ Una vez, y de nuevo solo si cambian los resultados. Desde la Mac, con `eval_writ
 
 ```bash
 cd services/api
-export EVAL_DATABASE_URL="$(op read -n 'op://CriterIA/<eval_writer>/url')"
+export EVAL_DATABASE_URL="$(op read -n 'op://CriterIA/neon-eval-writer/url')"
 for file in eval/results/v1/*.json; do
   case "$(basename "$file")" in human.json|estabilidad.json|reporte.json) continue ;; esac
   uv run criteria eval publish --file "$file"
