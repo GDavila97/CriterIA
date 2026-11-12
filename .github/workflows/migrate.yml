@@ -1,0 +1,96 @@
+name: Migrate production
+
+# The only workflow that touches production, and only by hand. The migrate job waits for the
+# approval of the production environment, which also holds the two database URLs.
+on:
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: Full SHA of the commit to migrate (on main, with CI green)
+        required: true
+        type: string
+
+permissions: {}
+
+concurrency:
+  group: migrate-production
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    name: Verify the commit
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+      - name: The commit is on main and CI passed for it
+        env:
+          SHA: ${{ inputs.sha }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [[ ! $SHA =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::Pass the full 40-character commit SHA"
+            exit 1
+          fi
+          if ! git merge-base --is-ancestor "$SHA" origin/main; then
+            echo "::error::$SHA is not on main"
+            exit 1
+          fi
+          passed=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow ci.yml --branch main \
+            --commit "$SHA" --status success --json databaseId --jq length)
+          if [[ $passed -eq 0 ]]; then
+            echo "::error::CI has not passed on main for $SHA"
+            exit 1
+          fi
+
+  migrate:
+    name: Better Auth, then Alembic
+    needs: verify
+    runs-on: ubuntu-24.04
+    environment: production
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.sha }}
+          persist-credentials: false
+      # No dependency caches here: this job holds production credentials.
+      - uses: pnpm/action-setup@v6
+        with:
+          package_json_file: apps/web/package.json
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: apps/web/.nvmrc
+      - name: Install web dependencies
+        working-directory: apps/web
+        run: pnpm install --frozen-lockfile
+      # Better Auth creates auth."user", which the API migrations reference.
+      - name: Better Auth migrations as web_role
+        working-directory: apps/web
+        env:
+          AUTH_DATABASE_URL: ${{ secrets.AUTH_MIGRATION_DATABASE_URL }}
+          NEXT_PUBLIC_APP_ENV: production
+          BETTER_AUTH_URL: https://migrations.invalid
+        # The CLI only compares and creates tables; the real secret stays in Vercel.
+        run: BETTER_AUTH_SECRET="$(openssl rand -base64 48)" pnpm auth:migrate
+      - uses: astral-sh/setup-uv@v10.3.3
+        with:
+          version-file: services/api/pyproject.toml
+          enable-cache: false
+      - name: Install API dependencies
+        working-directory: services/api
+        run: uv sync --frozen --no-dev
+      - name: Alembic migrations as migrator_role
+        working-directory: services/api
+        env:
+          MIGRATION_DATABASE_URL: ${{ secrets.MIGRATION_DATABASE_URL }}
+        run: |
+          uv run --frozen --no-dev alembic upgrade head
+          uv run --frozen --no-dev alembic current
