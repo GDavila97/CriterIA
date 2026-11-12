@@ -13,7 +13,7 @@ concurrency:
 
 jobs:
   workflows:
-    name: Workflow lint
+    name: Workflow and script lint
     runs-on: ubuntu-24.04
     env:
       ACTIONLINT_VERSION: 1.7.12
@@ -29,6 +29,9 @@ jobs:
           tar -xzf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP" actionlint
       - name: Actionlint
         run: '"$RUNNER_TEMP/actionlint" -color'
+      # The release scripts run by hand against production; the runner image ships shellcheck.
+      - name: Shellcheck
+        run: shellcheck -x scripts/*.sh scripts/lib/*.sh services/api/scripts/*.sh apps/web/scripts/*.sh
 
   api:
     name: API
