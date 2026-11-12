@@ -182,40 +182,73 @@ export function EvaluationBoard({
               <table className={styles.table}>
                 <thead>
                   <tr>
-                    <th scope="col">Modelo</th>
-                    <th scope="col">Completas</th>
-                    <th scope="col">Puntaje del juez</th>
-                    <th scope="col">Juez en casos comunes</th>
-                    <th scope="col">Válidas a la primera</th>
-                    <th scope="col">Latencia p50</th>
-                    <th scope="col">Latencia p95</th>
-                    <th scope="col">Costo por corrida</th>
-                    <th scope="col">Juez</th>
+                    <th scope="col" rowSpan={2}>
+                      Modelo
+                    </th>
+                    <th scope="col" rowSpan={2}>
+                      Completas
+                    </th>
+                    <th scope="col" rowSpan={2}>
+                      <abbr title="Llamadas a un agente con salida válida al primer intento">
+                        Válidas 1.ª
+                      </abbr>
+                    </th>
+                    <th scope="colgroup" colSpan={2} className={styles.group}>
+                      Latencia
+                    </th>
+                    <th scope="col" rowSpan={2}>
+                      <abbr title="Costo medio por corrida completa, en dólares">Costo</abbr>
+                    </th>
+                    <th scope="colgroup" colSpan={2} className={styles.group}>
+                      Puntaje del juez
+                    </th>
+                  </tr>
+                  <tr>
+                    <th scope="col">
+                      <abbr title="Mediana de la latencia por corrida completa">p50</abbr>
+                    </th>
+                    <th scope="col">
+                      <abbr title="Percentil 95 de la latencia por corrida completa">p95</abbr>
+                    </th>
+                    <th scope="col">
+                      <abbr title="Promedio de todas las corridas completas">Todas</abbr>
+                    </th>
+                    <th scope="col">
+                      <abbr title="Promedio de los casos que todos los modelos completaron">
+                        Comunes
+                      </abbr>
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {shown.map((l) => (
                     <tr key={l.id}>
-                      <td>
+                      <th scope="row">
                         {name(l)}
                         {l.judge_same_provider && ' *'}
-                        <span className={styles.mode}>salida {l.output_mode}</span>
-                      </td>
+                        <span className={styles.mode}>
+                          salida {l.output_mode} · juez {l.judge_version}
+                        </span>
+                      </th>
                       <td>
-                        {l.completed} de {l.cases}
+                        {l.completed}/{l.cases}
                       </td>
-                      <td>{score(l.score_mean)}</td>
-                      <td>{score(l.score_mean_common)}</td>
                       <td>{percent(l.valid_rate)}</td>
                       <td>{seconds(l.latency_p50_ms)}</td>
                       <td>{seconds(l.latency_p95_ms)}</td>
                       <td>{dollars(l.cost_usd_avg)}</td>
-                      <td>{l.judge_version}</td>
+                      <td>{score(l.score_mean)}</td>
+                      <td>{score(l.score_mean_common)}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
+            <p className={styles.note}>
+              Válidas 1.ª: llamadas a un agente con salida válida al primer intento. Latencia p50 y
+              p95: mediana y percentil 95 por corrida completa. Costo: promedio por corrida
+              completa, en dólares.
+            </p>
             <p className={styles.note}>
               El puntaje del juez usa todas las corridas completas de cada modelo; el de casos
               comunes, solo los {common} casos que todos los modelos de esta versión completaron,

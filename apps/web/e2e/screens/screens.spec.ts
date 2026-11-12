@@ -145,7 +145,7 @@ test('evaluación, historial, privacidad y cuenta', async ({
 }, testInfo) => {
   await page.goto('/evaluacion');
   const table = page.getByRole('table');
-  await expect(table.getByRole('row')).toHaveCount(4);
+  await expect(table.getByRole('row')).toHaveCount(5);
   await expect(table.getByText('Anthropic · Claude Haiku 5.5 *')).toBeVisible();
   await expect(
     page.getByRole('heading', { name: 'Acuerdo del juez con una persona' }),
@@ -175,4 +175,21 @@ test('con movimiento reducido nada se desplaza, solo se funde', async ({ page })
     );
   });
   expect(distances).toEqual(['0px', '0px', '0px']);
+});
+
+test('la tabla de evaluación cabe completa a 1280 px', async ({ page, isMobile }) => {
+  test.skip(isMobile, 'a 390 px la tabla se desplaza dentro de su caja');
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto('/evaluacion');
+  const box = page.getByRole('region', { name: 'Tabla de comparación por modelo' });
+  await expect(box.getByText('Anthropic · Claude Haiku 5.5 *')).toBeVisible();
+
+  const widths = await box.evaluate((element) => ({
+    content: element.scrollWidth,
+    visible: element.clientWidth,
+  }));
+
+  expect(widths.content, 'la tabla no se desborda dentro de su caja').toBeLessThanOrEqual(
+    widths.visible,
+  );
 });

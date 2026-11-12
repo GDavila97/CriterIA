@@ -74,13 +74,16 @@ describe('EvaluationBoard', () => {
     expect(screen.getByLabelText('Versión de prompts')).toHaveValue('v2');
     await userEvent.selectOptions(screen.getByLabelText('Versión de prompts'), 'v1');
     const table = screen.getByRole('table');
-    expect(within(table).getAllByRole('row')).toHaveLength(4);
+    expect(within(table).getAllByRole('row')).toHaveLength(5);
     const haiku = within(table)
       .getByText(/Anthropic · Claude Haiku 5\.5/)
       .closest('tr');
     expect(haiku).toHaveTextContent(
-      'Anthropic · Claude Haiku 5.5 *salida tool14 de 153.853.90100%',
+      'Anthropic · Claude Haiku 5.5 *salida tool · juez v114/15100%33 s22 s$0.00403.853.90',
     );
+    expect(
+      within(table).getByTitle('Llamadas a un agente con salida válida al primer intento'),
+    ).toHaveTextContent('Válidas 1.ª');
     expect(screen.getByText(/solo los 11 casos que todos los modelos/)).toBeInTheDocument();
     expect(
       within(screen.getByRole('region', { name: 'Mayor puntaje del juez' })).getByText(
