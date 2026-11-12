@@ -171,10 +171,10 @@ Las dos vistas de la corrida (clásica y, en F9, oficina) son widgets sobre la m
 
 [ADR 0008](adr/0008-better-auth-and-api-jwt.md), ajustado por el [ADR 0020](adr/0020-github-first-sign-in-without-email.md).
 
-- Better Auth vive en `src/shared/lib/auth`: `options.ts` arma la configuración (pura y probada), `server.ts` la instancia con un pool de `pg` sobre el esquema `auth` como `web_role`, y `client.ts` es el cliente del navegador. Se construye al primer uso, así que `next build` no necesita los secretos del servidor.
+- Better Auth vive en `src/shared/lib/auth`: `options.ts` arma la configuración (pura y probada), `server.ts` la instancia con un pool de `pg` como `web_role`, cuyo `search_path=auth` vive en el rol para que funcione detrás del pooler de Neon, y `client.ts` es el cliente del navegador. Se construye al primer uso, así que `next build` no necesita los secretos del servidor.
 - "Continuar con GitHub" con el scope `user:email`; los tokens de GitHub se descartan antes de llegar a la base. Correo y contraseña con 12 caracteres como mínimo. Nunca se vincula GitHub con una cuenta local cuyo correo no esté verificado.
 - `EMAIL_PROVIDER` (`none`, `smtp` o `resend`) decide si hay verificación y recuperación; el envío está en `src/shared/lib/email`.
-- Rate limit de Better Auth guardado en la tabla `auth.rateLimit` (sirve entre instancias serverless): registro por IP (20 por hora), inicio de sesión por IP y además por cuenta (10 cada 15 minutos, con el correo guardado solo como hash).
+- Rate limit de Better Auth guardado en la tabla `auth.rateLimit` (sirve entre instancias serverless): registro por IP (20 por hora), inicio de sesión por IP y además por cuenta. La IP es la primera dirección de `x-forwarded-for`, la cabecera que Vercel sobrescribe (10 cada 15 minutos, con el correo guardado solo como hash).
 - Sesión en cookie httpOnly y SameSite=Lax, con `Secure` y prefijo `__Secure-` en producción.
 - El plugin JWT emite tokens EdDSA de 5 minutos con `iss`, `aud` y `email_verified`. En el navegador, `shared/api/token.ts` los guarda solo en memoria (un closure), los renueva un minuto antes de que expiren y los envía como `Authorization: Bearer`.
 - El stream usa `fetch` con un parser SSE propio (`shared/lib/sse`), porque `EventSource` no envía cabeceras: reconecta con `Last-Event-ID`, espera ante `409 stream_activo`, muestra los latidos como conexión viva y se cancela al salir de la página.
@@ -200,6 +200,10 @@ Eventos SSE: todos llevan `run_id`, `seq` (entero creciente), `ts` y `agent`. El
 - JWT de la web verificados con JWKS, solo algoritmos asimétricos, y correo verificado obligatorio para crear corridas y guardar claves. Errores con código y sin eco de la entrada, CORS limitado al origen de la web y sin credenciales, límite de tamaño del cuerpo y logs sin datos personales ([api.md](api.md)).
 - La clave propia es un `SecretStr` que solo vive en la selección de la corrida. No entra en el estado del grafo, en los checkpoints, en los eventos ni en los logs, y los errores de validación de una selección nunca contienen los valores enviados.
 - El requerimiento y los artefactos llegan a los modelos como JSON dentro de etiquetas, con `<`, `>` y `&` escapados, para que ningún texto pueda cerrar la etiqueta ni pasar por instrucción.
+
+## Despliegue
+
+Manual y con el mismo SHA: migraciones en un workflow de GitHub con aprobación, la API con `services/api/scripts/deploy.sh` (imagen `amd64` construida en local, Cloud Run con 512 MiB, concurrencia 10 y de 0 a 2 instancias) y la web con `apps/web/scripts/deploy.sh` (Vercel, región `cle1`). `scripts/smoke-prod.sh` comprueba el resultado. Pasos y valores en [deploy.md](deploy.md); decisiones en el [ADR 0022](adr/0022-production-deployment.md).
 
 ## Principios
 

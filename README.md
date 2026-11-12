@@ -30,7 +30,7 @@ Flujo: Analista → pausa para que la persona apruebe o edite → QA → Revisor
 
 ## Estado
 
-Fase F5 (evaluación v1): la web en Next.js está conectada a la API real, con registro, vista clásica, panel del agente, historial, "Modelos y claves", "Privacidad y datos" y el tablero de evaluación. La evaluación v1 comparó Claude Haiku 5.5, GPT-OSS 20B (Groq) y Llama 3.1 8B (local) sobre 15 requerimientos. Los resultados están en el [reporte v1](docs/evaluation/report-v1.md) y en el tablero. La vista oficina llega en F9 y el despliegue en F6.
+Fase F5 (evaluación v1): la web en Next.js está conectada a la API real, con registro, vista clásica, panel del agente, historial, "Modelos y claves", "Privacidad y datos" y el tablero de evaluación. La evaluación v1 comparó Claude Haiku 5.5, GPT-OSS 20B (Groq) y Llama 3.1 8B (local) sobre 15 requerimientos. Los resultados están en el [reporte v1](docs/evaluation/report-v1.md) y en el tablero. El despliegue (F6) está preparado para hacerse a mano, paso a paso, con [deploy.md](docs/deploy.md). La vista oficina llega en F9.
 
 ## Stack
 
@@ -56,6 +56,8 @@ Detalle en [docs/architecture.md](docs/architecture.md), endpoints en [docs/api.
 ├── apps/web/            Next.js (FSD)
 │   ├── app/             rutas del App Router (delgadas)
 │   ├── e2e/             pruebas de Playwright con axe
+│   ├── smoke/           prueba de navegador para producción (scripts/smoke-prod.sh)
+│   ├── scripts/         despliegue manual a Vercel
 │   └── src/             app, pages, widgets, features, entities, shared
 ├── services/api/        API en Python (hexagonal)
 │   ├── src/criteria/    domain, application, ports, adapters, config
@@ -63,13 +65,16 @@ Detalle en [docs/architecture.md](docs/architecture.md), endpoints en [docs/api.
 │   ├── config/          modelos permitidos y precios
 │   ├── contract/        JSON Schema de cuerpos y eventos, fuente de los tipos de la web
 │   ├── db/              roles y esquemas de Postgres
+│   ├── deploy/          valores no secretos de producción y limpieza de imágenes
+│   ├── scripts/         despliegue manual a Cloud Run
 │   ├── migrations/      Alembic
 │   ├── examples/        requerimientos de ejemplo para la CLI
 │   ├── tests/
 │   ├── docker-compose.yml  Postgres local
 │   └── Dockerfile
 ├── docs/                arquitectura, API, ADRs, despliegue y evaluación
-└── .github/             CI y Dependabot
+├── scripts/             prueba de humo de producción y verificaciones comunes de despliegue
+└── .github/             CI, migraciones manuales de producción y Dependabot
 ```
 
 ## Desarrollo local
@@ -197,6 +202,15 @@ Web (`apps/web`, con `pnpm`):
 | `pnpm e2e` | prepara una base `criteria_e2e` y corre Playwright: flujos, correo con Mailpit y pantallas en escritorio y 390 px, claro y oscuro, con axe y CSP. Levanta la API con `MODEL_BACKEND=fake`, dos servidores de la web y un sustituto local de GitHub; necesita Postgres y Mailpit del `docker compose` |
 | `pnpm audit` | `pnpm audit --audit-level=moderate` |
 
+Despliegue (manual, desde la raíz; ver [deploy.md](docs/deploy.md)):
+
+| Script | Qué hace |
+| --- | --- |
+| `gh workflow run migrate.yml -f sha=<sha>` | migraciones de producción de Better Auth y Alembic, con aprobación |
+| `services/api/scripts/deploy.sh <sha>` | construye la imagen `amd64` del SHA y la despliega en Cloud Run (`DRY_RUN=1` solo muestra los comandos) |
+| `apps/web/scripts/deploy.sh <sha>` | despliega la web del mismo SHA en Vercel |
+| `scripts/smoke-prod.sh <api_url> <web_url>` | prueba de humo: salud, 401, CORS, cabeceras, CSP en el navegador y tablero |
+
 ## Variables de entorno
 
 Las listas completas, con la fase en que se usa cada variable, están en [services/api/.env.example](services/api/.env.example) y [apps/web/.env.example](apps/web/.env.example). Nunca se versionan valores reales.
@@ -224,7 +238,7 @@ Las listas completas, con la fase en que se usa cada variable, están en [servic
 | `CREDENTIALS_KEYS`, `CREDENTIALS_ACTIVE_KEY` | API | Sí (servidor) | Llaves versionadas de AES-256-GCM para las claves de los usuarios |
 | `CREDENTIAL_CHECKS_PER_HOUR` | API | No | Validaciones de claves por usuario y hora (10) |
 | `USER_RUNS_PER_HOUR`, `USER_RUNS_PER_DAY` | API | No | Corridas por usuario (5 por hora, 20 por día) |
-| `GLOBAL_DAILY_RUNS`, `GLOBAL_DAILY_BUDGET_USD` | API | No | Cupo diario de corridas con claves del servidor (100 y 1 dólar) |
+| `GLOBAL_DAILY_RUNS`, `GLOBAL_DAILY_BUDGET_USD` | API | No | Cupo diario de corridas con claves del servidor (25 y 0.09 dólares por defecto; 11 y 0.10 en producción) |
 | `RUN_TTL_MINUTES`, `SSE_HEARTBEAT_SECONDS`, `MAX_REQUEST_BYTES`, `DATABASE_POOL_SIZE` | API | No | Corridas abandonadas, latido del stream, tamaño del cuerpo y pool de conexiones |
 | `TEST_DATABASE_ADMIN_URL` | Pruebas | No | Superusuario de un Postgres de pruebas; sin ella, las pruebas de integración se omiten |
 | `CRITERIA_USER_API_KEY` | CLI | No | Clave propia para `openai_compatible` o, con `--clave-propia`, para el proveedor de generación; se exporta en la sesión, no va en `.env` |
@@ -232,6 +246,7 @@ Las listas completas, con la fase en que se usa cada variable, están en [servic
 | `NEXT_PUBLIC_API_URL` | Web | Sí | URL de la API; también entra en `connect-src` de la CSP. En producción debe ser `https` |
 | `NEXT_PUBLIC_SENTRY_DSN` | Web | No | Sentry se activa solo con DSN |
 | `NEXT_PUBLIC_OFFICE_VIEW` | Web | No | Muestra el cambio de vista; `false` hasta F9 |
+| `NEXT_PUBLIC_CONTACT_URL` | Web | No | Contacto de "Privacidad y datos" (`https` o `mailto:`); vacía enlaza el perfil de GitHub |
 | `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL` | Web | Sí (servidor) | Secreto de sesión (32+ caracteres) y origen público de la web |
 | `AUTH_DATABASE_URL` | Web | Sí (servidor) | Postgres como `web_role` (solo el esquema `auth`) |
 | `AUTH_JWT_ISSUER`, `AUTH_JWT_AUDIENCE` | Web | No | `iss` y `aud` del JWT para la API; vacías usan `BETTER_AUTH_URL` |

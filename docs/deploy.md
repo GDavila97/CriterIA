@@ -1,116 +1,390 @@
 # Despliegue
 
-> Esqueleto. Se completa en F6 con los valores reales; ningún paso de esta guía corre desde GitHub Actions.
+Todos los despliegues son manuales ([ADR 0009](adr/0009-cloud-run-and-vercel.md), [ADR 0022](adr/0022-production-deployment.md)). GitHub Actions solo corre el CI y, a mano y con aprobación, el workflow de migraciones. Secuencia, siempre con el mismo SHA:
 
-Todos los despliegues son manuales ([ADR 0009](adr/0009-cloud-run-and-vercel.md)). Secuencia: push → CI verde → migraciones → API → web, siempre con el mismo SHA.
+```text
+push → CI verde → migraciones (workflow manual) → API (Cloud Run) → web (Vercel) → prueba de humo
+```
 
-## Requisitos previos
+Los secretos van de 1Password directo a cada servicio con `op read`, nunca a archivos, chats ni capturas. En esta guía, `<…>` marca un valor que se pone en el momento; ningún valor real vive en el repositorio.
 
-- Proyecto de GCP con facturación, alerta de presupuesto de 1 dólar y región `us-central1`.
-- Artifact Registry para la imagen de la API.
-- Secret Manager con los secretos de la API, cargados desde 1Password.
-- Proyecto de Vercel con `deploymentEnabled.main: false`.
-- Base de Neon de producción con los roles `web_role`, `api_role`, `migrator_role` y `eval_writer`.
+## Decisiones
 
-## Roles de la base
+| Tema | Decisión | Por qué |
+| --- | --- | --- |
+| Imagen de la API | Se construye en la Mac para `linux/amd64` con `docker buildx` y se sube a Artifact Registry | Costo cero en GCP y la imagen sale exactamente del SHA verificado. La compilación emulada tardó 79 s. Cloud Build daría 2,500 minutos gratis al mes en `e2-standard-2`, pero exige su API, permisos para su cuenta de servicio y un bucket para el código; ese bucket es multirregional y la capa gratuita de Cloud Storage solo cubre `us-east1`, `us-west1` y `us-central1` |
+| CPU y facturación | 1 vCPU, CPU solo durante las peticiones (`--cpu-throttling`), primera generación | Con menos de 1 vCPU, Cloud Run exige concurrencia 1. La primera generación arranca más rápido y admite desde 128 MiB |
+| Memoria | 512 MiB | Medido con la imagen `amd64` y modelos simulados: 209 MiB en reposo y 235 MiB de pico con 20 corridas simultáneas |
+| Concurrencia | 10 peticiones por instancia, máximo 2 instancias | Cada stream retiene una conexión de la base para su lock ([ADR 0018](adr/0018-run-lifecycle-bound-to-the-stream.md)). Con 20 streams en una instancia se agotó el pool de SQLAlchemy (10 más 10 de desborde) y fallaron 14 de 20; con 10, terminaron 10 de 10 |
+| Tiempo límite de petición | 900 s (15 min) | El grafo solo avanza con el stream abierto. En la evaluación v1, una corrida completa tardó como p95 61 s con GPT-OSS 20B y 207 s con Haiku. 15 min dejan margen para las claves de usuario y para los dos intentos por llamada. Google recomienda tolerar reconexiones por encima de 15 min, y la web ya reconecta con `Last-Event-ID` |
+| Base de la web | URL con pooler de Neon | Neon recomienda el pooler para funciones serverless. Better Auth no usa locks de sesión, y `search_path=auth` vive en `web_role`, no en la conexión. Las migraciones de Better Auth usan la URL directa |
+| Base de la API | URL directa | El lock del stream es un advisory lock de sesión, que el pooler por transacción no conserva |
+| IP del cliente | Solo `x-forwarded-for`, primera dirección | Vercel documenta que sobrescribe esa cabecera con la IP del cliente para evitar suplantación; de `x-real-ip` no lo promete |
+| Región de la web | `cle1` (Cleveland) | Junto a Neon en `aws-us-east-2` (Ohio); Neon no tiene regiones en GCP |
 
-Una sola vez por base (y de nuevo si cambia el script, que es idempotente), con el rol dueño de la base (`neondb_owner` en Neon):
+### Capa gratuita y costos
+
+Cifras de la tabla de la capa gratuita de Google Cloud ([free-cloud-features](https://cloud.google.com/free/docs/free-cloud-features)), por cuenta de facturación y por mes:
+
+| Servicio | Gratis al mes | Uso previsto |
+| --- | --- | --- |
+| Cloud Run (facturación por petición) | 2 millones de peticiones, 360,000 GB-segundos, 180,000 vCPU-segundos y 1 GB de salida desde Norteamérica | Una corrida gratuita mantiene el stream abierto alrededor de 1 min: 11 corridas diarias son unos 20,000 vCPU-segundos al mes. Con `--min-instances=0` no hay instancias encendidas sin tráfico |
+| Artifact Registry | 0.5 GB de almacenamiento | Unos 110 MB por imagen. La política de limpieza conserva las 3 más recientes |
+| Secret Manager | 6 versiones activas de secretos y 10,000 accesos | 4 secretos. Al rotar uno, se destruye la versión anterior |
+| Cloud Build | 2,500 minutos de compilación en `e2-standard-2` | No se usa |
+
+Las alertas de presupuesto solo avisan: «doesn't automatically cap Google Cloud […] usage or spending» ([budgets](https://cloud.google.com/billing/docs/how-to/budgets)). Lo que limita el gasto es `--max-instances=2`, la CPU solo durante las peticiones y el tope diario de Groq.
+
+Límites de Cloud Run usados arriba: tiempo límite por defecto de 5 min y máximo de 60 min ([request-timeout](https://cloud.google.com/run/docs/configuring/request-timeout)); con menos de 1 vCPU, «Maximum concurrency must be set to `1`» ([cpu](https://cloud.google.com/run/docs/configuring/services/cpu)); memoria mínima de 128 MiB en primera generación y de 512 MiB en segunda ([memory-limits](https://cloud.google.com/run/docs/configuring/services/memory-limits)).
+
+## Herramientas en la Mac
+
+- `gcloud` (Google Cloud CLI): `gcloud auth login` y `gcloud auth configure-docker us-central1-docker.pkg.dev`.
+- Docker Desktop con `buildx`, que ya trae la emulación de `amd64`.
+- `gh` con sesión iniciada, `jq`, `psql` (opcional) y el CLI de 1Password (`op`).
+- CLI de Vercel: `pnpm add --global vercel` y `vercel login`.
+
+En 1Password, una bóveda `CriterIA` con un elemento por secreto; los comandos lo leen con `op read -n "op://CriterIA/<elemento>/<campo>"` (`-n` evita el salto de línea final).
+
+## 1. GCP
+
+Una sola vez. Al terminar, `gcloud config set project <proyecto>` y `export GCP_PROJECT_ID=<proyecto>`.
+
+1. **Proyecto y facturación.** Crear el proyecto (`gcloud projects create <proyecto>`) y ligarlo a la cuenta de facturación en la consola (Billing > Account management).
+2. **Alerta de presupuesto de 1 USD.** Billing > Budgets & alerts > Create budget: alcance el proyecto, monto 1 USD y avisos al 50 %, 90 % y 100 % por correo.
+3. **APIs.**
+
+   ```bash
+   gcloud services enable run.googleapis.com artifactregistry.googleapis.com secretmanager.googleapis.com
+   ```
+
+4. **Artifact Registry**, con tags inmutables y la política de limpieza del repositorio:
+
+   ```bash
+   gcloud artifacts repositories create criteria --repository-format=docker \
+     --location=us-central1 --immutable-tags
+   gcloud artifacts repositories set-cleanup-policies criteria --location=us-central1 \
+     --policy=services/api/deploy/artifact-cleanup.json --no-dry-run
+   ```
+
+5. **Cuenta de servicio** de la API, sin roles de proyecto:
+
+   ```bash
+   gcloud iam service-accounts create criteria-api --display-name="CriterIA API"
+   ```
+
+6. **Secretos.** Cada uno se crea desde 1Password y solo la cuenta de la API puede leerlo:
+
+   | Secreto | Variable de la API | Elemento de 1Password |
+   | --- | --- | --- |
+   | `criteria-database-url` | `DATABASE_URL` | URL directa de `api_role` (paso 2) |
+   | `criteria-credentials-keys` | `CREDENTIALS_KEYS` | Llave nueva, nunca la local |
+   | `criteria-groq-api-key` | `GROQ_API_KEY` | Clave de Groq del modo gratuito |
+   | `criteria-sentry-dsn` | `SENTRY_DSN` | DSN del proyecto de Sentry de la API |
+
+   La llave de las claves de usuario se genera una vez, directo a 1Password:
+
+   ```bash
+   key="1:$(openssl rand -base64 32)"
+   op item create --vault=CriterIA --category=password --title="CriterIA CREDENTIALS_KEYS" "password=$key"
+   unset key
+   ```
+
+   Después, por cada secreto:
+
+   ```bash
+   op read -n "op://CriterIA/<elemento>/<campo>" | gcloud secrets create <secreto> \
+     --replication-policy=user-managed --locations=us-central1 --data-file=-
+   gcloud secrets add-iam-policy-binding <secreto> \
+     --member="serviceAccount:criteria-api@$GCP_PROJECT_ID.iam.gserviceaccount.com" \
+     --role=roles/secretmanager.secretAccessor
+   ```
+
+   Para cambiar uno: `op read -n … | gcloud secrets versions add <secreto> --data-file=-`, desplegar de nuevo la API (los secretos se leen al arrancar cada instancia) y destruir la versión anterior con `gcloud secrets versions destroy <versión> --secret=<secreto>`.
+
+**Control:** `gcloud secrets list` muestra los 4 secretos, y `gcloud secrets get-iam-policy <secreto>` muestra solo a `criteria-api` como `secretAccessor`.
+
+## 2. Neon
+
+El proyecto ya existe en `aws-us-east-2` (Ohio) con Postgres 16, base `neondb`.
+
+1. **Roles.** En el editor SQL de Neon, con `neondb_owner`, pegar y ejecutar `services/api/db/roles.sql` completo. El script es idempotente.
+   - **Qué crea:**
+     - los roles `migrator_role`, `api_role`, `eval_writer` y `web_role`, con `LOGIN` y sin contraseña;
+     - los esquemas `app` y `graph`, de `migrator_role`, y `auth`, de `web_role`.
+   - **Permisos del dueño:** le da `SET` e `INHERIT` sobre `migrator_role` y `web_role`. En Postgres 16, quien crea un rol sin ser superusuario solo recibe `ADMIN` y no podría entregarle esquemas. Se probó como dueño no superusuario en un Postgres 16 desechable.
+   - **`search_path` de la web:** fija `search_path=auth` en `web_role`, porque el pooler de Neon trabaja por transacción y no conserva opciones por conexión.
+2. **Contraseñas.** Generar en 1Password una por rol, de 40 o más letras y números y sin símbolos, para que la URL no necesite escapes. Pegarlas en el editor SQL de Neon:
+
+   ```sql
+   ALTER ROLE migrator_role PASSWORD '<desde 1Password>';
+   ALTER ROLE api_role PASSWORD '<desde 1Password>';
+   ALTER ROLE eval_writer PASSWORD '<desde 1Password>';
+   ALTER ROLE web_role PASSWORD '<desde 1Password>';
+   ```
+
+3. **URLs.** Con el host directo (`<endpoint>.us-east-2.aws.neon.tech`) y el del pooler (`<endpoint>-pooler.us-east-2.aws.neon.tech`), armar en 1Password, siempre con `?sslmode=require`:
+
+   | URL | Rol | Host | Destino |
+   | --- | --- | --- | --- |
+   | API | `api_role` | directo | Secret Manager `criteria-database-url` |
+   | Migraciones de la API | `migrator_role` | directo | GitHub, `MIGRATION_DATABASE_URL` |
+   | Migraciones de Better Auth | `web_role` | directo | GitHub, `AUTH_MIGRATION_DATABASE_URL` |
+   | Web | `web_role` | pooler | Vercel, `AUTH_DATABASE_URL` |
+   | Evaluación | `eval_writer` | directo | Solo la Mac, al publicar |
+
+**Control:** en el editor SQL, `SELECT rolname, rolconfig FROM pg_roles WHERE rolname LIKE '%_role' OR rolname = 'eval_writer';` lista los cuatro roles y `web_role` con `{search_path=auth}`.
+
+Conexiones: con 0.25 CU, Neon admite 112 (105 para la aplicación). Cada instancia de la API abre hasta 30 (`DATABASE_POOL_SIZE` 10, más 10 de desborde y 10 para los checkpoints), así que 2 instancias usan como mucho 60. La web pasa por el pooler.
+
+## 3. GitHub
+
+1. **OAuth App de producción.** Settings > Developer settings > OAuth Apps, una app distinta de la de desarrollo:
+   - Homepage URL: el origen de la web en Vercel.
+   - Authorization callback URL: `https://<web>/api/auth/callback/github`.
+   - Solo pide `user:email`; los tokens de GitHub no se guardan.
+   - El Client ID y un Client secret nuevo van a 1Password.
+2. **Environment `production`.** Settings > Environments > New environment:
+   - **Required reviewers:** tu usuario. En un repositorio privado hace falta un plan de pago para esta regla.
+   - **Deployment branches and tags:** solo `main`.
+   - **Secretos:**
+
+     ```bash
+     op read -n "op://CriterIA/<migrator_role>/url" | gh secret set MIGRATION_DATABASE_URL --env production
+     op read -n "op://CriterIA/<web_role directa>/url" | gh secret set AUTH_MIGRATION_DATABASE_URL --env production
+     ```
+
+**Control:** `gh secret list --env production` lista los dos nombres y nada más.
+
+## 4. Sentry
+
+Dos proyectos: uno de Python (FastAPI) para la API y uno de Next.js para la web.
+
+- **DSN de la API:** va a Secret Manager (`criteria-sentry-dsn`).
+- **DSN de la web:** va a Vercel como `NEXT_PUBLIC_SENTRY_DSN`. Es público por diseño y queda incrustado en el build. La CSP agrega sola el origen de ingesta del DSN (`https://o<n>.ingest.us.sentry.io`) a `connect-src`.
+- **Sin PII:** ambos SDK la tienen desactivada y filtran `Authorization` y la clave propia.
+- **Source maps:** todavía no se suben.
+
+## 5. Vercel
+
+1. **Proyecto.** En la raíz del repositorio, `vercel link` crea el proyecto (o liga uno existente) y escribe `.vercel/`, que está ignorado. En Settings:
+   - **Root Directory:** `apps/web`.
+   - **Node.js Version:** 26.x. `engines.node` de `package.json` también la fija.
+   - **Git:** conectar el repositorio es opcional. `apps/web/vercel.json` desactiva los despliegues automáticos de `main` (`git.deploymentEnabled.main: false`) y fija el framework, la instalación con lockfile congelado y la región `cle1`.
+   - **pnpm:** la variable `ENABLE_EXPERIMENTAL_COREPACK=1` hace que Vercel use el pnpm de `packageManager` (12.16.1). Sin ella, elegiría pnpm 9 o 10 por la versión del lockfile. El log del build debe mostrar `pnpm 12.16.1`.
+   - **El dominio:** `<proyecto>.vercel.app` queda fijo desde aquí. Es el `WEB_URL` de la API y el origen de la OAuth App.
+2. **Variables de producción.** Cada secreto entra desde 1Password, marcado como sensitive:
+
+   ```bash
+   op read -n "op://CriterIA/<elemento>/<campo>" | vercel env add <VARIABLE> production --sensitive
+   ```
+
+   Las públicas se agregan igual con `printf '%s' '<valor>' | vercel env add <VARIABLE> production`.
+
+| Variable | Valor | Nota |
+| --- | --- | --- |
+| `NEXT_PUBLIC_APP_ENV` | `production` | Activa `upgrade-insecure-requests` en la CSP y las cookies `Secure` |
+| `NEXT_PUBLIC_API_URL` | URL de Cloud Run (`https://criteria-api-<número>.us-central1.run.app`) | Se incrusta en el build y entra en `connect-src`; se conoce tras el primer despliegue de la API |
+| `NEXT_PUBLIC_SENTRY_DSN` | DSN del proyecto web | Público |
+| `NEXT_PUBLIC_OFFICE_VIEW` | `false` | La vista oficina llega en F9 |
+| `NEXT_PUBLIC_CONTACT_URL` | Vacía o un `mailto:` | Vacía enlaza `https://github.com/GDavila97` en "Privacidad y datos" |
+| `BETTER_AUTH_SECRET` | Nuevo, de 48 bytes (`openssl rand -base64 48` hacia 1Password) | Sensitive. Firma sesiones y cifra la llave privada del JWKS: cambiarlo invalida las sesiones y obliga a borrar `auth.jwks` |
+| `BETTER_AUTH_URL` | `https://<web>` | Origen público, sin barra final |
+| `AUTH_DATABASE_URL` | URL de `web_role` con pooler | Sensitive |
+| `AUTH_JWT_ISSUER`, `AUTH_JWT_AUDIENCE` | Vacías | Usan `BETTER_AUTH_URL`, igual que `AUTH_ISSUER` y `AUTH_AUDIENCE` de la API |
+| `EMAIL_PROVIDER` | `none` | Sin dominio no hay envío ([ADR 0020](adr/0020-github-first-sign-in-without-email.md)) |
+| `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` | De la OAuth App de producción | El secreto, sensitive |
+| `ENABLE_EXPERIMENTAL_COREPACK` | `1` | pnpm de `packageManager` |
+
+`GOOGLE_*`, `SMTP_URL`, `RESEND_API_KEY`, `EMAIL_FROM` y `GITHUB_STUB_URL` no se definen en producción.
+
+**Control:** `vercel env ls production` lista solo los nombres de arriba.
+
+## 6. Cada despliegue
+
+Tú haces `git push`; todo lo demás usa el SHA completo de ese commit (`git rev-parse HEAD`).
+
+1. **CI verde.** `gh run list --workflow ci.yml --commit <sha>` muestra `success`. Los scripts lo comprueban otra vez.
+2. **Migraciones.**
+
+   ```bash
+   gh workflow run migrate.yml -f sha=<sha>
+   gh run watch
+   ```
+
+   El job `verify` comprueba que el SHA esté en `main` y que el CI haya pasado. Después, el job `migrate` espera tu aprobación en la pestaña Actions, porque el environment `production` lo exige. Corre primero `pnpm auth:migrate` como `web_role` y luego `alembic upgrade head` como `migrator_role`. Las migraciones de Better Auth solo comparan y crean tablas: corren con un secreto aleatorio y no crean llaves del JWKS. Se comprobó que dejan `auth.jwks` vacía.
+   **Control:** el log termina con `alembic current` en la última revisión.
+3. **API.**
+
+   ```bash
+   DRY_RUN=1 services/api/scripts/deploy.sh <sha>   # revisa y muestra los comandos
+   services/api/scripts/deploy.sh <sha>
+   ```
+
+   `GCP_PROJECT_ID` tiene que estar exportado.
+   - **Comprobaciones:** árbol limpio, SHA completo en `origin/main` y CI verde.
+   - **Imagen:** construye desde `git archive` del SHA (nada sin commit entra en la imagen), la etiqueta `api:<sha>`, la sube y despliega con los recursos de la tabla de decisiones. Si la imagen ya existe, la reutiliza.
+   - **Variables:** salen de `services/api/deploy/production.env` tal como está en ese SHA. Primero hay que poner `WEB_URL`, hacer commit y push.
+   - **Secretos:** se montan con `--set-secrets`.
+   - **Al final:** consulta `/healthz`.
+
+   **Control:** `gcloud run services describe criteria-api --region=us-central1 --format='value(metadata.labels.commit-sha)'` devuelve el SHA.
+4. **Web.**
+
+   ```bash
+   apps/web/scripts/deploy.sh <sha>
+   ```
+
+   - **Comprobaciones:** las mismas que la API, y además que Cloud Run ya corra ese SHA.
+   - **Qué sube:** un `git worktree` desacoplado del SHA, así que no viajan archivos sin commit ni `.env`.
+   - **Despliegue:** `vercel deploy --prod`, y Vercel compila con las variables de producción.
+5. **Prueba de humo.**
+
+   ```bash
+   scripts/smoke-prod.sh https://criteria-api-<número>.us-central1.run.app https://<web>
+   ```
+
+   Solo lee, sin iniciar sesión ni crear corridas, y termina con `All checks passed`. Comprueba:
+   - **Salud y rutas privadas:** `/healthz`, y 401 sin token y con un token falso.
+   - **Tablero:** `/evaluation` devuelve los lotes y el acuerdo del juez.
+   - **CORS:** permite solo el origen de la web y nunca credenciales.
+   - **Cabeceras de seguridad** de la API y de la web, incluida la CSP con nonce y con la API en `connect-src`.
+   - **JWKS** de la web y redirección de `http` a `https`.
+   - **Navegador:** Chromium a 1280 px y a 390 px carga `/`, `/privacidad` y el tablero sin violaciones de CSP.
+
+   Requiere `pnpm install` en `apps/web` y Chromium de Playwright.
+
+### Primer despliegue
+
+El primer despliegue sigue el mismo orden, con dos pasos extra:
+1. Después de crear el proyecto de Vercel, ya conoces su dominio: lo pones en `WEB_URL` y haces commit y push.
+2. Después de desplegar la API, ya conoces su URL: la pones en `NEXT_PUBLIC_API_URL` de Vercel antes de desplegar la web.
+
+## 7. Publicar la evaluación
+
+Una vez, y de nuevo solo si cambian los resultados. Desde la Mac, con `eval_writer`, que solo puede insertar. La publicación es idempotente:
 
 ```bash
-psql "$OWNER_URL" -v ON_ERROR_STOP=1 -f services/api/db/roles.sql
+cd services/api
+export EVAL_DATABASE_URL="$(op read -n 'op://CriterIA/<eval_writer>/url')"
+for file in eval/results/v1/*.json; do
+  case "$(basename "$file")" in human.json|estabilidad.json|reporte.json) continue ;; esac
+  uv run criteria eval publish --file "$file"
+done
+uv run criteria eval publish --human
+unset EVAL_DATABASE_URL
 ```
 
-El script crea `migrator_role`, `api_role`, `eval_writer` y `web_role` con `LOGIN` y sin contraseña, y los esquemas `app` y `graph` (de `migrator_role`) y `auth` (de `web_role`). Le da al dueño de la base `SET` e `INHERIT` sobre `migrator_role` y `web_role`, porque en Postgres 16 quien crea un rol sin ser superusuario solo recibe `ADMIN` y no puede entregarle esquemas. También fija `search_path=auth` en `web_role`, porque el pooler de Neon trabaja por transacción y no conserva opciones por conexión. Después se asigna a cada rol una contraseña larga y aleatoria, distinta por rol, que se guarda en 1Password:
+La variable exportada gana sobre el `EVAL_DATABASE_URL` local de `.env`. **Control:** una segunda pasada no agrega resultados («0 resultados nuevos», «Puntajes humanos nuevos: 0»), y `/evaluation` de la API devuelve los tres lotes.
 
-```sql
-ALTER ROLE migrator_role PASSWORD '…';
-ALTER ROLE api_role PASSWORD '…';
-ALTER ROLE eval_writer PASSWORD '…';
-ALTER ROLE web_role PASSWORD '…';
+## 8. Tope del modo gratuito
+
+`production.env` fija 0.10 USD y 11 corridas diarias. 30 días suman el límite mensual de 3 USD de Groq, y cada corrida gratuita reserva unos 0.0087 USD con el perfil calibrado en F5. El día se cuenta en UTC: en Ciudad de México se reinicia a las 18:00. Los meses de 31 días pueden tocar el límite de Groq el último día. El límite de gasto de la consola de Groq es el corte duro.
+
+El día de la entrevista, subirlo sin desplegar código, por ejemplo a 0.50 USD (57 corridas):
+
+```bash
+gcloud run services update criteria-api --region=us-central1 \
+  --update-env-vars=GLOBAL_DAILY_BUDGET_USD=0.50,GLOBAL_DAILY_RUNS=57
 ```
 
-En Neon la conexión exige `sslmode=require`. La API y las migraciones usan la URL directa, sin `-pooler`: el lock del stream es un advisory lock de sesión y el pooler en modo transacción no lo conserva. Cada instancia abre hasta 30 conexiones (`DATABASE_POOL_SIZE` 10, más 10 de desborde y 10 para los checkpoints), así que dos instancias quedan dentro del límite de conexiones de Neon.
+Esto crea una revisión con la misma imagen. Lo que se gaste de más sale del mismo límite mensual de Groq. Al terminar, regresarlo:
+
+```bash
+gcloud run services update criteria-api --region=us-central1 \
+  --update-env-vars=GLOBAL_DAILY_BUDGET_USD=0.10,GLOBAL_DAILY_RUNS=11
+```
+
+O volver a desplegar el SHA actual con `deploy.sh`, que reaplica `production.env`.
+
+## 9. La IP real en Vercel
+
+Better Auth lee solo `x-forwarded-for`, y la ruta `/api/auth` conserva su primera dirección: Better Auth ignora una cabecera con varias direcciones, y todos quedarían en un mismo contador. Para comprobar que un cliente no puede falsificarla:
+
+1. Anota tu IP pública en cada red, por ejemplo con `https://ifconfig.me`: la Mac en el wifi y el iPhone con datos móviles.
+2. Desde cada red, manda un inicio de sesión fallido con cabeceras falsas:
+
+   ```bash
+   curl -s -o /dev/null -w '%{http_code}\n' -X POST "https://<web>/api/auth/sign-in/email" \
+     -H "Origin: https://<web>" -H 'Content-Type: application/json' \
+     -H 'X-Forwarded-For: 203.0.113.7' -H 'X-Real-IP: 203.0.113.7' \
+     -d '{"email":"nadie@example.com","password":"no-es-una-clave"}'
+   ```
+
+   En el iPhone, abre `https://<web>` con datos móviles e intenta entrar con una cuenta inexistente.
+3. En el editor SQL de Neon:
+
+   ```sql
+   SELECT key, "lastRequest" FROM auth."rateLimit" ORDER BY "lastRequest" DESC LIMIT 5;
+   ```
+
+Debe haber una clave por red (`<tu IP>|/sign-in/email`) con tus IPs reales, y ninguna con `203.0.113.7`.
+
+## 10. Checklist de cierre
+
+- [ ] Prueba de humo: `All checks passed`.
+- [ ] Teléfono real (iPhone, 390 px): inicio, corrida completa, tablero y ajustes, en claro y oscuro.
+- [ ] Cabeceras y CORS: cubiertos por la prueba de humo. Revisa también https://securityheaders.com sobre la web.
+- [ ] IP real desde dos redes (sección 9).
+- [ ] Límite de uso con dos cuentas: con la cuenta A, la sexta corrida en una hora responde «Alcanzaste el límite de corridas por hora»; la cuenta B sigue pudiendo.
+- [ ] Flujo de GitHub: entrar, ver el correo verificado en "Cuenta" y salir.
+- [ ] Flujo de correo y contraseña: registro con el aviso de recuperación, entrada y borrado de la cuenta.
+- [ ] Una corrida real con Groq (modo gratuito) de principio a fin, con el costo mostrado.
+- [ ] PageSpeed Insights (https://pagespeed.web.dev) de la web en móvil y escritorio; anota los cuatro puntajes.
+- [ ] Alerta de presupuesto activa en Billing > Budgets, y límite de gasto de 3 USD en la consola de Groq.
+- [ ] Sentry recibe un evento de prueba de la API y de la web.
 
 ## Variables y secretos
 
-Parten de `services/api/.env.example` y `apps/web/.env.example`. Lo que falta de la web se completa en F4 y F6.
+### API (Cloud Run)
 
 | Variable | Dónde vive | Nota |
 | --- | --- | --- |
 | `DATABASE_URL` | Secret Manager | `api_role`, URL directa de Neon |
-| `MIGRATION_DATABASE_URL` | Secret Manager, solo para el job de migraciones | `migrator_role`, URL directa |
-| `CREDENTIALS_KEYS`, `CREDENTIALS_ACTIVE_KEY` | Secret Manager | 32 bytes aleatorios por versión; perder la llave hace ilegibles las claves guardadas |
+| `CREDENTIALS_KEYS` | Secret Manager | Llave nueva de producción, 32 bytes aleatorios por versión. Perderla hace ilegibles las claves guardadas |
 | `GROQ_API_KEY` | Secret Manager | Única clave de proveedor en producción |
-| `SENTRY_DSN` | Secret Manager | |
-| `WEB_ORIGIN`, `AUTH_JWKS_URL`, `AUTH_ISSUER`, `AUTH_AUDIENCE` | Variables de Cloud Run | Origen exacto de la web en Vercel |
-| `SERVER_KEY_PROVIDERS=groq`, `APP_ENV=production` | Variables de Cloud Run | |
-| `USER_RUNS_PER_HOUR`, `USER_RUNS_PER_DAY`, `GLOBAL_DAILY_RUNS`, `GLOBAL_DAILY_BUDGET_USD` | Variables de Cloud Run | Por defecto: 5 corridas por hora y 20 por día por usuario; tope global diario de 25 corridas y 0.09 USD con la clave del servidor, para que el límite de gasto mensual de 3 USD de Groq no se agote a mitad de mes (31 × 0.09 = 2.79 USD). Con el precio verificado de `openai/gpt-oss-20b` y su perfil de consumo calibrado en la evaluación v1, cada corrida reserva unos 0.008 USD, así que el tope en dólares cierra el modo gratuito tras unas 10 corridas, antes que el de corridas |
-| `RUN_TTL_MINUTES`, `SSE_HEARTBEAT_SECONDS`, `MAX_REQUEST_BYTES`, `PROVIDER_TIMEOUTS` | Variables de Cloud Run | Valores por defecto salvo motivo |
-| `AUTH_REQUIRE_VERIFIED_EMAIL` | Variable de Cloud Run | `false` mientras la web tenga `EMAIL_PROVIDER=none` ([ADR 0020](adr/0020-github-first-sign-in-without-email.md)); `true` al tener dominio y envío |
-| `MODEL_BACKEND` | — | Siempre `real` (el valor por defecto); `fake` solo existe para las pruebas y la API no arranca con él fuera de `APP_ENV=test` |
+| `SENTRY_DSN` | Secret Manager | Proyecto de la API |
+| `WEB_ORIGIN`, `AUTH_JWKS_URL`, `AUTH_ISSUER`, `AUTH_AUDIENCE` | `production.env` (`WEB_URL`) | Origen exacto de la web; el script los deriva |
+| `APP_ENV`, `LOG_LEVEL`, `SENTRY_TRACES_SAMPLE_RATE`, `SERVER_KEY_PROVIDERS`, `AUTH_REQUIRE_VERIFIED_EMAIL`, `CREDENTIALS_ACTIVE_KEY` | `production.env` | `production`, `info`, `0.0`, `groq`, `false` y `1`. Sin `OLLAMA_BASE_URL` |
+| `USER_RUNS_PER_HOUR`, `USER_RUNS_PER_DAY`, `GLOBAL_DAILY_RUNS`, `GLOBAL_DAILY_BUDGET_USD` | `production.env` | 5, 20, 11 y 0.10 (sección 8) |
+| `RUN_TTL_MINUTES`, `SSE_HEARTBEAT_SECONDS`, `MAX_REQUEST_BYTES`, `PROVIDER_TIMEOUTS`, `DATABASE_POOL_SIZE` | — | Valores por defecto |
+| `MODEL_BACKEND` | — | Siempre `real`; `fake` solo arranca con `APP_ENV=test` |
 
-Web (Vercel):
+### GitHub (environment `production`)
 
-| Variable | Dónde vive | Nota |
-| --- | --- | --- |
-| `NEXT_PUBLIC_APP_ENV`, `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_OFFICE_VIEW` | Variables de Vercel | Se incrustan en el build; la URL de la API en `https` |
-| `NEXT_PUBLIC_CONTACT_URL` | Variable de Vercel | Contacto de "Privacidad y datos": un perfil en `https` o un `mailto:`; vacía usa `https://github.com/GDavila97` |
-| `BETTER_AUTH_SECRET` | Variable secreta de Vercel | 32 o más caracteres aleatorios; también cifra la llave privada del JWKS, así que cambiarlo obliga a regenerarla |
-| `BETTER_AUTH_URL` | Variable de Vercel | Origen público de la web; con `https` en producción |
-| `AUTH_DATABASE_URL` | Variable secreta de Vercel | `web_role`, URL con pooler de Neon (Better Auth no usa locks de sesión) |
-| `AUTH_JWT_ISSUER`, `AUTH_JWT_AUDIENCE` | Variables de Vercel | Vacías usan `BETTER_AUTH_URL`; deben coincidir con `AUTH_ISSUER` y `AUTH_AUDIENCE` de la API |
-| `EMAIL_PROVIDER`, `EMAIL_FROM`, `RESEND_API_KEY` | Variables de Vercel | `none` hasta tener dominio; después `resend` con la clave como secreto |
-| `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` | Variables de Vercel (el secreto como secreto) | De la OAuth App de producción |
-| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | — | Vacías: Google queda preparado sin botón |
+| Secreto | Nota |
+| --- | --- |
+| `MIGRATION_DATABASE_URL` | `migrator_role`, URL directa |
+| `AUTH_MIGRATION_DATABASE_URL` | `web_role`, URL directa |
 
-### OAuth App de GitHub (F6)
+### Solo en la Mac
 
-En GitHub, Settings > Developer settings > OAuth Apps, una app distinta para producción (la de desarrollo apunta a `localhost`):
+| Variable | Nota |
+| --- | --- |
+| `GCP_PROJECT_ID` | Para los dos scripts de despliegue |
+| `EVAL_DATABASE_URL` | `eval_writer`, URL directa; solo al publicar la evaluación |
 
-- Homepage URL: el origen de la web en Vercel.
-- Authorization callback URL: `https://<origen de la web>/api/auth/callback/github`.
-- No pide permisos más allá de `user:email`; los tokens de GitHub no se guardan.
+## Rotación de la llave de las claves
 
-### Rotación de la llave de las claves
-
-1. Agregar la versión nueva a `CREDENTIALS_KEYS` (`1:…,2:…`) sin cambiar `CREDENTIALS_ACTIVE_KEY` y desplegar.
-2. Cambiar `CREDENTIALS_ACTIVE_KEY=2` y desplegar: las claves nuevas se cifran con la 2 y las viejas se siguen leyendo con la 1.
+1. Agregar la versión nueva a `CREDENTIALS_KEYS` (`1:…,2:…`) como nueva versión del secreto, sin cambiar `CREDENTIALS_ACTIVE_KEY`, y desplegar.
+2. Cambiar `CREDENTIALS_ACTIVE_KEY=2` en `production.env` y desplegar: las claves nuevas se cifran con la 2 y las viejas se siguen leyendo con la 1.
 3. Retirar la versión 1 solo cuando ninguna fila la use (`SELECT count(*) FROM app.provider_credential WHERE key_version = 1`). Las claves que no se pueden descifrar se tratan como inexistentes y el usuario debe guardarlas de nuevo.
 
 ## Migraciones
 
-El orden importa: primero las de Better Auth (crean `auth."user"`) y después las de la API, porque la migración 0004 agrega llaves foráneas hacia esa tabla.
+El orden importa: primero las de Better Auth, que crean `auth."user"`, y después las de la API, porque la migración 0004 agrega llaves foráneas hacia esa tabla. Las tablas de `auth` quedan a nombre de `web_role`, y los privilegios por defecto de `roles.sql` dan a `migrator_role` solo `REFERENCES` sobre ellas, nunca lectura.
 
-1. Better Auth, desde `apps/web` con el mismo SHA y como `web_role`:
+Qué hace cada migración de la API:
+1. Crea las tablas de `app`.
+2. Aplica las migraciones del checkpointer de LangGraph en `graph`.
+3. Agrega `app.run.settled`, que evita ajustar dos veces el cupo de una corrida.
+4. Liga cada `user_id` de `app` a `auth."user"` con borrado en cascada, y guarda los planes por agente y la decisión de historial de cada corrida.
+5. Agrega los detalles de la evaluación y los permisos de inserción de `eval_writer`.
 
-   ```bash
-   AUTH_DATABASE_URL=... BETTER_AUTH_SECRET=... BETTER_AUTH_URL=... NEXT_PUBLIC_APP_ENV=production pnpm auth:migrate
-   ```
-
-   Las tablas quedan a nombre de `web_role`, y los privilegios por defecto de `roles.sql` dan a `migrator_role` solo `REFERENCES` sobre ellas, nunca lectura.
-
-2. API, siempre antes de desplegarla, con la imagen del mismo SHA y `MIGRATION_DATABASE_URL`:
-
-```bash
-docker run --rm -e MIGRATION_DATABASE_URL="$MIGRATION_DATABASE_URL" <imagen> alembic upgrade head
-```
-
-La primera migración crea las tablas de `app`, la segunda aplica las migraciones del checkpointer de LangGraph en `graph` la tercera agrega `app.run.settled`, que evita ajustar dos veces el cupo de una corrida, y la cuarta liga cada `user_id` de `app` a `auth."user"` con borrado en cascada y guarda los planes por agente y la decisión de historial de cada corrida. La API no ejecuta DDL: si los checkpoints no están en la última versión, se niega a arrancar. Al actualizar `langgraph-checkpoint-postgres` hay que agregar una migración de Alembic que vuelva a correr sus migraciones. En F6 este paso se vuelve un job manual de Cloud Run con environment protegido, junto con las migraciones de Better Auth (esquema `auth`).
-
-## API en Cloud Run
-
-Pendiente: build y push de la imagen del SHA verificado, despliegue con máximo 2 instancias, cuenta de servicio y secretos. El tiempo de espera de la petición debe cubrir el tramo más largo de una corrida entre pausas, porque el grafo solo avanza con el stream abierto ([ADR 0018](adr/0018-run-lifecycle-bound-to-the-stream.md)); 15 minutos dan margen sobre lo medido en F2b.
-
-## Web en Vercel
-
-Pendiente: despliegue manual del mismo SHA y variables de producción.
-
-Los límites de Better Auth por IP leen solo `x-forwarded-for`, del que la ruta `/api/auth` conserva la primera dirección. Vercel documenta que sobrescribe esa cabecera con la IP del cliente para evitar suplantación; de `x-real-ip` no lo promete.
-
-## Verificación posterior
-
-Pendiente. Checklist de cierre: teléfono real (iPhone, 390 px), cabeceras de seguridad, CORS, límite de uso con dos cuentas, flujo completo de registro y verificación, PageSpeed y alerta de presupuesto activa.
+La API no ejecuta DDL: si los checkpoints no están en la última versión, se niega a arrancar. Al actualizar `langgraph-checkpoint-postgres` hay que agregar una migración de Alembic que vuelva a correr sus migraciones. Las migraciones solo avanzan: nunca se hace `downgrade` en producción, y cada una debe ser compatible con la versión anterior de la API.
 
 ## Reversión
 
-Pendiente.
+- **API.** `services/api/scripts/deploy.sh <sha anterior>`: reutiliza la imagen si sigue en Artifact Registry, que conserva las 3 más recientes, y si no la reconstruye. Para un corte inmediato: `gcloud run services update-traffic criteria-api --region=us-central1 --to-revisions=<revisión>=100`.
+- **Web.** `vercel rollback` o, en el panel, Instant Rollback al despliegue anterior. Después, `apps/web/scripts/deploy.sh` con el SHA bueno, para que la web vuelva a coincidir con la API.
+- **Base.** No se revierte. Un cambio de esquema roto se corrige con una migración nueva.

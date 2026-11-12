@@ -25,3 +25,4 @@ Cada ADR sigue el formato Estado, Contexto, Decisión, Alternativas y Consecuenc
 | [0019](0019-groq-developer-for-the-free-mode.md) | Modo gratuito sobre el plan Developer de Groq | Aceptada |
 | [0020](0020-github-first-sign-in-without-email.md) | GitHub como acceso principal mientras no se envían correos | Aceptada |
 | [0021](0021-native-output-for-gpt-oss-on-groq.md) | Salida JSON nativa para gpt-oss-20b en Groq | Aceptada |
+| [0022](0022-production-deployment.md) | Despliegue de producción: imagen local, pooler para la web y Cloud Run medido | Aceptada |

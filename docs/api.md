@@ -102,8 +102,8 @@ Una corrida sin actividad durante `RUN_TTL_MINUTES` pasa a `fallida` al crear la
 | --- | --- | --- | --- |
 | Corridas por usuario en la última hora | `USER_RUNS_PER_HOUR` | 5 | `429 limite_hora` |
 | Corridas por usuario en el día (UTC) | `USER_RUNS_PER_DAY` | 20 | `429 limite_dia` |
-| Corridas diarias con claves del servidor | `GLOBAL_DAILY_RUNS` | 100 | `429 cupo_gratuito_agotado` |
-| Dólares diarios con claves del servidor | `GLOBAL_DAILY_BUDGET_USD` | 1.0 | `429 cupo_gratuito_agotado` |
+| Corridas diarias con claves del servidor | `GLOBAL_DAILY_RUNS` | 25 (11 en producción) | `429 cupo_gratuito_agotado` |
+| Dólares diarios con claves del servidor | `GLOBAL_DAILY_BUDGET_USD` | 0.09 (0.10 en producción) | `429 cupo_gratuito_agotado` |
 
 Los límites por usuario aplican con o sin clave propia. El cupo global solo cuenta corridas en las que alguna parte usa la clave del servidor ([ADR 0019](adr/0019-groq-developer-for-the-free-mode.md)). La reserva es atómica: las corridas de un usuario se serializan con un advisory lock y el cupo global se toma con un `UPDATE` condicional, de modo que dos peticiones simultáneas nunca superan el tope. Al terminar, el costo reservado se sustituye por el real.
 

@@ -1,6 +1,6 @@
 # 0009. Despliegue: Cloud Run para la API y Vercel para la web
 
-**Estado:** aceptada.
+**Estado:** aceptada; concretada por la [0022](0022-production-deployment.md).
 
 **Contexto:** se busca evidencia de nube a costo cero y que la app siga viva después de la entrevista.
 
