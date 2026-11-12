@@ -74,6 +74,7 @@ export const apiEnv = {
 };
 
 export const migratorUrl = roleUrl('migrator_role');
+export const evalWriterUrl = roleUrl('eval_writer');
 export const databaseAdminUrl = (() => {
   const url = new URL(ADMIN_URL);
   url.pathname = `/${DATABASE}`;

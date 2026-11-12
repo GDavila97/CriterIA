@@ -1,6 +1,6 @@
 // Fresh database for the end-to-end tests: roles, Better Auth tables, then the API migrations.
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import pg from 'pg';
@@ -10,6 +10,7 @@ import {
   API_DIR,
   DATABASE,
   databaseAdminUrl,
+  evalWriterUrl,
   migratorUrl,
   ROLE_PASSWORD,
   WEB_DIR,
@@ -52,4 +53,17 @@ execFileSync('uv', ['run', 'alembic', 'upgrade', 'head'], {
   stdio: 'inherit',
   env: { ...withoutVenv, MIGRATION_DATABASE_URL: migratorUrl },
 });
+// The board is checked with the real v1 results, published the same way as in production.
+const results = join(API_DIR, 'eval', 'results', 'v1');
+const publish = (...args) =>
+  execFileSync('uv', ['run', 'criteria', 'eval', 'publish', ...args], {
+    cwd: API_DIR,
+    stdio: 'inherit',
+    env: { ...withoutVenv, EVAL_DATABASE_URL: evalWriterUrl },
+  });
+const notBatches = new Set(['human.json', 'estabilidad.json', 'reporte.json']);
+for (const file of readdirSync(results).filter((f) => f.endsWith('.json') && !notBatches.has(f))) {
+  publish('--file', join(results, file));
+}
+publish('--human');
 console.log(`e2e database ${DATABASE} is ready`);

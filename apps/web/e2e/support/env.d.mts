@@ -16,4 +16,5 @@ export declare const webEnv: Env;
 export declare const mailWebEnv: Env;
 export declare const apiEnv: Env;
 export declare const migratorUrl: string;
+export declare const evalWriterUrl: string;
 export declare const databaseAdminUrl: string;

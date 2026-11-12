@@ -144,9 +144,13 @@ test('evaluación, historial, privacidad y cuenta', async ({
   clientIp,
 }, testInfo) => {
   await page.goto('/evaluacion');
+  const table = page.getByRole('table');
+  await expect(table.getByRole('row')).toHaveCount(4);
+  await expect(table.getByText('Anthropic · Claude Haiku 5.5 *')).toBeVisible();
   await expect(
-    page.getByText('Los resultados se publicarán tras la primera evaluación.'),
+    page.getByRole('heading', { name: 'Acuerdo del juez con una persona' }),
   ).toBeVisible();
+  await expect(page.getByText(/32 pares criterio por corrida/)).toBeVisible();
   await check(page, testInfo, '08-evaluacion');
   await signIn(page, page.request, baseURL ?? '', clientIp);
   await page.goto('/historial');
