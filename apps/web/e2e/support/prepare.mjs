@@ -59,7 +59,8 @@ const publish = (...args) =>
   execFileSync('uv', ['run', 'criteria', 'eval', 'publish', ...args], {
     cwd: API_DIR,
     stdio: 'inherit',
-    env: { ...withoutVenv, EVAL_DATABASE_URL: evalWriterUrl },
+    // CI and fresh clones have no services/api/.env, and the CLI requires APP_ENV.
+    env: { ...withoutVenv, APP_ENV: 'test', EVAL_DATABASE_URL: evalWriterUrl },
   });
 const notBatches = new Set(['human.json', 'estabilidad.json', 'reporte.json']);
 for (const file of readdirSync(results).filter((f) => f.endsWith('.json') && !notBatches.has(f))) {
