@@ -1,11 +1,12 @@
 """The numbers of the evaluation report, computed from the batch files and the human session."""
 
 from collections import Counter
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 
 from criteria.domain.artifacts import CRITERIOS, Criterio
 from criteria.domain.eval_metrics import (
+    SCALE,
     Agreement,
     Estimate,
     agreement,
@@ -159,6 +160,9 @@ def summarize(batches: Sequence[EvalBatch], cases: Mapping[str, EvalCase]) -> li
 class JudgeAgreement:
     total: Agreement
     por_criterio: dict[Criterio, Agreement]
+    # How many pairs got each value of the scale, to see ceiling effects and offsets.
+    distribucion_juez: dict[int, int]
+    distribucion_humano: dict[int, int]
 
 
 def judge_pairs(
@@ -175,12 +179,19 @@ def judge_pairs(
     return pairs
 
 
+def _distribution(values: Iterable[int]) -> dict[int, int]:
+    counts = Counter(values)
+    return {value: counts[value] for value in SCALE}
+
+
 def judge_agreement(
     pairs: Sequence[tuple[Criterio, int, int]], seed: int = REPORT_SEED
 ) -> JudgeAgreement | None:
     if not pairs:
         return None
     return JudgeAgreement(
+        distribucion_juez=_distribution(j for _, j, _ in pairs),
+        distribucion_humano=_distribution(h for _, _, h in pairs),
         total=agreement([j for _, j, _ in pairs], [h for _, _, h in pairs], seed),
         por_criterio={
             c: agreement(

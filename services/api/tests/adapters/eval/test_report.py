@@ -107,6 +107,9 @@ def test_tables_with_human_scores_and_stability() -> None:
     )
 
     assert "| Todos | 3 |" in text
+    assert "| Quién | 1 | 2 | 3 | 4 | 5 | Media |" in text
+    assert "| Juez | 0 | 1 | 1 | 1 | 0 | 3.00 |" in text
+    assert "| Persona | 0 | 1 | 1 | 1 | 0 | 3.00 |" in text
     assert "100% [100%, 100%] de 1 emparejamientos revisados." in text
     assert "| Juez (puntaje por criterio, ponderada cuadrática) | 40 | 0.80 [0.60, 0.90] |" in text
     assert "- Ninguno." in text

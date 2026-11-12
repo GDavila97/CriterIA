@@ -78,6 +78,12 @@ def _table(header: Sequence[str], rows: Sequence[Sequence[str]]) -> list[str]:
     return lines
 
 
+def _distribution_row(name: str, counts: Mapping[int, int]) -> list[str]:
+    total = sum(counts.values())
+    average = sum(v * n for v, n in counts.items()) / total if total else None
+    return [name, *(str(n) for n in counts.values()), _num(average)]
+
+
 def _agreement_row(name: str, a: Agreement) -> list[str]:
     pct = "{:.0%}"
     return [
@@ -247,7 +253,17 @@ def markdown(  # noqa: PLR0913  every part of the report is an input
         out += [
             "",
             "Intervalos al 95 % por bootstrap de los pares (2,000 remuestreos, semilla fija).",
+            "",
+            "Distribución de los puntajes en esos pares:",
+            "",
         ]
+        out += _table(
+            ["Quién", *(str(v) for v in judge.distribucion_juez), "Media"],
+            [
+                _distribution_row("Juez", judge.distribucion_juez),
+                _distribution_row("Persona", judge.distribucion_humano),
+            ],
+        )
     out += ["", "## Acuerdo del emparejador con la revisión humana", ""]
     out.append(
         "Pendiente: todavía no hay revisión humana."
