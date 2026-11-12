@@ -20,6 +20,7 @@ Los secretos van de 1Password directo a cada servicio con `op read`, nunca a arc
 | Base de la web | URL con pooler de Neon | Neon recomienda el pooler para funciones serverless. Better Auth no usa locks de sesión, y `search_path=auth` vive en `web_role`, no en la conexión. Las migraciones de Better Auth usan la URL directa |
 | Base de la API | URL directa | El lock del stream es un advisory lock de sesión, que el pooler por transacción no conserva |
 | IP del cliente | Solo `x-forwarded-for`, primera dirección | Vercel documenta que sobrescribe esa cabecera con la IP del cliente para evitar suplantación; de `x-real-ip` no lo promete |
+| Despliegue de la web | Create Deployment en el panel de Vercel con el SHA; `apps/web/scripts/deploy.sh` queda como alternativa con la CLI | Vercel clona de GitHub exactamente ese commit, sin subir nada de la Mac |
 | Región de la web | `cle1` (Cleveland) | Junto a Neon en `aws-us-east-2` (Ohio); Neon no tiene regiones en GCP |
 
 ### Capa gratuita y costos
@@ -42,7 +43,7 @@ Límites de Cloud Run usados arriba: tiempo límite por defecto de 5 min y máxi
 - `gcloud` (Google Cloud CLI): `gcloud auth login` y `gcloud auth configure-docker us-central1-docker.pkg.dev`.
 - Docker Desktop con `buildx`, que ya trae la emulación de `amd64`.
 - `gh` con sesión iniciada, `jq`, `psql` (para las contraseñas de Neon) y el CLI de 1Password (`op`).
-- CLI de Vercel: `pnpm add --global vercel` y `vercel login`.
+- CLI de Vercel, para cargar las variables y para el script alternativo: `pnpm add --global vercel` y `vercel login`.
 
 Los secretos viven en la bóveda `CriterIA` de 1Password y los comandos los leen con `op read -n "op://CriterIA/<elemento>/<campo>"` (`-n` evita el salto de línea final). Cada rol de Neon tiene su elemento:
 
@@ -195,19 +196,20 @@ Dos proyectos: uno de Python (FastAPI) para la API y uno de Next.js para la web.
 
 ## 5. Vercel
 
-1. **Proyecto.** En la raíz del repositorio, `vercel link` crea el proyecto (o liga uno existente) y escribe `.vercel/`, que está ignorado. En Settings:
-   - **Root Directory:** `apps/web`.
-   - **Node.js Version:** 26.x. `engines.node` de `package.json` también la fija.
-   - **Git:** conectar el repositorio es opcional. `apps/web/vercel.json` desactiva los despliegues automáticos de `main` (`git.deploymentEnabled.main: false`) y fija el framework, la instalación con lockfile congelado y la región `cle1`.
+1. **Proyecto.** En el panel de Vercel, Add New > Project, importar el repositorio de GitHub con «Import single project», no con «Services».
+   - **Root Directory:** `apps/web`. Vercel lee de ahí `apps/web/vercel.json`, que fija el framework, la instalación con lockfile congelado y la región `cle1`.
+   - **Despliegues automáticos:** `vercel.json` desactiva los de `main` (`git.deploymentEnabled.main: false`), así que un push no despliega la web.
+   - **Node.js Version:** 26.x en Settings > Build and Deployment. `engines.node` de `package.json` también la fija.
    - **pnpm:** la variable `ENABLE_EXPERIMENTAL_COREPACK=1` hace que Vercel use el pnpm de `packageManager` (12.16.1). Sin ella, elegiría pnpm 9 o 10 por la versión del lockfile. El log del build debe mostrar `pnpm 12.16.1`.
    - **El dominio:** `criter-ia.vercel.app`. Es el `WEB_URL` de `production.env` y el origen de la OAuth App.
+   - **CLI:** `vercel link` en la raíz del repositorio liga este mismo proyecto y escribe `.vercel/`, que está ignorado. Lo necesitan `vercel env add` y el script alternativo.
 2. **Variables de producción.** Cada secreto entra desde 1Password, marcado como sensitive:
 
    ```bash
    op read -n "op://CriterIA/<elemento>/<campo>" | vercel env add <VARIABLE> production --sensitive
    ```
 
-   Las públicas se agregan igual con `printf '%s' '<valor>' | vercel env add <VARIABLE> production`.
+   Por ejemplo, `op read -n "op://CriterIA/neon-web-role/url-pooler" | vercel env add AUTH_DATABASE_URL production --sensitive`. Las públicas se agregan igual con `printf '%s' '<valor>' | vercel env add <VARIABLE> production`. También se pueden cargar en Settings > Environment Variables, pegando desde 1Password y marcando Sensitive.
 
 | Variable | Valor | Nota |
 | --- | --- | --- |
@@ -226,7 +228,7 @@ Dos proyectos: uno de Python (FastAPI) para la API y uno de Next.js para la web.
 
 `GOOGLE_*`, `SMTP_URL`, `RESEND_API_KEY`, `EMAIL_FROM` y `GITHUB_STUB_URL` no se definen en producción.
 
-**Control:** `vercel env ls production` lista solo los nombres de arriba.
+**Control:** `vercel env ls production`, o Settings > Environment Variables, lista solo los nombres de arriba.
 
 ## 6. Cada despliegue
 
@@ -258,6 +260,13 @@ Tú haces `git push`; todo lo demás usa el SHA completo de ese commit (`git rev
 
    **Control:** `gcloud run services describe criteria-api --region=us-central1 --format='value(metadata.labels.commit-sha)'` devuelve el SHA.
 4. **Web.**
+   1. Confirma con el control del paso 3 que Cloud Run ya corre ese SHA.
+   2. En el panel de Vercel, en el proyecto, Deployments > Create Deployment: pega el SHA completo y crea el despliegue.
+   3. Vercel clona ese commit de GitHub y compila con las variables de producción.
+
+   **Control:** el despliegue aparece como Production con ese commit, y el log del build muestra `pnpm 12.16.1`.
+
+   **Alternativa con la CLI** (requiere `vercel link`):
 
    ```bash
    apps/web/scripts/deploy.sh <sha>
@@ -414,5 +423,5 @@ La API no ejecuta DDL: si los checkpoints no están en la última versión, se n
 ## Reversión
 
 - **API.** `services/api/scripts/deploy.sh <sha anterior>`: reutiliza la imagen si sigue en Artifact Registry, que conserva las 3 más recientes, y si no la reconstruye. Para un corte inmediato: `gcloud run services update-traffic criteria-api --region=us-central1 --to-revisions=<revisión>=100`.
-- **Web.** `vercel rollback` o, en el panel, Instant Rollback al despliegue anterior. Después, `apps/web/scripts/deploy.sh` con el SHA bueno, para que la web vuelva a coincidir con la API.
+- **Web.** `vercel rollback` o, en el panel, Instant Rollback al despliegue anterior. Después, Create Deployment (o `apps/web/scripts/deploy.sh`) con el SHA bueno, para que la web vuelva a coincidir con la API.
 - **Base.** No se revierte. Un cambio de esquema roto se corrige con una migración nueva.

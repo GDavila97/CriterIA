@@ -208,7 +208,7 @@ Despliegue (manual, desde la raíz; ver [deploy.md](docs/deploy.md)):
 | --- | --- |
 | `gh workflow run migrate.yml -f sha=<sha>` | migraciones de producción de Better Auth y Alembic, con aprobación |
 | `services/api/scripts/deploy.sh <sha>` | construye la imagen `amd64` del SHA y la despliega en Cloud Run (`DRY_RUN=1` solo muestra los comandos) |
-| `apps/web/scripts/deploy.sh <sha>` | despliega la web del mismo SHA en Vercel |
+| `apps/web/scripts/deploy.sh <sha>` | alternativa con la CLI al despliegue de la web desde el panel de Vercel (Create Deployment con el mismo SHA) |
 | `scripts/smoke-prod.sh <api_url> <web_url>` | prueba de humo: salud, 401, CORS, cabeceras, CSP en el navegador y tablero |
 
 ## Variables de entorno

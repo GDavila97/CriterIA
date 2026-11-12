@@ -203,7 +203,7 @@ Eventos SSE: todos llevan `run_id`, `seq` (entero creciente), `ts` y `agent`. El
 
 ## Despliegue
 
-Manual y con el mismo SHA: migraciones en un workflow de GitHub con aprobación, la API con `services/api/scripts/deploy.sh` (imagen `amd64` construida en local, Cloud Run con 512 MiB, concurrencia 10 y de 0 a 2 instancias) y la web con `apps/web/scripts/deploy.sh` (Vercel, región `cle1`). `scripts/smoke-prod.sh` comprueba el resultado. Pasos y valores en [deploy.md](deploy.md); decisiones en el [ADR 0022](adr/0022-production-deployment.md).
+Manual y con el mismo SHA: migraciones en un workflow de GitHub con aprobación, la API con `services/api/scripts/deploy.sh` (imagen `amd64` construida en local, Cloud Run con 512 MiB, concurrencia 10 y de 0 a 2 instancias) y la web desde el panel de Vercel con Create Deployment y el SHA (región `cle1`; `apps/web/scripts/deploy.sh` es la alternativa con la CLI). `scripts/smoke-prod.sh` comprueba el resultado. Pasos y valores en [deploy.md](deploy.md); decisiones en el [ADR 0022](adr/0022-production-deployment.md).
 
 ## Principios
 
