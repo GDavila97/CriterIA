@@ -140,8 +140,8 @@ Conexiones: con 0.25 CU, Neon admite 112 (105 para la aplicación). Cada instanc
 ## 3. GitHub
 
 1. **OAuth App de producción.** Settings > Developer settings > OAuth Apps, una app distinta de la de desarrollo:
-   - Homepage URL: el origen de la web en Vercel.
-   - Authorization callback URL: `https://<web>/api/auth/callback/github`.
+   - Homepage URL: `https://criter-ia.vercel.app`.
+   - Authorization callback URL: `https://criter-ia.vercel.app/api/auth/callback/github`.
    - Solo pide `user:email`; los tokens de GitHub no se guardan.
    - El Client ID y un Client secret nuevo van a 1Password.
 2. **Environment `production`.** Settings > Environments > New environment:
@@ -172,7 +172,7 @@ Dos proyectos: uno de Python (FastAPI) para la API y uno de Next.js para la web.
    - **Node.js Version:** 26.x. `engines.node` de `package.json` también la fija.
    - **Git:** conectar el repositorio es opcional. `apps/web/vercel.json` desactiva los despliegues automáticos de `main` (`git.deploymentEnabled.main: false`) y fija el framework, la instalación con lockfile congelado y la región `cle1`.
    - **pnpm:** la variable `ENABLE_EXPERIMENTAL_COREPACK=1` hace que Vercel use el pnpm de `packageManager` (12.16.1). Sin ella, elegiría pnpm 9 o 10 por la versión del lockfile. El log del build debe mostrar `pnpm 12.16.1`.
-   - **El dominio:** `<proyecto>.vercel.app` queda fijo desde aquí. Es el `WEB_URL` de la API y el origen de la OAuth App.
+   - **El dominio:** `criter-ia.vercel.app`. Es el `WEB_URL` de `production.env` y el origen de la OAuth App.
 2. **Variables de producción.** Cada secreto entra desde 1Password, marcado como sensitive:
 
    ```bash
@@ -189,7 +189,7 @@ Dos proyectos: uno de Python (FastAPI) para la API y uno de Next.js para la web.
 | `NEXT_PUBLIC_OFFICE_VIEW` | `false` | La vista oficina llega en F9 |
 | `NEXT_PUBLIC_CONTACT_URL` | Vacía o un `mailto:` | Vacía enlaza `https://github.com/GDavila97` en "Privacidad y datos" |
 | `BETTER_AUTH_SECRET` | Nuevo, de 48 bytes (`openssl rand -base64 48` hacia 1Password) | Sensitive. Firma sesiones y cifra la llave privada del JWKS: cambiarlo invalida las sesiones y obliga a borrar `auth.jwks` |
-| `BETTER_AUTH_URL` | `https://<web>` | Origen público, sin barra final |
+| `BETTER_AUTH_URL` | `https://criter-ia.vercel.app` | Origen público, sin barra final |
 | `AUTH_DATABASE_URL` | URL de `web_role` con pooler | Sensitive |
 | `AUTH_JWT_ISSUER`, `AUTH_JWT_AUDIENCE` | Vacías | Usan `BETTER_AUTH_URL`, igual que `AUTH_ISSUER` y `AUTH_AUDIENCE` de la API |
 | `EMAIL_PROVIDER` | `none` | Sin dominio no hay envío ([ADR 0020](adr/0020-github-first-sign-in-without-email.md)) |
@@ -224,7 +224,7 @@ Tú haces `git push`; todo lo demás usa el SHA completo de ese commit (`git rev
    `GCP_PROJECT_ID` tiene que estar exportado.
    - **Comprobaciones:** árbol limpio, SHA completo en `origin/main` y CI verde.
    - **Imagen:** construye desde `git archive` del SHA (nada sin commit entra en la imagen), la etiqueta `api:<sha>`, la sube y despliega con los recursos de la tabla de decisiones. Si la imagen ya existe, la reutiliza.
-   - **Variables:** salen de `services/api/deploy/production.env` tal como está en ese SHA. Primero hay que poner `WEB_URL`, hacer commit y push.
+   - **Variables:** salen de `services/api/deploy/production.env` tal como está en ese SHA.
    - **Secretos:** se montan con `--set-secrets`.
    - **Al final:** consulta `/healthz`.
 
@@ -241,7 +241,7 @@ Tú haces `git push`; todo lo demás usa el SHA completo de ese commit (`git rev
 5. **Prueba de humo.**
 
    ```bash
-   scripts/smoke-prod.sh https://criteria-api-<número>.us-central1.run.app https://<web>
+   scripts/smoke-prod.sh https://criteria-api-<número>.us-central1.run.app https://criter-ia.vercel.app
    ```
 
    Solo lee, sin iniciar sesión ni crear corridas, y termina con `All checks passed`. Comprueba:
@@ -257,7 +257,7 @@ Tú haces `git push`; todo lo demás usa el SHA completo de ese commit (`git rev
 ### Primer despliegue
 
 El primer despliegue sigue el mismo orden, con dos pasos extra:
-1. Después de crear el proyecto de Vercel, ya conoces su dominio: lo pones en `WEB_URL` y haces commit y push.
+1. `WEB_URL` ya está en `production.env` con `https://criter-ia.vercel.app`; si el dominio cambia, se cambia ahí con commit y push antes de desplegar la API.
 2. Después de desplegar la API, ya conoces su URL: la pones en `NEXT_PUBLIC_API_URL` de Vercel antes de desplegar la web.
 
 ## 7. Publicar la evaluación
@@ -305,13 +305,13 @@ Better Auth lee solo `x-forwarded-for`, y la ruta `/api/auth` conserva su primer
 2. Desde cada red, manda un inicio de sesión fallido con cabeceras falsas:
 
    ```bash
-   curl -s -o /dev/null -w '%{http_code}\n' -X POST "https://<web>/api/auth/sign-in/email" \
-     -H "Origin: https://<web>" -H 'Content-Type: application/json' \
+   curl -s -o /dev/null -w '%{http_code}\n' -X POST "https://criter-ia.vercel.app/api/auth/sign-in/email" \
+     -H "Origin: https://criter-ia.vercel.app" -H 'Content-Type: application/json' \
      -H 'X-Forwarded-For: 203.0.113.7' -H 'X-Real-IP: 203.0.113.7' \
      -d '{"email":"nadie@example.com","password":"no-es-una-clave"}'
    ```
 
-   En el iPhone, abre `https://<web>` con datos móviles e intenta entrar con una cuenta inexistente.
+   En el iPhone, abre `https://criter-ia.vercel.app` con datos móviles e intenta entrar con una cuenta inexistente.
 3. En el editor SQL de Neon:
 
    ```sql

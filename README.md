@@ -6,7 +6,7 @@ Todo lo que genera es una propuesta: una persona aprueba o edita las historias a
 
 El uso gratuito por defecto corre sobre Groq con la clave del servidor. Para usar modelos de pago (OpenAI, Anthropic, Groq con tu cuenta o un endpoint compatible con OpenAI), cada persona usa su propia clave de API. La herramienta nunca cambia de proveedor por su cuenta ([ADR 0016](docs/adr/0016-claves-por-usuario.md)).
 
-**App desplegada:** pendiente (F6).
+**App desplegada:** [criter-ia.vercel.app](https://criter-ia.vercel.app)
 
 ![Vista clásica con una corrida terminada: flujo de los cuatro agentes, casos de prueba con su origen, rúbrica y registro](docs/media/vista-clasica.webp)
 
