@@ -151,6 +151,7 @@ test('evaluación, historial, privacidad y cuenta', async ({
     page.getByRole('heading', { name: 'Acuerdo del juez con una persona' }),
   ).toBeVisible();
   await expect(page.getByText(/32 pares criterio por corrida/)).toBeVisible();
+  await expect(page.getByText(/El juez es consistente pero no está validado/)).toBeVisible();
   await check(page, testInfo, '08-evaluacion');
   await signIn(page, page.request, baseURL ?? '', clientIp);
   await page.goto('/historial');

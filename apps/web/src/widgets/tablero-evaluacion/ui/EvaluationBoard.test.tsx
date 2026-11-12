@@ -83,7 +83,7 @@ describe('EvaluationBoard', () => {
     );
     expect(screen.getByText(/solo los 11 casos que todos los modelos/)).toBeInTheDocument();
     expect(
-      within(screen.getByRole('region', { name: 'Mejor puntaje' })).getByText(
+      within(screen.getByRole('region', { name: 'Mayor puntaje del juez' })).getByText(
         'Anthropic · Claude Haiku 5.5',
       ),
     ).toBeInTheDocument();
@@ -119,6 +119,7 @@ describe('EvaluationBoard', () => {
     expect(within(section).getByText('50% (34% a 66%)')).toBeInTheDocument();
     expect(section).toHaveTextContent('32 pares');
     expect(section).toHaveTextContent('califica 0.25 puntos más bajo que la persona');
+    expect(section).not.toHaveTextContent('no está validado');
     unmount();
 
     render(<EvaluationBoard lotes={[batch({})]} />);
@@ -144,6 +145,7 @@ describe('EvaluationBoard', () => {
     expect(within(section).getByText('—')).toBeInTheDocument();
     expect(within(section).getByText('1.00')).toBeInTheDocument();
     expect(section).toHaveTextContent('0.50 puntos más alto');
+    expect(section).toHaveTextContent('El juez es consistente pero no está validado');
   });
 
   it('shows dashes when no batch has numbers', () => {

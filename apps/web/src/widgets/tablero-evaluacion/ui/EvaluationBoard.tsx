@@ -22,6 +22,8 @@ function interval(value: IntervalBody, format: (n: number) => string): string {
 
 function JudgeAgreement({ acuerdo }: { acuerdo: JudgeAgreementBody | null }) {
   const bias = acuerdo?.juez_menos_humano.valor ?? null;
+  // An interval that reaches zero shows no agreement beyond chance.
+  const unvalidated = acuerdo !== null && (acuerdo.kappa.bajo === null || acuerdo.kappa.bajo <= 0);
   return (
     <section className={styles.card} aria-labelledby="agreement-title">
       <h2 id="agreement-title" className={styles.cardTitle}>
@@ -59,6 +61,12 @@ function JudgeAgreement({ acuerdo }: { acuerdo: JudgeAgreementBody | null }) {
                 bias >= 0 ? 'más alto' : 'más bajo'
               } que la persona.`}
           </p>
+          {unvalidated && (
+            <p className={styles.note}>
+              El juez es consistente pero no está validado: con esta persona no hay acuerdo claro a
+              nivel de corrida, así que las diferencias de puntaje se leen con cautela.
+            </p>
+          )}
         </>
       )}
     </section>
@@ -143,11 +151,6 @@ export function EvaluationBoard({
       ) : (
         <>
           <div className={styles.kpis}>
-            <section className={styles.card} aria-label="Mejor puntaje">
-              <p className={styles.kpiLabel}>Mejor puntaje en los casos comunes (de 1 a 5)</p>
-              <p className={styles.kpiValue}>{score(best?.score_mean_common ?? null)}</p>
-              <p className={styles.kpiLabel}>{best ? name(best) : '—'}</p>
-            </section>
             <section className={styles.card} aria-label="Más rápido">
               <p className={styles.kpiLabel}>Más rápido (latencia p50)</p>
               <p className={styles.kpiValue}>{seconds(fastest?.latency_p50_ms ?? null)}</p>
@@ -157,6 +160,13 @@ export function EvaluationBoard({
               <p className={styles.kpiLabel}>Más salidas válidas a la primera</p>
               <p className={styles.kpiValue}>{percent(mostValid?.valid_rate ?? null)}</p>
               <p className={styles.kpiLabel}>{mostValid ? name(mostValid) : '—'}</p>
+            </section>
+            <section className={styles.card} aria-label="Mayor puntaje del juez">
+              <p className={styles.kpiLabel}>
+                Mayor puntaje del juez en los casos comunes (de 1 a 5)
+              </p>
+              <p className={styles.kpiValue}>{score(best?.score_mean_common ?? null)}</p>
+              <p className={styles.kpiLabel}>{best ? name(best) : '—'}</p>
             </section>
           </div>
           <section className={styles.card} aria-labelledby="compare-title">
@@ -174,8 +184,8 @@ export function EvaluationBoard({
                   <tr>
                     <th scope="col">Modelo</th>
                     <th scope="col">Completas</th>
-                    <th scope="col">Puntaje medio</th>
-                    <th scope="col">En casos comunes</th>
+                    <th scope="col">Puntaje del juez</th>
+                    <th scope="col">Juez en casos comunes</th>
                     <th scope="col">Válidas a la primera</th>
                     <th scope="col">Latencia p50</th>
                     <th scope="col">Latencia p95</th>
@@ -207,9 +217,10 @@ export function EvaluationBoard({
               </table>
             </div>
             <p className={styles.note}>
-              El puntaje medio usa todas las corridas completas de cada modelo; el de casos comunes,
-              solo los {common} casos que todos los modelos de esta versión completaron, para
-              compararlos sobre el mismo terreno.
+              El puntaje del juez usa todas las corridas completas de cada modelo; el de casos
+              comunes, solo los {common} casos que todos los modelos de esta versión completaron,
+              para compararlos sobre el mismo terreno. Es secundario a la robustez, la latencia y el
+              costo mientras el juez no esté validado.
             </p>
             <p className={styles.note}>
               * El juez es del mismo proveedor que este modelo; su puntaje puede tener sesgo de
