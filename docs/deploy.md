@@ -104,6 +104,8 @@ Pendiente: build y push de la imagen del SHA verificado, despliegue con máximo 
 
 Pendiente: despliegue manual del mismo SHA y variables de producción.
 
+Los límites de Better Auth por IP leen solo `x-forwarded-for`, del que la ruta `/api/auth` conserva la primera dirección. Vercel documenta que sobrescribe esa cabecera con la IP del cliente para evitar suplantación; de `x-real-ip` no lo promete.
+
 ## Verificación posterior
 
 Pendiente. Checklist de cierre: teléfono real (iPhone, 390 px), cabeceras de seguridad, CORS, límite de uso con dos cuentas, flujo completo de registro y verificación, PageSpeed y alerta de presupuesto activa.

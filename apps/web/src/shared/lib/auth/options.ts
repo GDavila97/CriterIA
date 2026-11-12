@@ -102,7 +102,8 @@ export function buildAuthOptions({
     },
     advanced: {
       useSecureCookies: env.NEXT_PUBLIC_APP_ENV === 'production',
-      ipAddress: { ipAddressHeaders: ['x-real-ip', 'x-forwarded-for'] },
+      // Vercel overwrites X-Forwarded-For with the client address; X-Real-IP has no such promise.
+      ipAddress: { ipAddressHeaders: ['x-forwarded-for'] },
     },
     databaseHooks: {
       account: { create: { before: withoutTokens }, update: { before: withoutTokens } },

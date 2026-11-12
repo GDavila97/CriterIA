@@ -129,6 +129,7 @@ describe('buildAuthOptions', () => {
     const built = options({ env: production });
 
     expect(built.advanced?.useSecureCookies).toBe(true);
+    expect(built.advanced?.ipAddress?.ipAddressHeaders).toEqual(['x-forwarded-for']);
     expect(built.socialProviders?.google).toEqual({ clientId: 'g', clientSecret: 's' });
   });
 });

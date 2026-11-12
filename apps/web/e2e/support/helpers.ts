@@ -32,7 +32,7 @@ export async function signUpByApi(
 ): Promise<string> {
   const response = await request.post('/api/auth/sign-up/email', {
     data: { name: 'Ana Prueba', email, password: PASSWORD },
-    headers: { origin: baseURL, 'x-real-ip': ip },
+    headers: { origin: baseURL, 'x-forwarded-for': ip },
   });
   expect(response.ok(), `${response.status()} ${await response.text()}`).toBe(true);
   return email;

@@ -70,7 +70,7 @@ test('el registro tiene un límite por IP guardado en la base', async ({ request
   for (let i = 0; i < 21; i += 1) {
     const response = await request.post('/api/auth/sign-up/email', {
       data: { name: 'Límite', email: uniqueEmail('limite'), password: PASSWORD },
-      headers: { origin: baseURL ?? '', 'x-real-ip': ip },
+      headers: { origin: baseURL ?? '', 'x-forwarded-for': ip },
     });
     statuses.push(response.status());
   }

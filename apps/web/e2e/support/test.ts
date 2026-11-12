@@ -14,7 +14,7 @@ export const test = base.extend<{ clientIp: string }>({
       const ip = fakeClientIp();
       for (const origin of [WEB_URL, MAIL_WEB_URL]) {
         await page.route(`${origin}/api/auth/**`, (route) =>
-          route.continue({ headers: { ...route.request().headers(), 'x-real-ip': ip } }),
+          route.continue({ headers: { ...route.request().headers(), 'x-forwarded-for': ip } }),
         );
       }
       await use(ip);
