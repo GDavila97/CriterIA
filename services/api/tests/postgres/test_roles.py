@@ -58,6 +58,16 @@ def test_eval_writer_only_inserts_evaluation_rows(database: Database) -> None:
     _fails(database.eval_writer, "DELETE FROM app.eval_case")
 
 
+def test_web_role_lands_in_auth_without_connection_options(database: Database) -> None:
+    with psycopg.connect(database.web, autocommit=True) as conn:
+        assert conn.execute("SHOW search_path").fetchone() == ("auth",)
+        conn.execute("CREATE TABLE IF NOT EXISTS probe (id int)")
+        located = conn.execute("SELECT to_regclass('auth.probe') IS NOT NULL").fetchone()
+        conn.execute("DROP TABLE probe")
+    assert located == (True,)
+    _fails(database.web, "SELECT * FROM app.run")
+
+
 def test_roles_script_is_idempotent(database: Database) -> None:
     script = (SERVICE_ROOT / "db" / "roles.sql").read_text(encoding="utf-8")
     with psycopg.connect(database.admin, autocommit=True) as conn:

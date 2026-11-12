@@ -12,7 +12,7 @@ vi.mock('./github-stub', () => ({ routeGithubToStub: vi.fn() }));
 vi.mock('@/shared/config/server-env', () => ({ getServerEnv: vi.fn() }));
 
 describe('getAuth', () => {
-  it('builds Better Auth once on the auth schema and routes GitHub to the stub in tests', () => {
+  it('builds Better Auth once without connection options and routes GitHub to the stub in tests', () => {
     vi.mocked(getServerEnv).mockReturnValue({
       NEXT_PUBLIC_APP_ENV: 'test',
       BETTER_AUTH_SECRET: 's'.repeat(40),
@@ -28,7 +28,6 @@ describe('getAuth', () => {
     expect(betterAuth).toHaveBeenCalledTimes(1);
     expect(Pool).toHaveBeenCalledWith({
       connectionString: 'postgresql://web_role:pw@127.0.0.1:5432/criteria',
-      options: '-c search_path=auth',
     });
     expect(routeGithubToStub).toHaveBeenCalledWith('http://127.0.0.1:4010');
   });

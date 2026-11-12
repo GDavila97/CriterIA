@@ -19,6 +19,13 @@ BEGIN
 END
 $$;
 
+-- Postgres 16 gives a non-superuser creator (neondb_owner in Neon) only ADMIN on the new roles;
+-- handing the schemas and default privileges to them needs SET and INHERIT as well.
+GRANT migrator_role, web_role TO CURRENT_USER WITH INHERIT TRUE, SET TRUE;
+
+-- Neon's pooler runs in transaction mode and drops per-connection options, so the role carries it.
+ALTER ROLE web_role SET search_path TO auth;
+
 REVOKE CREATE ON SCHEMA public FROM PUBLIC;
 
 CREATE SCHEMA IF NOT EXISTS app AUTHORIZATION migrator_role;

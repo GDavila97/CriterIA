@@ -20,6 +20,7 @@ class Database:
     migrator: str
     api: str
     eval_writer: str
+    web: str
 
     def ensure_user(self, user_id: str) -> None:
         with psycopg.connect(self.admin, autocommit=True) as conn:

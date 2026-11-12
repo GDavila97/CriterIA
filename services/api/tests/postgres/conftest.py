@@ -70,6 +70,7 @@ def database() -> Iterator[Database]:
         migrator=_url("migrator_role", name),
         api=_url("api_role", name),
         eval_writer=_url("eval_writer", name),
+        web=_url("web_role", name),
     )
     command.upgrade(_alembic_config(db.migrator), "head")
     yield db

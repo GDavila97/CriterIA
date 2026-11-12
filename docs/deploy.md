@@ -20,7 +20,7 @@ Una sola vez por base (y de nuevo si cambia el script, que es idempotente), con 
 psql "$OWNER_URL" -v ON_ERROR_STOP=1 -f services/api/db/roles.sql
 ```
 
-El script crea `migrator_role`, `api_role`, `eval_writer` y `web_role` con `LOGIN` y sin contraseña, y los esquemas `app` y `graph` (de `migrator_role`) y `auth` (de `web_role`). Después se asigna a cada rol una contraseña larga y aleatoria, distinta por rol, que se guarda en 1Password:
+El script crea `migrator_role`, `api_role`, `eval_writer` y `web_role` con `LOGIN` y sin contraseña, y los esquemas `app` y `graph` (de `migrator_role`) y `auth` (de `web_role`). Le da al dueño de la base `SET` e `INHERIT` sobre `migrator_role` y `web_role`, porque en Postgres 16 quien crea un rol sin ser superusuario solo recibe `ADMIN` y no puede entregarle esquemas. También fija `search_path=auth` en `web_role`, porque el pooler de Neon trabaja por transacción y no conserva opciones por conexión. Después se asigna a cada rol una contraseña larga y aleatoria, distinta por rol, que se guarda en 1Password:
 
 ```sql
 ALTER ROLE migrator_role PASSWORD '…';

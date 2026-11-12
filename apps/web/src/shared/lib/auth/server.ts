@@ -11,11 +11,8 @@ import { buildAuthOptions } from './options';
 function createAuth() {
   const env = getServerEnv();
   if (env.GITHUB_STUB_URL) routeGithubToStub(env.GITHUB_STUB_URL);
-  // web_role only sees the auth schema; the search path keeps Better Auth's tables there.
-  const pool = new Pool({
-    connectionString: env.AUTH_DATABASE_URL,
-    options: '-c search_path=auth',
-  });
+  // web_role carries search_path=auth (db/roles.sql), which also holds behind Neon's pooler.
+  const pool = new Pool({ connectionString: env.AUTH_DATABASE_URL });
   return betterAuth(
     buildAuthOptions({
       env,
