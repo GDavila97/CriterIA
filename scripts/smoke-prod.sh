@@ -54,7 +54,7 @@ origin_of() {
 
 api_checks() {
   local body api_headers
-  check "API /healthz answers 200" equals "$(status "$api/healthz")" 200
+  check "API /health answers 200" equals "$(status "$api/health")" 200
   for path in /me/settings /me/usage /me/runs /me/credentials; do
     check "API $path without a token answers 401" equals "$(status "$api$path")" 401
   done
@@ -67,14 +67,14 @@ api_checks() {
   check "API /evaluation includes the judge agreement" \
     equals "$(jq '.acuerdo_juez != null' <<<"$body" 2>/dev/null)" true
 
-  api_headers=$(headers "$api/healthz")
+  api_headers=$(headers "$api/health")
   check "API sends nosniff" equals "$(header "$api_headers" x-content-type-options)" nosniff
   check "API denies framing" equals "$(header "$api_headers" x-frame-options)" DENY
   check "API sends HSTS" contains "$(header "$api_headers" strict-transport-security)" max-age=
   check "API sends a closed CSP" \
     contains "$(header "$api_headers" content-security-policy)" "default-src 'none'"
   check "API sends no referrer" equals "$(header "$api_headers" referrer-policy)" no-referrer
-  check "API redirects http to https" redirects_to_https "${api/https:/http:}/healthz"
+  check "API redirects http to https" redirects_to_https "${api/https:/http:}/health"
 }
 
 cors_checks() {

@@ -38,6 +38,8 @@ Las alertas de presupuesto solo avisan: «doesn't automatically cap Google Cloud
 
 Límites de Cloud Run usados arriba: tiempo límite por defecto de 5 min y máximo de 60 min ([request-timeout](https://cloud.google.com/run/docs/configuring/request-timeout)); con menos de 1 vCPU, «Maximum concurrency must be set to `1`» ([cpu](https://cloud.google.com/run/docs/configuring/services/cpu)); memoria mínima de 128 MiB en primera generación y de 512 MiB en segunda ([memory-limits](https://cloud.google.com/run/docs/configuring/services/memory-limits)).
 
+Rutas reservadas: Cloud Run no deja pasar a la aplicación las rutas que empiezan con `/_ah/` ni algunas que terminan en `z`, y recomienda «avoiding all paths that end in `z`» ([known-issues](https://docs.cloud.google.com/run/docs/known-issues), «Reserved URL paths»). Por eso la ruta de salud es `/health` y no `/healthz`: en producción, `/healthz` respondía un 404 de Google sin llegar a la API. Ninguna ruta nueva de la API debe terminar en `z`.
+
 ## Herramientas en la Mac
 
 - `gcloud` (Google Cloud CLI): `gcloud auth login` y `gcloud auth configure-docker us-central1-docker.pkg.dev`.
@@ -256,7 +258,7 @@ Tú haces `git push`; todo lo demás usa el SHA completo de ese commit (`git rev
    - **Imagen:** construye desde `git archive` del SHA (nada sin commit entra en la imagen), la etiqueta `api:<sha>`, la sube y despliega con los recursos de la tabla de decisiones. Si la imagen ya existe, la reutiliza.
    - **Variables:** salen de `services/api/deploy/production.env` tal como está en ese SHA.
    - **Secretos:** se montan con `--set-secrets`.
-   - **Al final:** consulta `/healthz`.
+   - **Al final:** consulta `/health` (no `/healthz`, que Cloud Run reserva; ver «Capa gratuita y costos»).
 
    **Control:** `gcloud run services describe criteria-api --region=us-central1 --format='value(metadata.labels.commit-sha)'` devuelve el SHA.
 4. **Web.**
@@ -282,7 +284,7 @@ Tú haces `git push`; todo lo demás usa el SHA completo de ese commit (`git rev
    ```
 
    Solo lee, sin iniciar sesión ni crear corridas, y termina con `All checks passed`. Comprueba:
-   - **Salud y rutas privadas:** `/healthz`, y 401 sin token y con un token falso.
+   - **Salud y rutas privadas:** `/health`, y 401 sin token y con un token falso.
    - **Tablero:** `/evaluation` devuelve los lotes y el acuerdo del juez.
    - **CORS:** permite solo el origen de la web y nunca credenciales.
    - **Cabeceras de seguridad** de la API y de la web, incluida la CSP con nonce y con la API en `connect-src`.

@@ -72,9 +72,9 @@ def tokens() -> TokenFactory:
     return TokenFactory()
 
 
-async def test_healthz_reports_only_status_and_version(tokens: TokenFactory) -> None:
+async def test_health_reports_only_status_and_version(tokens: TokenFactory) -> None:
     async with app_with(tokens) as client:
-        response = await client.get("/healthz")
+        response = await client.get("/health")
 
     assert response.status_code == 200
     assert response.json() == {"status": "ok", "version": version("criteria")}
@@ -136,7 +136,7 @@ async def test_validation_errors_never_echo_the_input(tokens: TokenFactory) -> N
 async def test_unknown_routes_and_methods_use_the_same_error_shape(tokens: TokenFactory) -> None:
     async with app_with(tokens) as client:
         missing = await client.get("/nothing-here")
-        method = await client.patch("/healthz")
+        method = await client.patch("/health")
 
     assert (missing.status_code, missing.json()["code"]) == (404, "no_encontrado")
     assert (method.status_code, method.json()["code"]) == (405, "metodo_no_permitido")

@@ -38,5 +38,5 @@ USER app
 EXPOSE 8080
 # Cloud Run ignores HEALTHCHECK; it serves local runs and other orchestrators.
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
-    CMD ["python", "-c", "import os, urllib.request; urllib.request.urlopen(f\"http://127.0.0.1:{os.environ['PORT']}/healthz\", timeout=2)"]
+    CMD ["python", "-c", "import os, urllib.request; urllib.request.urlopen(f\"http://127.0.0.1:{os.environ['PORT']}/health\", timeout=2)"]
 CMD ["criteria-api"]

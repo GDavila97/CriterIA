@@ -13,12 +13,12 @@ describe('routeGithubToStub', () => {
     routeGithubToStub('http://127.0.0.1:4010', target);
     await target.fetch('https://github.com/login/oauth/access_token?x=1', { method: 'POST' });
     await target.fetch(new Request('https://api.github.com/user/emails'));
-    await target.fetch('http://localhost:8080/healthz');
+    await target.fetch('http://localhost:8080/health');
 
     expect(calls).toEqual([
       'http://127.0.0.1:4010/github.com/login/oauth/access_token?x=1',
       'http://127.0.0.1:4010/api.github.com/user/emails',
-      'http://localhost:8080/healthz',
+      'http://localhost:8080/health',
     ]);
   });
 });

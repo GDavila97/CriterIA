@@ -94,7 +94,7 @@ uv sync --frozen
 make db-up                # Postgres 16 en 127.0.0.1:5432
 make db-setup             # roles, esquemas y contraseñas locales
 make migrate              # Alembic como migrator_role
-make run                  # http://127.0.0.1:8080/healthz
+make run                  # http://127.0.0.1:8080/health
 ```
 
 La CLI (`uv run criteria run …`) no necesita base de datos ni las variables de la API.

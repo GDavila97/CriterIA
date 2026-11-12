@@ -6,7 +6,7 @@ Fuera de producción, el esquema OpenAPI está en `/openapi.json` y la documenta
 
 ## Autenticación
 
-- Todas las rutas, salvo `GET /healthz` y `GET /evaluation`, exigen `Authorization: Bearer <jwt>`.
+- Todas las rutas, salvo `GET /health` y `GET /evaluation`, exigen `Authorization: Bearer <jwt>`.
 - El JWT lo emite la web (Better Auth) y dura cinco minutos ([ADR 0008](adr/0008-better-auth-and-api-jwt.md)). La API lo verifica con el JWKS de la web (`AUTH_JWKS_URL`): firma con un algoritmo asimétrico de `AUTH_ALGORITHMS` (EdDSA por defecto), `kid` presente en el JWKS, y `iss`, `aud`, `exp` y `sub` obligatorios, con `AUTH_LEEWAY_SECONDS` de tolerancia. Un `kid` desconocido fuerza una recarga del JWKS, como mucho una cada 30 s.
 - `sub` es el `user_id`, el `id` de `auth."user"`. Crear corridas y guardar claves exige además que el claim `AUTH_VERIFIED_CLAIM` (`email_verified`) sea `true`; Better Auth lo incluye en el payload del JWT. Mientras la web no pueda enviar correos (`EMAIL_PROVIDER=none`), `AUTH_REQUIRE_VERIFIED_EMAIL=false` desactiva esa exigencia ([ADR 0020](adr/0020-github-first-sign-in-without-email.md)).
 - Las claves de proveedor nunca viajan en cabeceras: solo en el cuerpo de `PUT /me/credentials/{provider}`.
@@ -16,7 +16,7 @@ Fuera de producción, el esquema OpenAPI está en `/openapi.json` y la documenta
 
 | Método y ruta | Auth | Respuesta | Qué hace |
 | --- | --- | --- | --- |
-| `GET /healthz` | — | `200 HealthBody` | Estado y versión; no toca la base |
+| `GET /health` | — | `200 HealthBody` | Estado y versión; no toca la base. No es `/healthz` porque Cloud Run reserva rutas que terminan en `z` ([deploy.md](deploy.md)) |
 | `POST /runs` | verificado | `201 RunCreatedBody` | Valida, resuelve proveedor, modelo y clave, reserva el cupo y guarda la corrida. No llama a ningún modelo |
 | `GET /runs/{id}/stream` | verificado | `200 text/event-stream` | Ejecuta la corrida desde su último checkpoint y emite los eventos hasta la pausa humana o el final ([ADR 0018](adr/0018-run-lifecycle-bound-to-the-stream.md)) |
 | `POST /runs/{id}/approval` | verificado | `204` | Guarda la respuesta humana (`RespuestaHumana`); el siguiente stream reanuda con ella |
@@ -143,7 +143,7 @@ Con `MODEL_BACKEND=fake` la API responde con modelos deterministas y valida las 
 
 - CORS solo para `WEB_ORIGIN`, sin credenciales, con los métodos `GET`, `POST`, `PUT` y `DELETE` y las cabeceras `authorization`, `content-type` y `last-event-id`.
 - Límite de tamaño del cuerpo (`MAX_REQUEST_BYTES`, 64 KiB), tanto por `Content-Length` como por lo que llega en streaming.
-- `Cache-Control: no-store` en todo salvo `/healthz` y `/evaluation`, más `X-Content-Type-Options`, `Referrer-Policy`, `X-Frame-Options`, `Strict-Transport-Security` y una CSP `default-src 'none'`.
+- `Cache-Control: no-store` en todo salvo `/health` y `/evaluation`, más `X-Content-Type-Options`, `Referrer-Policy`, `X-Frame-Options`, `Strict-Transport-Security` y una CSP `default-src 'none'`.
 - Una línea de log JSON por petición con ruta plantilla, estado y duración. El usuario aparece solo como un seudónimo (los primeros 12 caracteres del SHA-256 de su id); no se registran cuerpos, tokens, claves ni correos.
 - Cada proveedor tiene su tiempo límite (`PROVIDER_TIMEOUTS`) y como mucho un reintento ante errores de conexión o respuestas 500, 502, 503 o 504; nunca ante un 4xx.
 

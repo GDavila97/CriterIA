@@ -91,7 +91,7 @@ main() {
   local url
   url=$(gcloud run services describe "$SERVICE" --project="$GCP_PROJECT_ID" --region="$REGION" \
     --format='value(status.url)')
-  curl --fail --silent --show-error --retry 5 --retry-all-errors "$url/healthz" >/dev/null
+  curl --fail --silent --show-error --retry 5 --retry-all-errors "$url/health" >/dev/null
   printf 'Deployed %s to %s\n' "$sha" "$url"
 }
 

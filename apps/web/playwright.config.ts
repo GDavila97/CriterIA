@@ -52,7 +52,7 @@ export default defineConfig({
     {
       command: 'uv run --no-sync criteria-api',
       cwd: API_DIR,
-      url: `${API_URL}/healthz`,
+      url: `${API_URL}/health`,
       env: { ...apiEnv, VIRTUAL_ENV: '' },
       reuseExistingServer: reuse,
       timeout: 120_000,

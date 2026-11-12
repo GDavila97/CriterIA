@@ -63,8 +63,8 @@ def _run_request(body: RunCreateBody) -> RunRequest:
     )
 
 
-@router.get("/healthz", response_model=HealthBody, tags=["salud"])
-async def healthz() -> HealthBody:
+@router.get("/health", response_model=HealthBody, tags=["salud"])
+async def health() -> HealthBody:
     return HealthBody(status="ok", version=version("criteria"))
 
 

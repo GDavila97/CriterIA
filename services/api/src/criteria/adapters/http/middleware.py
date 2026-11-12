@@ -17,7 +17,7 @@ SECURITY_HEADERS = {
     "content-security-policy": "default-src 'none'; frame-ancestors 'none'",
     "strict-transport-security": "max-age=63072000; includeSubDomains",
 }
-PUBLIC_PATHS = {"/healthz", "/evaluation"}
+PUBLIC_PATHS = {"/health", "/evaluation"}
 
 
 def user_ref(user_id: str) -> str:
