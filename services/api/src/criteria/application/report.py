@@ -204,6 +204,45 @@ def judge_agreement(
     )
 
 
+@dataclass(frozen=True)
+class SampleScores:
+    """One model's mean in the human sample, by the judge and by the person."""
+
+    clave: str
+    corridas: int
+    juez: float | None
+    persona: float | None
+
+
+def sample_by_model(session: HumanSession, batches: Sequence[EvalBatch]) -> list[SampleScores]:
+    """Descriptive only: a few runs per model, so the order is a hint, not a finding."""
+    by_id = {b.batch_id: b for b in batches}
+    runs: dict[str, set[str]] = {}
+    judge: dict[str, list[float]] = {}
+    person: dict[str, list[float]] = {}
+    for score in session.puntajes:
+        batch = by_id[score.batch_id]
+        value = batch.resultados[score.case_id].puntaje(score.criterio)
+        if value is None:
+            continue
+        runs.setdefault(batch.clave, set()).add(score.case_id)
+        judge.setdefault(batch.clave, []).append(float(value))
+        person.setdefault(batch.clave, []).append(float(score.valor))
+    return [
+        SampleScores(clave, len(runs[clave]), mean(judge[clave]), mean(person[clave]))
+        for clave in sorted(runs)
+    ]
+
+
+def same_order(scores: Sequence[SampleScores]) -> bool:
+    """Whether the judge and the person rank the models the same way."""
+
+    def order(key: str) -> list[str]:
+        return [s.clave for s in sorted(scores, key=lambda s: -(getattr(s, key) or 0.0))]
+
+    return order("juez") == order("persona")
+
+
 def matcher_agreement(session: HumanSession, seed: int = REPORT_SEED) -> Estimate | None:
     """Share of the matcher's decisions the person confirmed, with its bootstrap interval."""
     checks = [int(c.acierta) for c in session.emparejamientos]

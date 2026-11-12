@@ -5,7 +5,7 @@ from collections.abc import Collection, Mapping, Sequence
 from dataclasses import asdict
 from html import escape
 
-from criteria.application.report import JudgeAgreement, ModelSummary
+from criteria.application.report import JudgeAgreement, ModelSummary, SampleScores, same_order
 from criteria.application.stability import SelfAgreement
 from criteria.domain.artifacts import CRITERIOS, TipoObservacion
 from criteria.domain.eval_metrics import Agreement, Estimate
@@ -108,6 +108,7 @@ def markdown(  # noqa: PLR0913  every part of the report is an input
     undetected: Sequence[tuple[str, int]],
     judge_self: SelfAgreement | None = None,
     matcher_self: SelfAgreement | None = None,
+    sample: Sequence[SampleScores] = (),
 ) -> str:
     out = ["## Resultados por modelo", ""]
     out += _table(
@@ -264,6 +265,22 @@ def markdown(  # noqa: PLR0913  every part of the report is an input
                 _distribution_row("Persona", judge.distribucion_humano),
             ],
         )
+    if sample:
+        names = {s.clave: label(s) for s in summaries}
+        out += ["", "Por modelo en la muestra humana (descriptivo, no concluyente):", ""]
+        out += _table(
+            ["Modelo", "Corridas", "Juez", "Persona"],
+            [
+                [names.get(s.clave, s.clave), str(s.corridas), _num(s.juez), _num(s.persona)]
+                for s in sample
+            ],
+        )
+        out += [
+            "",
+            "El orden de los modelos "
+            + ("coincide" if same_order(sample) else "no coincide")
+            + " entre el juez y la persona.",
+        ]
     out += ["", "## Acuerdo del emparejador con la revisión humana", ""]
     out.append(
         "Pendiente: todavía no hay revisión humana."

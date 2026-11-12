@@ -4,6 +4,7 @@ from xml.etree import ElementTree
 from criteria.adapters.eval.report import chart_svg, label, markdown, summary_json
 from criteria.application.report import (
     ModelSummary,
+    SampleScores,
     common_cases,
     judge_agreement,
     matcher_agreement,
@@ -94,9 +95,11 @@ def test_tables_with_human_scores_and_stability() -> None:
     )
     stable = SelfAgreement(pairs=40, kappa=Estimate(0.8, 0.6, 0.9), exact=Estimate(0.7, 0.55, 0.85))
 
+    sample = [SampleScores("openai:gpt-6-luna", 3, 2.5, 4.5)]
     text = markdown(
         [summarize_batch(b, CASES)],
         CASES,
+        sample=sample,
         common=[],
         judge=agreement,
         matcher=matcher_agreement(session),
@@ -107,6 +110,8 @@ def test_tables_with_human_scores_and_stability() -> None:
     )
 
     assert "| Todos | 3 |" in text
+    assert "| OpenAI · gpt-6-luna (tool) | 3 | 2.50 | 4.50 |" in text
+    assert "El orden de los modelos coincide entre el juez y la persona." in text
     assert "| Quién | 1 | 2 | 3 | 4 | 5 | Media |" in text
     assert "| Juez | 0 | 1 | 1 | 1 | 0 | 3.00 |" in text
     assert "| Persona | 0 | 1 | 1 | 1 | 0 | 3.00 |" in text

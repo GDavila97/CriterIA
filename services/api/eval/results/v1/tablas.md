@@ -83,6 +83,16 @@ Distribución de los puntajes en esos pares:
 | Juez | 0 | 14 | 15 | 3 | 0 | 2.66 |
 | Persona | 0 | 0 | 2 | 14 | 16 | 4.44 |
 
+Por modelo en la muestra humana (descriptivo, no concluyente):
+
+| Modelo | Corridas | Juez | Persona |
+| --- | --- | --- | --- |
+| Anthropic · Claude Haiku 5.5 (tool) * | 3 | 2.83 | 4.58 |
+| Groq · GPT-OSS 20B (native) | 3 | 2.75 | 4.25 |
+| Ollama · Llama 3.1 8B (native) | 2 | 2.25 | 4.50 |
+
+El orden de los modelos no coincide entre el juez y la persona.
+
 ## Acuerdo del emparejador con la revisión humana
 
 100% [100%, 100%] de 10 emparejamientos revisados.

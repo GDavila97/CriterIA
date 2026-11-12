@@ -4,6 +4,8 @@ from criteria.application.report import (
     judge_agreement,
     judge_pairs,
     matcher_agreement,
+    same_order,
+    sample_by_model,
     summarize,
     summarize_batch,
 )
@@ -80,6 +82,30 @@ def test_the_agreement_does_not_depend_on_the_order_of_the_pairs() -> None:
     ]
 
     assert judge_agreement(pairs) == judge_agreement(list(reversed(pairs)))
+
+
+def test_the_sample_compares_judge_and_person_per_model_and_their_order() -> None:
+    high = batch("anthropic", "a", [result("facil-01", scores=(4, 4, 4, 4))])
+    low = batch(
+        "groq",
+        "b",
+        [result("medio-01", scores=(2, 2, 2, 2)), result("facil-02", scores=None)],
+    )
+    session = HumanSession(
+        semilla=1,
+        puntajes=[
+            HumanScore(batch_id=high.batch_id, case_id="facil-01", criterio="claridad", valor=3),
+            HumanScore(batch_id=low.batch_id, case_id="medio-01", criterio="claridad", valor=5),
+            HumanScore(batch_id=low.batch_id, case_id="facil-02", criterio="claridad", valor=5),
+        ],
+    )
+
+    first, second = sample_by_model(session, [high, low])
+
+    assert (first.clave, first.corridas, first.juez, first.persona) == ("anthropic:a", 1, 4.0, 3.0)
+    assert (second.corridas, second.juez, second.persona) == (1, 2.0, 5.0)
+    assert not same_order([first, second])
+    assert same_order([first])
 
 
 def test_an_unpriced_completed_run_leaves_the_cost_per_run_unknown() -> None:

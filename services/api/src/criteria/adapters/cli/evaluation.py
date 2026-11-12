@@ -47,6 +47,7 @@ from criteria.application.report import (
     judge_agreement,
     judge_pairs,
     matcher_agreement,
+    sample_by_model,
     summarize,
 )
 from criteria.application.stability import (
@@ -462,6 +463,7 @@ async def _report(args: argparse.Namespace, container: "Container", terminal: "T
             undetected=undetected,
             judge_self=judge_self,
             matcher_self=matcher_self,
+            sample=[] if session is None else sample_by_model(session, batches),
         ),
         encoding="utf-8",
     )
