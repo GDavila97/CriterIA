@@ -18,6 +18,17 @@ describe('parsePublicEnv', () => {
     expect(() => parsePublicEnv({})).toThrow(/NEXT_PUBLIC_APP_ENV.*NEXT_PUBLIC_API_URL/);
   });
 
+  it('links the contact to the GitHub profile unless another https or mailto URL is set', () => {
+    expect(parsePublicEnv(valid).NEXT_PUBLIC_CONTACT_URL).toBe('https://github.com/GDavila97');
+    expect(
+      parsePublicEnv({ ...valid, NEXT_PUBLIC_CONTACT_URL: 'mailto:hola@example.com' })
+        .NEXT_PUBLIC_CONTACT_URL,
+    ).toBe('mailto:hola@example.com');
+    expect(() =>
+      parsePublicEnv({ ...valid, NEXT_PUBLIC_CONTACT_URL: 'javascript:alert(1)' }),
+    ).toThrow(/NEXT_PUBLIC_CONTACT_URL/);
+  });
+
   it('rejects non-http API URLs', () => {
     expect(() => parsePublicEnv({ ...valid, NEXT_PUBLIC_API_URL: 'javascript:alert(1)' })).toThrow(
       /NEXT_PUBLIC_API_URL/,

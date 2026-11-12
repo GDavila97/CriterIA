@@ -9,7 +9,18 @@ export interface PrivacyUser extends HeaderUser {
   providers: string[];
 }
 
-export function PrivacyPage({ user }: { user: PrivacyUser | null }) {
+/** The address of a mailto: link, or the URL without its scheme. */
+function contactLabel(url: string): string {
+  return url.startsWith('mailto:') ? url.slice('mailto:'.length) : url.replace(/^https:\/\//, '');
+}
+
+export function PrivacyPage({
+  user,
+  contactUrl,
+}: {
+  user: PrivacyUser | null;
+  contactUrl: string;
+}) {
   const github = user?.providers.includes('github') ?? false;
   return (
     <div className={styles.page}>
@@ -136,7 +147,9 @@ export function PrivacyPage({ user }: { user: PrivacyUser | null }) {
             Los agentes proponen; tú apruebas. Revisa siempre las historias y los casos antes de
             usarlos. La calificación de la rúbrica la hace un modelo y puede equivocarse.
           </p>
-          <p>Dudas o solicitudes sobre tus datos: [CORREO DE CONTACTO]</p>
+          <p>
+            Dudas o solicitudes sobre tus datos: <a href={contactUrl}>{contactLabel(contactUrl)}</a>
+          </p>
         </section>
       </main>
     </div>

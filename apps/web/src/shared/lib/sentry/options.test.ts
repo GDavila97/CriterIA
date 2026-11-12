@@ -6,6 +6,7 @@ const env = {
   NEXT_PUBLIC_APP_ENV: 'test',
   NEXT_PUBLIC_API_URL: 'http://localhost:8080',
   NEXT_PUBLIC_OFFICE_VIEW: false,
+  NEXT_PUBLIC_CONTACT_URL: 'https://github.com/GDavila97',
 } as const;
 
 describe('sentryOptions', () => {

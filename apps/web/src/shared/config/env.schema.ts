@@ -7,6 +7,8 @@ const emptyAsUndefined = (value: unknown) => (value === '' ? undefined : value);
 
 const httpUrl = z.url({ protocol: /^https?$/ });
 
+export const DEFAULT_CONTACT_URL = 'https://github.com/GDavila97';
+
 const flag = z.preprocess(
   (value) => (value === undefined || value === '' ? undefined : value === 'true'),
   z.boolean().default(false),
@@ -22,6 +24,11 @@ export const publicEnvSchema = z
     ),
     // The office view arrives in F9; until then the view switch stays hidden.
     NEXT_PUBLIC_OFFICE_VIEW: flag,
+    // A profile page today; a mailto: address works the same once there is one.
+    NEXT_PUBLIC_CONTACT_URL: z.preprocess(
+      emptyAsUndefined,
+      z.url({ protocol: /^(https|mailto)$/ }).default(DEFAULT_CONTACT_URL),
+    ),
   })
   .refine(
     (env) =>

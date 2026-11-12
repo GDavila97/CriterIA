@@ -54,6 +54,7 @@ Web (Vercel):
 | Variable | Dónde vive | Nota |
 | --- | --- | --- |
 | `NEXT_PUBLIC_APP_ENV`, `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_OFFICE_VIEW` | Variables de Vercel | Se incrustan en el build; la URL de la API en `https` |
+| `NEXT_PUBLIC_CONTACT_URL` | Variable de Vercel | Contacto de "Privacidad y datos": un perfil en `https` o un `mailto:`; vacía usa `https://github.com/GDavila97` |
 | `BETTER_AUTH_SECRET` | Variable secreta de Vercel | 32 o más caracteres aleatorios; también cifra la llave privada del JWKS, así que cambiarlo obliga a regenerarla |
 | `BETTER_AUTH_URL` | Variable de Vercel | Origen público de la web; con `https` en producción |
 | `AUTH_DATABASE_URL` | Variable secreta de Vercel | `web_role`, URL con pooler de Neon (Better Auth no usa locks de sesión) |
