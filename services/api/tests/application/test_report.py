@@ -7,6 +7,7 @@ from criteria.application.report import (
     summarize,
     summarize_batch,
 )
+from criteria.domain.artifacts import Criterio
 from criteria.domain.evaluation import HumanScore, HumanSession, MatchCheck
 from tests.eval_factories import all_cases, batch, result
 
@@ -67,6 +68,18 @@ def test_models_also_compare_on_the_cases_every_batch_completed() -> None:
     assert (first.deteccion_comunes.total.detected, first.deteccion_comunes.casos) == (2, 1)
     assert (second.deteccion.casos, second.deteccion_comunes.total.detected) == (1, 1)
     assert summarize_batch(complete, all_cases()).comunes.puntaje_global is None
+
+
+def test_the_agreement_does_not_depend_on_the_order_of_the_pairs() -> None:
+    pairs: list[tuple[Criterio, int, int]] = [
+        ("claridad", 2, 4),
+        ("completitud", 3, 5),
+        ("claridad", 3, 4),
+        ("consistencia", 2, 5),
+        ("verificabilidad", 4, 4),
+    ]
+
+    assert judge_agreement(pairs) == judge_agreement(list(reversed(pairs)))
 
 
 def test_an_unpriced_completed_run_leaves_the_cost_per_run_unknown() -> None:

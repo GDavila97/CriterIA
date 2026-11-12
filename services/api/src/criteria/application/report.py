@@ -189,6 +189,8 @@ def judge_agreement(
 ) -> JudgeAgreement | None:
     if not pairs:
         return None
+    # The bootstrap resamples by position; a fixed order gives the same intervals from any source.
+    pairs = sorted(pairs)
     return JudgeAgreement(
         distribucion_juez=_distribution(j for _, j, _ in pairs),
         distribucion_humano=_distribution(h for _, _, h in pairs),
