@@ -1,0 +1,345 @@
+{
+  "semilla": 20261108,
+  "muestra": [
+    [
+      "318a74a4-7ebb-4dad-b9df-a224836d40a6",
+      "facil-02"
+    ],
+    [
+      "5e24b12b-92bb-4c8a-b787-bf577d4b2b1b",
+      "dificil-05"
+    ],
+    [
+      "5e24b12b-92bb-4c8a-b787-bf577d4b2b1b",
+      "facil-04"
+    ],
+    [
+      "0a44df76-c047-44d8-9e79-c6e0e167ce3e",
+      "dificil-01"
+    ],
+    [
+      "0a44df76-c047-44d8-9e79-c6e0e167ce3e",
+      "facil-05"
+    ],
+    [
+      "318a74a4-7ebb-4dad-b9df-a224836d40a6",
+      "dificil-03"
+    ],
+    [
+      "5e24b12b-92bb-4c8a-b787-bf577d4b2b1b",
+      "medio-01"
+    ],
+    [
+      "0a44df76-c047-44d8-9e79-c6e0e167ce3e",
+      "medio-04"
+    ]
+  ],
+  "revisiones_emparejador": [
+    [
+      "5e24b12b-92bb-4c8a-b787-bf577d4b2b1b",
+      "dificil-01",
+      1
+    ],
+    [
+      "5e24b12b-92bb-4c8a-b787-bf577d4b2b1b",
+      "dificil-04",
+      2
+    ],
+    [
+      "0a44df76-c047-44d8-9e79-c6e0e167ce3e",
+      "dificil-03",
+      4
+    ],
+    [
+      "5e24b12b-92bb-4c8a-b787-bf577d4b2b1b",
+      "dificil-05",
+      3
+    ],
+    [
+      "0a44df76-c047-44d8-9e79-c6e0e167ce3e",
+      "dificil-04",
+      4
+    ],
+    [
+      "0a44df76-c047-44d8-9e79-c6e0e167ce3e",
+      "dificil-05",
+      4
+    ],
+    [
+      "318a74a4-7ebb-4dad-b9df-a224836d40a6",
+      "dificil-04",
+      0
+    ],
+    [
+      "0a44df76-c047-44d8-9e79-c6e0e167ce3e",
+      "dificil-01",
+      0
+    ],
+    [
+      "5e24b12b-92bb-4c8a-b787-bf577d4b2b1b",
+      "dificil-04",
+      3
+    ],
+    [
+      "5e24b12b-92bb-4c8a-b787-bf577d4b2b1b",
+      "dificil-02",
+      3
+    ]
+  ],
+  "puntajes": [
+    {
+      "batch_id": "318a74a4-7ebb-4dad-b9df-a224836d40a6",
+      "case_id": "facil-02",
+      "criterio": "claridad",
+      "valor": 5
+    },
+    {
+      "batch_id": "318a74a4-7ebb-4dad-b9df-a224836d40a6",
+      "case_id": "facil-02",
+      "criterio": "verificabilidad",
+      "valor": 4
+    },
+    {
+      "batch_id": "318a74a4-7ebb-4dad-b9df-a224836d40a6",
+      "case_id": "facil-02",
+      "criterio": "completitud",
+      "valor": 5
+    },
+    {
+      "batch_id": "318a74a4-7ebb-4dad-b9df-a224836d40a6",
+      "case_id": "facil-02",
+      "criterio": "consistencia",
+      "valor": 5
+    },
+    {
+      "batch_id": "5e24b12b-92bb-4c8a-b787-bf577d4b2b1b",
+      "case_id": "dificil-05",
+      "criterio": "claridad",
+      "valor": 5
+    },
+    {
+      "batch_id": "5e24b12b-92bb-4c8a-b787-bf577d4b2b1b",
+      "case_id": "dificil-05",
+      "criterio": "verificabilidad",
+      "valor": 5
+    },
+    {
+      "batch_id": "5e24b12b-92bb-4c8a-b787-bf577d4b2b1b",
+      "case_id": "dificil-05",
+      "criterio": "completitud",
+      "valor": 5
+    },
+    {
+      "batch_id": "5e24b12b-92bb-4c8a-b787-bf577d4b2b1b",
+      "case_id": "dificil-05",
+      "criterio": "consistencia",
+      "valor": 5
+    },
+    {
+      "batch_id": "5e24b12b-92bb-4c8a-b787-bf577d4b2b1b",
+      "case_id": "facil-04",
+      "criterio": "claridad",
+      "valor": 5
+    },
+    {
+      "batch_id": "5e24b12b-92bb-4c8a-b787-bf577d4b2b1b",
+      "case_id": "facil-04",
+      "criterio": "verificabilidad",
+      "valor": 4
+    },
+    {
+      "batch_id": "5e24b12b-92bb-4c8a-b787-bf577d4b2b1b",
+      "case_id": "facil-04",
+      "criterio": "completitud",
+      "valor": 5
+    },
+    {
+      "batch_id": "5e24b12b-92bb-4c8a-b787-bf577d4b2b1b",
+      "case_id": "facil-04",
+      "criterio": "consistencia",
+      "valor": 5
+    },
+    {
+      "batch_id": "0a44df76-c047-44d8-9e79-c6e0e167ce3e",
+      "case_id": "dificil-01",
+      "criterio": "claridad",
+      "valor": 4
+    },
+    {
+      "batch_id": "0a44df76-c047-44d8-9e79-c6e0e167ce3e",
+      "case_id": "dificil-01",
+      "criterio": "verificabilidad",
+      "valor": 4
+    },
+    {
+      "batch_id": "0a44df76-c047-44d8-9e79-c6e0e167ce3e",
+      "case_id": "dificil-01",
+      "criterio": "completitud",
+      "valor": 5
+    },
+    {
+      "batch_id": "0a44df76-c047-44d8-9e79-c6e0e167ce3e",
+      "case_id": "dificil-01",
+      "criterio": "consistencia",
+      "valor": 5
+    },
+    {
+      "batch_id": "0a44df76-c047-44d8-9e79-c6e0e167ce3e",
+      "case_id": "facil-05",
+      "criterio": "claridad",
+      "valor": 4
+    },
+    {
+      "batch_id": "0a44df76-c047-44d8-9e79-c6e0e167ce3e",
+      "case_id": "facil-05",
+      "criterio": "verificabilidad",
+      "valor": 4
+    },
+    {
+      "batch_id": "0a44df76-c047-44d8-9e79-c6e0e167ce3e",
+      "case_id": "facil-05",
+      "criterio": "completitud",
+      "valor": 4
+    },
+    {
+      "batch_id": "0a44df76-c047-44d8-9e79-c6e0e167ce3e",
+      "case_id": "facil-05",
+      "criterio": "consistencia",
+      "valor": 3
+    },
+    {
+      "batch_id": "318a74a4-7ebb-4dad-b9df-a224836d40a6",
+      "case_id": "dificil-03",
+      "criterio": "claridad",
+      "valor": 4
+    },
+    {
+      "batch_id": "318a74a4-7ebb-4dad-b9df-a224836d40a6",
+      "case_id": "dificil-03",
+      "criterio": "verificabilidad",
+      "valor": 5
+    },
+    {
+      "batch_id": "318a74a4-7ebb-4dad-b9df-a224836d40a6",
+      "case_id": "dificil-03",
+      "criterio": "completitud",
+      "valor": 4
+    },
+    {
+      "batch_id": "318a74a4-7ebb-4dad-b9df-a224836d40a6",
+      "case_id": "dificil-03",
+      "criterio": "consistencia",
+      "valor": 4
+    },
+    {
+      "batch_id": "5e24b12b-92bb-4c8a-b787-bf577d4b2b1b",
+      "case_id": "medio-01",
+      "criterio": "claridad",
+      "valor": 3
+    },
+    {
+      "batch_id": "5e24b12b-92bb-4c8a-b787-bf577d4b2b1b",
+      "case_id": "medio-01",
+      "criterio": "verificabilidad",
+      "valor": 4
+    },
+    {
+      "batch_id": "5e24b12b-92bb-4c8a-b787-bf577d4b2b1b",
+      "case_id": "medio-01",
+      "criterio": "completitud",
+      "valor": 4
+    },
+    {
+      "batch_id": "5e24b12b-92bb-4c8a-b787-bf577d4b2b1b",
+      "case_id": "medio-01",
+      "criterio": "consistencia",
+      "valor": 5
+    },
+    {
+      "batch_id": "0a44df76-c047-44d8-9e79-c6e0e167ce3e",
+      "case_id": "medio-04",
+      "criterio": "claridad",
+      "valor": 5
+    },
+    {
+      "batch_id": "0a44df76-c047-44d8-9e79-c6e0e167ce3e",
+      "case_id": "medio-04",
+      "criterio": "verificabilidad",
+      "valor": 4
+    },
+    {
+      "batch_id": "0a44df76-c047-44d8-9e79-c6e0e167ce3e",
+      "case_id": "medio-04",
+      "criterio": "completitud",
+      "valor": 5
+    },
+    {
+      "batch_id": "0a44df76-c047-44d8-9e79-c6e0e167ce3e",
+      "case_id": "medio-04",
+      "criterio": "consistencia",
+      "valor": 4
+    }
+  ],
+  "emparejamientos": [
+    {
+      "batch_id": "5e24b12b-92bb-4c8a-b787-bf577d4b2b1b",
+      "case_id": "dificil-01",
+      "problema": 1,
+      "acierta": true
+    },
+    {
+      "batch_id": "5e24b12b-92bb-4c8a-b787-bf577d4b2b1b",
+      "case_id": "dificil-04",
+      "problema": 2,
+      "acierta": true
+    },
+    {
+      "batch_id": "0a44df76-c047-44d8-9e79-c6e0e167ce3e",
+      "case_id": "dificil-03",
+      "problema": 4,
+      "acierta": true
+    },
+    {
+      "batch_id": "5e24b12b-92bb-4c8a-b787-bf577d4b2b1b",
+      "case_id": "dificil-05",
+      "problema": 3,
+      "acierta": true
+    },
+    {
+      "batch_id": "0a44df76-c047-44d8-9e79-c6e0e167ce3e",
+      "case_id": "dificil-04",
+      "problema": 4,
+      "acierta": true
+    },
+    {
+      "batch_id": "0a44df76-c047-44d8-9e79-c6e0e167ce3e",
+      "case_id": "dificil-05",
+      "problema": 4,
+      "acierta": true
+    },
+    {
+      "batch_id": "318a74a4-7ebb-4dad-b9df-a224836d40a6",
+      "case_id": "dificil-04",
+      "problema": 0,
+      "acierta": true
+    },
+    {
+      "batch_id": "0a44df76-c047-44d8-9e79-c6e0e167ce3e",
+      "case_id": "dificil-01",
+      "problema": 0,
+      "acierta": true
+    },
+    {
+      "batch_id": "5e24b12b-92bb-4c8a-b787-bf577d4b2b1b",
+      "case_id": "dificil-04",
+      "problema": 3,
+      "acierta": true
+    },
+    {
+      "batch_id": "5e24b12b-92bb-4c8a-b787-bf577d4b2b1b",
+      "case_id": "dificil-02",
+      "problema": 3,
+      "acierta": true
+    }
+  ]
+}

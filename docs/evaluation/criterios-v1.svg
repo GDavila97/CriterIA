@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 360" width="760" height="360" role="img" font-family="system-ui, sans-serif" aria-labelledby="titulo descripcion">
+<title id="titulo">Puntaje medio por criterio y modelo, evaluación v1</title>
+<desc id="descripcion">Barras agrupadas en escala de 1 a 5; los valores exactos están en la tabla de resultados por modelo.</desc>
+<rect width="760" height="360" fill="#fcfcfb"/>
+<line x1="48" x2="744" y1="304.0" y2="304.0" stroke="#e4e3df" stroke-width="1"/>
+<text x="40" y="308.0" text-anchor="end" font-size="12" fill="#52514e">1</text>
+<line x1="48" x2="744" y1="244.0" y2="244.0" stroke="#e4e3df" stroke-width="1"/>
+<text x="40" y="248.0" text-anchor="end" font-size="12" fill="#52514e">2</text>
+<line x1="48" x2="744" y1="184.0" y2="184.0" stroke="#e4e3df" stroke-width="1"/>
+<text x="40" y="188.0" text-anchor="end" font-size="12" fill="#52514e">3</text>
+<line x1="48" x2="744" y1="124.0" y2="124.0" stroke="#e4e3df" stroke-width="1"/>
+<text x="40" y="128.0" text-anchor="end" font-size="12" fill="#52514e">4</text>
+<line x1="48" x2="744" y1="64.0" y2="64.0" stroke="#e4e3df" stroke-width="1"/>
+<text x="40" y="68.0" text-anchor="end" font-size="12" fill="#52514e">5</text>
+<path d="M71.0,304.0 V188.0 Q71.0,184.0 75.0,184.0 H89.0 Q93.0,184.0 93.0,188.0 V304.0 Z" fill="#2a78d6"><title>Anthropic · Claude Haiku 5.5 (tool) *: 3.00</title></path>
+<path d="M95.0,304.0 V183.7 Q95.0,179.7 99.0,179.7 H113.0 Q117.0,179.7 117.0,183.7 V304.0 Z" fill="#eb6834"><title>Groq · GPT-OSS 20B (native): 3.07</title></path>
+<path d="M119.0,304.0 V237.1 Q119.0,233.1 123.0,233.1 H137.0 Q141.0,233.1 141.0,237.1 V304.0 Z" fill="#1baf7a"><title>Ollama · Llama 3.1 8B (native): 2.18</title></path>
+<text x="106.0" y="326" text-anchor="middle" font-size="13" fill="#0b0b0b">Claridad</text>
+<path d="M187.0,304.0 V196.0 Q187.0,192.0 191.0,192.0 H205.0 Q209.0,192.0 209.0,196.0 V304.0 Z" fill="#2a78d6"><title>Anthropic · Claude Haiku 5.5 (tool) *: 2.87</title></path>
+<path d="M211.0,304.0 V183.7 Q211.0,179.7 215.0,179.7 H229.0 Q233.0,179.7 233.0,183.7 V304.0 Z" fill="#eb6834"><title>Groq · GPT-OSS 20B (native): 3.07</title></path>
+<path d="M235.0,304.0 V237.1 Q235.0,233.1 239.0,233.1 H253.0 Q257.0,233.1 257.0,237.1 V304.0 Z" fill="#1baf7a"><title>Ollama · Llama 3.1 8B (native): 2.18</title></path>
+<text x="222.0" y="326" text-anchor="middle" font-size="13" fill="#0b0b0b">Verificabilidad</text>
+<path d="M303.0,304.0 V220.0 Q303.0,216.0 307.0,216.0 H321.0 Q325.0,216.0 325.0,220.0 V304.0 Z" fill="#2a78d6"><title>Anthropic · Claude Haiku 5.5 (tool) *: 2.47</title></path>
+<path d="M327.0,304.0 V218.0 Q327.0,214.0 331.0,214.0 H345.0 Q349.0,214.0 349.0,218.0 V304.0 Z" fill="#eb6834"><title>Groq · GPT-OSS 20B (native): 2.50</title></path>
+<path d="M351.0,304.0 V248.0 Q351.0,244.0 355.0,244.0 H369.0 Q373.0,244.0 373.0,248.0 V304.0 Z" fill="#1baf7a"><title>Ollama · Llama 3.1 8B (native): 2.00</title></path>
+<text x="338.0" y="326" text-anchor="middle" font-size="13" fill="#0b0b0b">Completitud</text>
+<path d="M419.0,304.0 V212.0 Q419.0,208.0 423.0,208.0 H437.0 Q441.0,208.0 441.0,212.0 V304.0 Z" fill="#2a78d6"><title>Anthropic · Claude Haiku 5.5 (tool) *: 2.60</title></path>
+<path d="M443.0,304.0 V209.4 Q443.0,205.4 447.0,205.4 H461.0 Q465.0,205.4 465.0,209.4 V304.0 Z" fill="#eb6834"><title>Groq · GPT-OSS 20B (native): 2.64</title></path>
+<path d="M467.0,304.0 V258.9 Q467.0,254.9 471.0,254.9 H485.0 Q489.0,254.9 489.0,258.9 V304.0 Z" fill="#1baf7a"><title>Ollama · Llama 3.1 8B (native): 1.82</title></path>
+<text x="454.0" y="326" text-anchor="middle" font-size="13" fill="#0b0b0b">Consistencia</text>
+<path d="M535.0,304.0 V204.0 Q535.0,200.0 539.0,200.0 H553.0 Q557.0,200.0 557.0,204.0 V304.0 Z" fill="#2a78d6"><title>Anthropic · Claude Haiku 5.5 (tool) *: 2.73</title></path>
+<text x="546.0" y="194.0" text-anchor="middle" font-size="11" fill="#0b0b0b">2.7</text>
+<path d="M559.0,304.0 V198.7 Q559.0,194.7 563.0,194.7 H577.0 Q581.0,194.7 581.0,198.7 V304.0 Z" fill="#eb6834"><title>Groq · GPT-OSS 20B (native): 2.82</title></path>
+<text x="570.0" y="188.7" text-anchor="middle" font-size="11" fill="#0b0b0b">2.8</text>
+<path d="M583.0,304.0 V245.3 Q583.0,241.3 587.0,241.3 H601.0 Q605.0,241.3 605.0,245.3 V304.0 Z" fill="#1baf7a"><title>Ollama · Llama 3.1 8B (native): 2.05</title></path>
+<text x="594.0" y="235.3" text-anchor="middle" font-size="11" fill="#0b0b0b">2.0</text>
+<text x="570.0" y="326" text-anchor="middle" font-size="13" fill="#0b0b0b">Global</text>
+<path d="M651.0,304.0 V205.7 Q651.0,201.7 655.0,201.7 H669.0 Q673.0,201.7 673.0,205.7 V304.0 Z" fill="#2a78d6"><title>Anthropic · Claude Haiku 5.5 (tool) *: 2.70</title></path>
+<text x="662.0" y="195.7" text-anchor="middle" font-size="11" fill="#0b0b0b">2.7</text>
+<path d="M675.0,304.0 V198.9 Q675.0,194.9 679.0,194.9 H693.0 Q697.0,194.9 697.0,198.9 V304.0 Z" fill="#eb6834"><title>Groq · GPT-OSS 20B (native): 2.82</title></path>
+<text x="686.0" y="188.9" text-anchor="middle" font-size="11" fill="#0b0b0b">2.8</text>
+<path d="M699.0,304.0 V245.3 Q699.0,241.3 703.0,241.3 H717.0 Q721.0,241.3 721.0,245.3 V304.0 Z" fill="#1baf7a"><title>Ollama · Llama 3.1 8B (native): 2.05</title></path>
+<text x="710.0" y="235.3" text-anchor="middle" font-size="11" fill="#0b0b0b">2.0</text>
+<text x="686.0" y="326" text-anchor="middle" font-size="13" fill="#0b0b0b">Casos comunes</text>
+<rect x="48" y="20" width="12" height="12" rx="2" fill="#2a78d6"/>
+<text x="66" y="30" font-size="12" fill="#0b0b0b">Anthropic · Claude Haiku 5.5 (tool) *</text>
+<rect x="333" y="20" width="12" height="12" rx="2" fill="#eb6834"/>
+<text x="351" y="30" font-size="12" fill="#0b0b0b">Groq · GPT-OSS 20B (native)</text>
+<rect x="548" y="20" width="12" height="12" rx="2" fill="#1baf7a"/>
+<text x="566" y="30" font-size="12" fill="#0b0b0b">Ollama · Llama 3.1 8B (native)</text>
+</svg>

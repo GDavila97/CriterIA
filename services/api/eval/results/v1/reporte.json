@@ -1,0 +1,526 @@
+{
+  "modelos": [
+    {
+      "clave": "anthropic:claude-haiku-5-5",
+      "display_name": "Claude Haiku 5.5",
+      "proveedor": "anthropic",
+      "output_mode": "tool",
+      "juez_mismo_proveedor": true,
+      "corridas": 15,
+      "completas": 15,
+      "errores": {},
+      "puntajes": {
+        "claridad": 3.0,
+        "verificabilidad": 2.8666666666666667,
+        "completitud": 2.466666666666667,
+        "consistencia": 2.6
+      },
+      "puntaje_global": 2.7333333333333334,
+      "validas": 145,
+      "llamadas": 149,
+      "rondas_media": 2.0,
+      "latencia_p50_ms": 147748.0,
+      "latencia_p95_ms": 207320.0,
+      "tokens_por_corrida": 127841.26666666666,
+      "costo_por_corrida": 0.029616,
+      "costo_gastado_usd": 0.44424,
+      "costo_analisis_usd": 0.007099,
+      "por_dificultad": {
+        "facil": {
+          "corridas": 5,
+          "completas": 5,
+          "puntaje_global": 3.0
+        },
+        "medio": {
+          "corridas": 5,
+          "completas": 5,
+          "puntaje_global": 2.7
+        },
+        "dificil": {
+          "corridas": 5,
+          "completas": 5,
+          "puntaje_global": 2.5
+        }
+      },
+      "deteccion": {
+        "total": {
+          "detected": 13,
+          "total": 25
+        },
+        "by_type": {
+          "ambiguedad": {
+            "detected": 5,
+            "total": 7
+          },
+          "inconsistencia": {
+            "detected": 4,
+            "total": 6
+          },
+          "faltante": {
+            "detected": 4,
+            "total": 12
+          }
+        },
+        "casos": 5,
+        "casos_dificiles": 5
+      },
+      "comunes": {
+        "casos": 11,
+        "puntajes": {
+          "claridad": 3.0,
+          "verificabilidad": 2.8181818181818183,
+          "completitud": 2.4545454545454546,
+          "consistencia": 2.5454545454545454
+        },
+        "puntaje_global": 2.7045454545454546
+      },
+      "deteccion_comunes": {
+        "total": {
+          "detected": 9,
+          "total": 15
+        },
+        "by_type": {
+          "ambiguedad": {
+            "detected": 4,
+            "total": 5
+          },
+          "inconsistencia": {
+            "detected": 3,
+            "total": 3
+          },
+          "faltante": {
+            "detected": 2,
+            "total": 7
+          }
+        },
+        "casos": 3,
+        "casos_dificiles": 5
+      }
+    },
+    {
+      "clave": "groq:openai/gpt-oss-20b",
+      "display_name": "GPT-OSS 20B",
+      "proveedor": "groq",
+      "output_mode": "native",
+      "juez_mismo_proveedor": false,
+      "corridas": 15,
+      "completas": 14,
+      "errores": {
+        "salida_invalida": 1
+      },
+      "puntajes": {
+        "claridad": 3.0714285714285716,
+        "verificabilidad": 3.0714285714285716,
+        "completitud": 2.5,
+        "consistencia": 2.642857142857143
+      },
+      "puntaje_global": 2.8214285714285716,
+      "validas": 102,
+      "llamadas": 106,
+      "rondas_media": 1.5714285714285714,
+      "latencia_p50_ms": 33395.0,
+      "latencia_p95_ms": 61030.5,
+      "tokens_por_corrida": 47129.21428571428,
+      "costo_por_corrida": 0.008879428571428571,
+      "costo_gastado_usd": 0.126429,
+      "costo_analisis_usd": 0.004777,
+      "por_dificultad": {
+        "facil": {
+          "corridas": 5,
+          "completas": 5,
+          "puntaje_global": 2.9
+        },
+        "medio": {
+          "corridas": 5,
+          "completas": 4,
+          "puntaje_global": 2.9375
+        },
+        "dificil": {
+          "corridas": 5,
+          "completas": 5,
+          "puntaje_global": 2.65
+        }
+      },
+      "deteccion": {
+        "total": {
+          "detected": 8,
+          "total": 25
+        },
+        "by_type": {
+          "ambiguedad": {
+            "detected": 1,
+            "total": 7
+          },
+          "inconsistencia": {
+            "detected": 4,
+            "total": 6
+          },
+          "faltante": {
+            "detected": 3,
+            "total": 12
+          }
+        },
+        "casos": 5,
+        "casos_dificiles": 5
+      },
+      "comunes": {
+        "casos": 11,
+        "puntajes": {
+          "claridad": 3.090909090909091,
+          "verificabilidad": 3.090909090909091,
+          "completitud": 2.4545454545454546,
+          "consistencia": 2.6363636363636362
+        },
+        "puntaje_global": 2.8181818181818183
+      },
+      "deteccion_comunes": {
+        "total": {
+          "detected": 4,
+          "total": 15
+        },
+        "by_type": {
+          "ambiguedad": {
+            "detected": 1,
+            "total": 5
+          },
+          "inconsistencia": {
+            "detected": 1,
+            "total": 3
+          },
+          "faltante": {
+            "detected": 2,
+            "total": 7
+          }
+        },
+        "casos": 3,
+        "casos_dificiles": 5
+      }
+    },
+    {
+      "clave": "ollama:llama3.1:8b",
+      "display_name": "Llama 3.1 8B",
+      "proveedor": "ollama",
+      "output_mode": "native",
+      "juez_mismo_proveedor": false,
+      "corridas": 15,
+      "completas": 11,
+      "errores": {
+        "proveedor_no_disponible": 4
+      },
+      "puntajes": {
+        "claridad": 2.1818181818181817,
+        "verificabilidad": 2.1818181818181817,
+        "completitud": 2.0,
+        "consistencia": 1.8181818181818181
+      },
+      "puntaje_global": 2.0454545454545454,
+      "validas": 111,
+      "llamadas": 123,
+      "rondas_media": 2.0,
+      "latencia_p50_ms": 329362.0,
+      "latencia_p95_ms": 475950.5,
+      "tokens_por_corrida": 54327.72727272727,
+      "costo_por_corrida": 0.0014572727272727272,
+      "costo_gastado_usd": 0.01603,
+      "costo_analisis_usd": 0.0027,
+      "por_dificultad": {
+        "facil": {
+          "corridas": 5,
+          "completas": 4,
+          "puntaje_global": 2.1875
+        },
+        "medio": {
+          "corridas": 5,
+          "completas": 4,
+          "puntaje_global": 1.9375
+        },
+        "dificil": {
+          "corridas": 5,
+          "completas": 3,
+          "puntaje_global": 2.0
+        }
+      },
+      "deteccion": {
+        "total": {
+          "detected": 1,
+          "total": 15
+        },
+        "by_type": {
+          "ambiguedad": {
+            "detected": 1,
+            "total": 5
+          },
+          "inconsistencia": {
+            "detected": 0,
+            "total": 3
+          },
+          "faltante": {
+            "detected": 0,
+            "total": 7
+          }
+        },
+        "casos": 3,
+        "casos_dificiles": 5
+      },
+      "comunes": {
+        "casos": 11,
+        "puntajes": {
+          "claridad": 2.1818181818181817,
+          "verificabilidad": 2.1818181818181817,
+          "completitud": 2.0,
+          "consistencia": 1.8181818181818181
+        },
+        "puntaje_global": 2.0454545454545454
+      },
+      "deteccion_comunes": {
+        "total": {
+          "detected": 1,
+          "total": 15
+        },
+        "by_type": {
+          "ambiguedad": {
+            "detected": 1,
+            "total": 5
+          },
+          "inconsistencia": {
+            "detected": 0,
+            "total": 3
+          },
+          "faltante": {
+            "detected": 0,
+            "total": 7
+          }
+        },
+        "casos": 3,
+        "casos_dificiles": 5
+      }
+    }
+  ],
+  "acuerdo_juez": {
+    "total": {
+      "pairs": 32,
+      "kappa": {
+        "value": -0.01875616979269501,
+        "low": -0.08225362872421695,
+        "high": 0.04762129698360217
+      },
+      "spearman": {
+        "value": -0.11740228001640213,
+        "low": -0.4602401488064173,
+        "high": 0.22958506636648512
+      },
+      "exact": {
+        "value": 0.09375,
+        "low": 0.0,
+        "high": 0.21875
+      },
+      "within_one": {
+        "value": 0.375,
+        "low": 0.21875,
+        "high": 0.5625
+      },
+      "judge_minus_human": {
+        "value": -1.78125,
+        "low": -2.09375,
+        "high": -1.46875
+      }
+    },
+    "por_criterio": {
+      "claridad": {
+        "pairs": 8,
+        "kappa": {
+          "value": 0.03296703296703296,
+          "low": -0.018181818181818077,
+          "high": 0.07964601769911506
+        },
+        "spearman": {
+          "value": 0.2710523708715754,
+          "low": -0.14547859349066158,
+          "high": 1.0
+        },
+        "exact": {
+          "value": 0.125,
+          "low": 0.0,
+          "high": 0.375
+        },
+        "within_one": {
+          "value": 0.375,
+          "low": 0.125,
+          "high": 0.75
+        },
+        "judge_minus_human": {
+          "value": -1.5,
+          "low": -1.875,
+          "high": -1.0
+        }
+      },
+      "verificabilidad": {
+        "pairs": 8,
+        "kappa": {
+          "value": -0.17241379310344818,
+          "low": -0.3090909090909091,
+          "high": 0.0
+        },
+        "spearman": {
+          "value": -0.5819143739626463,
+          "low": -0.9561828874675149,
+          "high": -0.14285714285714285
+        },
+        "exact": {
+          "value": 0.25,
+          "low": 0.0,
+          "high": 0.625
+        },
+        "within_one": {
+          "value": 0.75,
+          "low": 0.375,
+          "high": 1.0
+        },
+        "judge_minus_human": {
+          "value": -1.125,
+          "low": -1.75,
+          "high": -0.5
+        }
+      },
+      "completitud": {
+        "pairs": 8,
+        "kappa": {
+          "value": 0.014218009478673022,
+          "low": 0.0,
+          "high": 0.05084745762711862
+        },
+        "spearman": {
+          "value": 0.29277002188455997,
+          "low": 0.14285714285714285,
+          "high": 0.7453559924999299
+        },
+        "exact": {
+          "value": 0.0,
+          "low": 0.0,
+          "high": 0.0
+        },
+        "within_one": {
+          "value": 0.0,
+          "low": 0.0,
+          "high": 0.0
+        },
+        "judge_minus_human": {
+          "value": -2.5,
+          "low": -2.875,
+          "high": -2.125
+        }
+      },
+      "consistencia": {
+        "pairs": 8,
+        "kappa": {
+          "value": 0.050000000000000044,
+          "low": -0.045454545454545414,
+          "high": 0.25240058640278507
+        },
+        "spearman": {
+          "value": 0.18253968253968253,
+          "low": -0.5819143739626463,
+          "high": 0.7195206772262697
+        },
+        "exact": {
+          "value": 0.0,
+          "low": 0.0,
+          "high": 0.0
+        },
+        "within_one": {
+          "value": 0.375,
+          "low": 0.0,
+          "high": 0.75
+        },
+        "judge_minus_human": {
+          "value": -2.0,
+          "low": -2.625,
+          "high": -1.375
+        }
+      }
+    },
+    "distribucion_juez": {
+      "1": 0,
+      "2": 14,
+      "3": 15,
+      "4": 3,
+      "5": 0
+    },
+    "distribucion_humano": {
+      "1": 0,
+      "2": 0,
+      "3": 2,
+      "4": 14,
+      "5": 16
+    }
+  },
+  "acuerdo_emparejador": {
+    "value": 1.0,
+    "low": 1.0,
+    "high": 1.0
+  },
+  "no_detectados": [
+    [
+      "dificil-01",
+      3
+    ],
+    [
+      "dificil-01",
+      4
+    ],
+    [
+      "dificil-02",
+      2
+    ],
+    [
+      "dificil-02",
+      4
+    ],
+    [
+      "dificil-04",
+      1
+    ],
+    [
+      "dificil-04",
+      3
+    ],
+    [
+      "dificil-04",
+      4
+    ],
+    [
+      "dificil-05",
+      3
+    ],
+    [
+      "dificil-05",
+      4
+    ]
+  ],
+  "estabilidad_juez": {
+    "pairs": 40,
+    "kappa": {
+      "value": 0.7380952380952381,
+      "low": 0.5890209508460919,
+      "high": 0.8526393188854489
+    },
+    "exact": {
+      "value": 0.725,
+      "low": 0.575,
+      "high": 0.85
+    }
+  },
+  "estabilidad_emparejador": {
+    "pairs": 25,
+    "kappa": {
+      "value": 0.9110320284697508,
+      "low": 0.6874011075949367,
+      "high": 1.0
+    },
+    "exact": {
+      "value": 0.96,
+      "low": 0.88,
+      "high": 1.0
+    }
+  }
+}
