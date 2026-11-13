@@ -1,5 +1,6 @@
 export { Badge } from './badge/Badge';
 export { Button, buttonClass, type ButtonProps, type ButtonVariant } from './button/Button';
+export { Dialog, type DialogProps } from './dialog/Dialog';
 export { Drawer, type DrawerProps } from './drawer/Drawer';
 export { Ficha, type FichaProps } from './ficha/Ficha';
 export { CheckboxField, SelectField, TextArea, TextField, type SelectOption } from './field/Field';

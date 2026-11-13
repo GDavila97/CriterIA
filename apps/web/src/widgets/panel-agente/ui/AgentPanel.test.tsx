@@ -127,4 +127,22 @@ describe('AgentPanel', () => {
 
     expect(screen.queryByText('Parámetros')).not.toBeInTheDocument();
   });
+
+  it('closes with the X, with Escape and with a click outside the panel', async () => {
+    const { onClose } = setup();
+    const dialog = screen.getByRole('dialog', { name: 'Agente' }) as HTMLDialogElement;
+    dialog.getBoundingClientRect = () =>
+      DOMRect.fromRect({ x: 600, y: 0, width: 440, height: 800 });
+
+    await userEvent.click(screen.getByRole('button', { name: 'Cerrar' }));
+    expect(onClose).toHaveBeenCalledTimes(1);
+
+    fireEvent(dialog, new Event('cancel', { cancelable: true }));
+    expect(onClose).toHaveBeenCalledTimes(2);
+
+    fireEvent.click(dialog, { clientX: 700, clientY: 200 });
+    expect(onClose).toHaveBeenCalledTimes(2);
+    fireEvent.click(dialog, { clientX: 120, clientY: 200 });
+    expect(onClose).toHaveBeenCalledTimes(3);
+  });
 });
