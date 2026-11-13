@@ -8,8 +8,8 @@ import psycopg
 import pytest
 
 from criteria.adapters.postgres.stores import _lock_key
-from criteria.application.run_api import RunRequest
 from tests import factories as f
+from tests.http.support import WEB_ORIGIN
 from tests.postgres.api_support import Api
 
 pytestmark = pytest.mark.integration
@@ -90,21 +90,28 @@ def _quota(api: Api) -> tuple[list[tuple[Any, ...]], ...]:
     )
 
 
-async def test_a_run_that_cannot_be_stored_gives_back_its_quota(
+async def test_a_run_that_cannot_be_stored_answers_500_with_cors_and_gives_back_its_quota(
     api: Api, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     await _complete_run(api)
     before = _quota(api)
-    runs = api.services.runs
+    lost = psycopg.OperationalError("server closed the connection unexpectedly")
 
-    async def lost(_record: object) -> None:
-        raise psycopg.OperationalError("server closed the connection unexpectedly")
+    async def broken(_record: object) -> None:
+        raise lost
 
-    monkeypatch.setattr(runs._runs, "create", lost)
+    monkeypatch.setattr(api.services.runs._runs, "create", broken)
 
-    with pytest.raises(psycopg.OperationalError):
-        await runs.create("user-1", RunRequest(requerimiento=f.REQUERIMIENTO))
+    response = await api.client.post(
+        "/runs",
+        json={"requerimiento": f.REQUERIMIENTO},
+        headers={**api.headers(), "origin": WEB_ORIGIN},
+    )
 
+    assert response.status_code == 500
+    assert response.json()["code"] == "error_interno"
+    assert response.headers["access-control-allow-origin"] == WEB_ORIGIN
+    assert api.reporter.reported == [(lost, None)]
     assert _quota(api) == before
     assert api.sql("SELECT count(*) FROM app.run") == [(1,)]
 

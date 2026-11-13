@@ -21,7 +21,7 @@ from criteria.adapters.http.services import ApiServices
 from criteria.config import ConfigError, load_api_settings
 from criteria.domain.events import AgenteInicia
 from criteria.main import create_app
-from tests.fakes import FakeClock
+from tests.fakes import FakeClock, FakeReporter
 from tests.http.support import AUDIENCE, ISSUER, WEB_ORIGIN, TokenFactory, api_settings
 
 
@@ -37,7 +37,9 @@ async def _noop() -> None:
 
 
 @asynccontextmanager
-async def app_with(tokens: TokenFactory, **settings: Any) -> AsyncIterator[httpx.AsyncClient]:
+async def app_with(
+    tokens: TokenFactory, reporter: FakeReporter | None = None, **settings: Any
+) -> AsyncIterator[httpx.AsyncClient]:
     verifier = JwtVerifier(
         JwksCache(tokens.fetch, FakeClock(), 300),
         TokenPolicy(
@@ -54,6 +56,7 @@ async def app_with(tokens: TokenFactory, **settings: Any) -> AsyncIterator[httpx
         credentials=Unreachable(),  # type: ignore[arg-type]
         accounts=Unreachable(),  # type: ignore[arg-type]
         evaluation=Unreachable(),
+        reporter=reporter or FakeReporter(),
         startup=_noop,
         shutdown=_noop,
     )
@@ -176,6 +179,25 @@ async def test_cors_allows_only_the_web_origin_without_credentials(tokens: Token
     assert "last-event-id" in allowed.headers["access-control-allow-headers"].lower()
     assert "access-control-allow-credentials" not in allowed.headers
     assert "access-control-allow-origin" not in denied.headers
+
+
+async def test_an_unhandled_error_answers_error_interno_with_cors_headers(
+    tokens: TokenFactory, caplog: pytest.LogCaptureFixture
+) -> None:
+    reporter = FakeReporter()
+    # Every use case of the test app raises AssertionError, which no handler knows.
+    async with app_with(tokens, reporter) as client:
+        response = await client.get(
+            "/me/settings", headers={**tokens.headers("user-1"), "origin": WEB_ORIGIN}
+        )
+
+    assert response.status_code == 500
+    assert response.json() == {"code": "error_interno", "message": "Ocurrió un error interno."}
+    assert response.headers["access-control-allow-origin"] == WEB_ORIGIN
+    assert response.headers["x-content-type-options"] == "nosniff"
+    assert response.headers["cache-control"] == "no-store"
+    assert [type(error) for error, run_id in reporter.reported] == [AssertionError]
+    assert "unexpected call" not in caplog.text
 
 
 async def test_docs_are_hidden_in_production(tokens: TokenFactory) -> None:

@@ -7,6 +7,7 @@ from typing import Any
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from criteria.adapters.http.errors import error_response
+from criteria.ports.errors import ErrorReporter
 
 logger = logging.getLogger("criteria.http")
 
@@ -55,6 +56,43 @@ def configure_logging(level: str) -> None:
     root = logging.getLogger()
     root.handlers = [handler]
     root.setLevel(level.upper())
+
+
+class InternalErrorMiddleware:
+    """Answers an unhandled error with error_interno from inside CORS.
+
+    Starlette's own handler for Exception runs outside every middleware, so its 500 carried no
+    CORS headers and the browser reported a CORS failure instead of the error.
+    """
+
+    def __init__(self, app: ASGIApp) -> None:
+        self._app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self._app(scope, receive, send)
+            return
+        started = False
+
+        async def tracking_send(message: Message) -> None:
+            nonlocal started
+            started = started or message["type"] == "http.response.start"
+            await send(message)
+
+        try:
+            await self._app(scope, receive, tracking_send)
+        except Exception as error:
+            # A stream that already sent its status cannot answer again.
+            if started:
+                raise
+            logger.error("unhandled error", extra={"error": type(error).__name__})
+            _reporter(scope).report(error)
+            await error_response("error_interno")(scope, receive, send)
+
+
+def _reporter(scope: Scope) -> ErrorReporter:
+    found: ErrorReporter = scope["app"].state.services.reporter
+    return found
 
 
 class HardeningMiddleware:

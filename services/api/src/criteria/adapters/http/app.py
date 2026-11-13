@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from criteria.adapters.http.errors import install_error_handlers
-from criteria.adapters.http.middleware import HardeningMiddleware
+from criteria.adapters.http.middleware import HardeningMiddleware, InternalErrorMiddleware
 from criteria.adapters.http.routes import router
 from criteria.adapters.http.services import ApiServices
 from criteria.config import ApiSettings
@@ -35,6 +35,8 @@ def build_app(settings: ApiSettings, make_services: Callable[[], ApiServices]) -
     )
     install_error_handlers(app)
     app.include_router(router)
+    # Added first, so it sits inside CORS and its 500 still carries the CORS headers.
+    app.add_middleware(InternalErrorMiddleware)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=[settings.web_origin_value],

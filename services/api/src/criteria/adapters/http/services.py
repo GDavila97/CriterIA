@@ -7,6 +7,7 @@ from criteria.application.accounts import AccountService
 from criteria.application.credentials import CredentialService
 from criteria.application.run_api import RunApplication
 from criteria.ports.auth import TokenVerifier
+from criteria.ports.errors import ErrorReporter
 from criteria.ports.stores import EvaluationReader
 
 
@@ -17,6 +18,7 @@ class ApiServices:
     credentials: CredentialService
     accounts: AccountService
     evaluation: EvaluationReader
+    reporter: ErrorReporter
     startup: Callable[[], Awaitable[None]]
     shutdown: Callable[[], Awaitable[None]]
     require_verified_email: bool = True

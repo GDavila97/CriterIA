@@ -121,3 +121,13 @@ def test_run_errors_reach_sentry_with_type_and_stack_but_no_user_text(
     assert event["tags"]["run_id"] == str(run_id)
     assert "4111" not in dumped
     assert "Quiero pagar" not in dumped
+
+
+def test_errors_outside_a_run_reach_sentry_without_a_run_tag(
+    transport: CapturingTransport,
+) -> None:
+    SentryErrorReporter().report(ConnectionError("server closed the connection"))
+
+    [event] = transport.events
+    assert event["exception"]["values"][0]["type"] == "ConnectionError"
+    assert "run_id" not in event.get("tags", {})

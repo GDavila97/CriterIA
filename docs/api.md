@@ -127,7 +127,7 @@ Todas las respuestas de error tienen la forma `{"code": "...", "message": "..."}
 | `destino_no_permitido` | 422 | `base_url` no es `https` o apunta a una dirección no pública |
 | `clave_invalida` / `clave_no_verificable` | 422 | La validación de la clave falló |
 | `limite_hora`, `limite_dia`, `cupo_gratuito_agotado`, `limite_validaciones` | 429 | Límites de uso |
-| `error_interno` | 500 | Error no previsto; el log registra solo su tipo |
+| `error_interno` | 500 | Error no previsto; el log registra solo su tipo y se reporta a Sentry sin el mensaje. Sale con las cabeceras CORS, así que la web ve el error real y no un falso error de CORS |
 
 Los fallos de los agentes durante el stream no son errores HTTP: llegan como eventos `agente_error` y `corrida_fin` con `estado: "error"`.
 
@@ -141,7 +141,7 @@ Con `MODEL_BACKEND=fake` la API responde con modelos deterministas y valida las 
 
 ## Endurecimiento HTTP
 
-- CORS solo para `WEB_ORIGIN`, sin credenciales, con los métodos `GET`, `POST`, `PUT` y `DELETE` y las cabeceras `authorization`, `content-type` y `last-event-id`.
+- CORS solo para `WEB_ORIGIN`, sin credenciales, con los métodos `GET`, `POST`, `PUT` y `DELETE` y las cabeceras `authorization`, `content-type` y `last-event-id`. También los 500: un middleware dentro de CORS responde `error_interno` a cualquier error no manejado, porque el manejador de Starlette para `Exception` corre fuera de todos los middlewares y su respuesta salía sin cabeceras CORS.
 - Límite de tamaño del cuerpo (`MAX_REQUEST_BYTES`, 64 KiB), tanto por `Content-Length` como por lo que llega en streaming.
 - `Cache-Control: no-store` en todo salvo `/health` y `/evaluation`, más `X-Content-Type-Options`, `Referrer-Policy`, `X-Frame-Options`, `Strict-Transport-Security` y una CSP `default-src 'none'`.
 - Una línea de log JSON por petición con ruta plantilla, estado y duración. El usuario aparece solo como un seudónimo (los primeros 12 caracteres del SHA-256 de su id); no se registran cuerpos, tokens, claves ni correos.

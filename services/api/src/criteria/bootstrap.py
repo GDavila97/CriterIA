@@ -142,6 +142,7 @@ def _prompts(settings: Settings) -> AgentPrompts:
 def build_api_services(settings: ApiSettings, overrides: ApiOverrides | None = None) -> ApiServices:
     overrides = overrides or ApiOverrides()
     clock = overrides.clock or SystemClock()
+    reporter = overrides.reporter or SentryErrorReporter()
     database_url = settings.database_url.get_secret_value()
     engine = create_engine(database_url, settings.database_pool_size)
     checkpoint_pool = create_checkpoint_pool(database_url, settings.database_pool_size)
@@ -189,7 +190,7 @@ def build_api_services(settings: ApiSettings, overrides: ApiOverrides | None = N
             abandoned_after=timedelta(minutes=settings.run_ttl_minutes),
             heartbeat_seconds=settings.sse_heartbeat_seconds,
         ),
-        reporter=overrides.reporter or SentryErrorReporter(),
+        reporter=reporter,
     )
     verifier = JwtVerifier(
         JwksCache(
@@ -229,6 +230,7 @@ def build_api_services(settings: ApiSettings, overrides: ApiOverrides | None = N
             prompts=_prompts(settings),
         ),
         evaluation=PostgresEvaluationReader(engine),
+        reporter=reporter,
         require_verified_email=settings.auth_require_verified_email,
         startup=startup,
         shutdown=shutdown,
