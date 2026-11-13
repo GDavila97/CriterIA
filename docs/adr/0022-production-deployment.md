@@ -24,7 +24,7 @@ Hay que hacerlo sin salir de la capa gratuita, con una Mac de Apple Silicon que 
   - La web usa la URL con pooler. `search_path=auth` vive en `web_role` (`ALTER ROLE` en `roles.sql`), no en la conexión.
   - Las migraciones de Better Auth y de Alembic usan la URL directa y corren en un workflow manual con environment protegido.
 - **IP del cliente.** Better Auth lee solo `x-forwarded-for`, y la ruta `/api/auth` deja solo su primera dirección.
-- **Web.** Se importa en Vercel como proyecto único con Root Directory `apps/web` y se despliega desde el panel con Create Deployment y el SHA, después de comprobar que Cloud Run ya corre ese SHA. `apps/web/scripts/deploy.sh` queda como alternativa con la CLI: hace las mismas comprobaciones y corre `vercel deploy --prod` desde un `git worktree` del SHA. Las funciones corren en `cle1`, junto a Neon en Ohio.
+- **Web.** Se importa en Vercel como proyecto único con Root Directory `apps/web` y se despliega desde el panel con Create Deployment y el SHA, después de comprobar que Cloud Run ya corre ese SHA. `vercel.json` desactiva los despliegues automáticos de Git en todas las ramas (`git.deploymentEnabled: false`), no solo en `main`: las variables solo existen en Production, y los Previews de ramas, de PRs de Dependabot o de forks en un repositorio público se construirían sin ellas y fallarían (pasó con un PR de Dependabot). Los despliegues manuales no dependen de esa opción. `apps/web/scripts/deploy.sh` queda como alternativa con la CLI: hace las mismas comprobaciones y corre `vercel deploy --prod` desde un `git worktree` del SHA. Las funciones corren en `cle1`, junto a Neon en Ohio.
 
 **Alternativas:**
 
