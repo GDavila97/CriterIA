@@ -107,11 +107,26 @@ class LimitExceededError(Exception):
         self.codigo: LimitCode = codigo
 
 
+@dataclass(frozen=True)
+class Reservation:
+    """What one reserve booked, so a run that could not be created gives it back."""
+
+    id: UUID
+    user_id: str
+    day: date
+    uses_server_key: bool
+    server_cost_usd: float
+
+
 class UsageGuard(Protocol):
     async def reserve(
         self, user_id: str, at: datetime, uses_server_key: bool, server_cost_usd: float
-    ) -> None:
+    ) -> Reservation:
         """Atomically checks every limit and books the run; raises LimitExceededError."""
+        ...
+
+    async def release(self, reservation: Reservation) -> None:
+        """Undoes a reservation whose run was never created; a second call does nothing."""
         ...
 
     async def settle(

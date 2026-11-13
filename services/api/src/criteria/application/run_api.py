@@ -50,6 +50,7 @@ from criteria.ports.stores import (
     HistoryStore,
     KeySource,
     ModelPlan,
+    Reservation,
     RunRecord,
     RunStore,
     SavedRun,
@@ -259,8 +260,8 @@ class RunApplication:
             sum(cost or 0.0 for rol, cost in costs.items() if plans[rol].clave == "servidor"), 6
         )
         now = self._clock.now()
-        await self.cleanup()
-        await self._usage.reserve(
+        await self._cleanup_without_failing()
+        reservation = await self._usage.reserve(
             user_id,
             now,
             uses_server_key=any(plan.clave == "servidor" for plan in plans.values()),
@@ -285,7 +286,11 @@ class RunApplication:
             agent_plans=plans,
             save_history=save_history,
         )
-        await self._runs.create(record)
+        try:
+            await self._runs.create(record)
+        except BaseException:
+            await self._release(reservation)
+            raise
         return RunCreated(
             run_id=record.id,
             generacion=record.generation,
@@ -352,6 +357,21 @@ class RunApplication:
             await stack.aclose()
             raise
         return self._events(stack, record, replay, action)
+
+    async def _cleanup_without_failing(self) -> None:
+        # Housekeeping for other runs: its failure is reported, never the caller's error.
+        try:
+            await self.cleanup()
+        except Exception as error:
+            logger.warning("cleanup failed", extra={"error": type(error).__name__})
+            self._reporter.report(error)
+
+    async def _release(self, reservation: Reservation) -> None:
+        try:
+            await self._usage.release(reservation)
+        except Exception as error:
+            logger.error("quota release failed", extra={"error": type(error).__name__})
+            self._reporter.report(error)
 
     async def cleanup(self) -> int:
         """Opportunistic: runs nobody touched for a while fail and give back the unused quota."""

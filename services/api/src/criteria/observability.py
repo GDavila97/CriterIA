@@ -44,9 +44,10 @@ def without_error_details(event: Event, _hint: Hint) -> Event:
 
 
 class SentryErrorReporter:
-    def report(self, error: BaseException, run_id: UUID) -> None:
+    def report(self, error: BaseException, run_id: UUID | None = None) -> None:
         with sentry_sdk.new_scope() as scope:
-            scope.set_tag("run_id", str(run_id))
+            if run_id is not None:
+                scope.set_tag("run_id", str(run_id))
             scope.add_event_processor(without_error_details)
             sentry_sdk.capture_exception(error)
 

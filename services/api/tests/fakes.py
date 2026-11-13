@@ -41,7 +41,7 @@ class FakeKeyValidator:
 
 class FakeReporter:
     def __init__(self) -> None:
-        self.reported: list[tuple[BaseException, UUID]] = []
+        self.reported: list[tuple[BaseException, UUID | None]] = []
 
-    def report(self, error: BaseException, run_id: UUID) -> None:
+    def report(self, error: BaseException, run_id: UUID | None = None) -> None:
         self.reported.append((error, run_id))

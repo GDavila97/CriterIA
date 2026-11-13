@@ -5,12 +5,13 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass, field, replace
 from datetime import date, datetime
 from typing import Any
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from criteria.domain.events import ProveedorId
 from criteria.ports.credentials import StoredCredential
 from criteria.ports.stores import (
     LimitExceededError,
+    Reservation,
     RunRecord,
     RunStatus,
     SavedRun,
@@ -125,14 +126,22 @@ class MemoryUsage:
     settled: list[tuple[str, date, float, float | None]] = field(default_factory=list)
     settled_runs: set[UUID] = field(default_factory=set)
     extra: list[tuple[UUID, float]] = field(default_factory=list)
+    released: list[Reservation] = field(default_factory=list)
     refuse: LimitExceededError | None = None
 
     async def reserve(
         self, user_id: str, at: datetime, uses_server_key: bool, server_cost_usd: float
-    ) -> None:
+    ) -> Reservation:
         if self.refuse is not None:
             raise self.refuse
         self.reserved.append((user_id, uses_server_key, server_cost_usd))
+        return Reservation(uuid4(), user_id, at.date(), uses_server_key, server_cost_usd)
+
+    async def release(self, reservation: Reservation) -> None:
+        self.released.append(reservation)
+        self.reserved.remove(
+            (reservation.user_id, reservation.uses_server_key, reservation.server_cost_usd)
+        )
 
     async def settle(
         self, run_id: UUID, user_id: str, day: date, reserved_usd: float, actual_usd: float | None

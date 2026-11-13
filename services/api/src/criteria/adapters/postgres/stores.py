@@ -18,6 +18,7 @@ from criteria.ports.credentials import Sealed, StoredCredential
 from criteria.ports.stores import (
     LimitExceededError,
     ModelPlan,
+    Reservation,
     RunRecord,
     RunStatus,
     SavedRun,
@@ -169,8 +170,15 @@ class PostgresUsageGuard:
 
     async def reserve(
         self, user_id: str, at: datetime, uses_server_key: bool, server_cost_usd: float
-    ) -> None:
+    ) -> Reservation:
         limits, day = self._limits, at.date()
+        reservation = Reservation(
+            id=uuid4(),
+            user_id=user_id,
+            day=day,
+            uses_server_key=uses_server_key,
+            server_cost_usd=server_cost_usd,
+        )
         async with self._engine.begin() as conn:
             # Serializes one user's reservations so two parallel requests cannot both slip in.
             await conn.execute(
@@ -195,7 +203,10 @@ class PostgresUsageGuard:
                 await self._book_global(conn, day, server_cost_usd)
             await conn.execute(
                 sa.insert(t.run_start).values(
-                    id=uuid4(), user_id=user_id, started_at=at, uses_server_key=uses_server_key
+                    id=reservation.id,
+                    user_id=user_id,
+                    started_at=at,
+                    uses_server_key=uses_server_key,
                 )
             )
             usage = insert(t.usage_daily).values(
@@ -210,6 +221,34 @@ class PostgresUsageGuard:
                     },
                 )
             )
+        return reservation
+
+    async def release(self, reservation: Reservation) -> None:
+        g, u, cost = t.global_usage_daily, t.usage_daily, reservation.server_cost_usd
+        async with self._engine.begin() as conn:
+            # The run_start row is the receipt: without it there is nothing left to give back.
+            removed = await conn.execute(
+                sa.delete(t.run_start).where(t.run_start.c.id == reservation.id)
+            )
+            if not removed.rowcount:
+                return
+            await conn.execute(
+                sa.update(u)
+                .where(u.c.user_id == reservation.user_id, u.c.day == reservation.day)
+                .values(
+                    runs=sa.func.greatest(u.c.runs - 1, 0),
+                    cost_usd=sa.func.greatest(u.c.cost_usd - cost, 0),
+                )
+            )
+            if reservation.uses_server_key:
+                await conn.execute(
+                    sa.update(g)
+                    .where(g.c.day == reservation.day)
+                    .values(
+                        runs=sa.func.greatest(g.c.runs - 1, 0),
+                        cost_usd=sa.func.greatest(g.c.cost_usd - cost, 0),
+                    )
+                )
 
     async def _book_global(self, conn: Any, day: date, cost: float) -> None:
         g = t.global_usage_daily

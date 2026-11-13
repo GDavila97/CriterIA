@@ -219,6 +219,60 @@ class TestCreate:
 
         assert h.runs.records == {}
 
+    async def test_a_failing_cleanup_is_reported_and_the_run_is_created(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        h = harness()
+        closed = ConnectionError("server closed the connection")
+
+        async def broken() -> int:
+            raise closed
+
+        monkeypatch.setattr(h.app, "cleanup", broken)
+
+        created = await h.app.create(USER, request())
+
+        assert created.run_id in h.runs.records
+        assert h.reporter.reported == [(closed, None)]
+
+    async def test_a_run_that_cannot_be_stored_gives_its_quota_back(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        h = harness()
+        lost = ConnectionError("server closed the connection")
+
+        async def broken(_record: RunRecord) -> None:
+            raise lost
+
+        monkeypatch.setattr(h.runs, "create", broken)
+
+        with pytest.raises(ConnectionError):
+            await h.app.create(USER, request())
+
+        assert h.usage.reserved == []
+        assert [r.user_id for r in h.usage.released] == [USER]
+
+    async def test_a_failed_release_is_reported_and_the_original_error_raised(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        h = harness()
+        lost, release_lost = ConnectionError("insert"), ConnectionError("release")
+
+        async def broken_create(_record: RunRecord) -> None:
+            raise lost
+
+        async def broken_release(_reservation: object) -> None:
+            raise release_lost
+
+        monkeypatch.setattr(h.runs, "create", broken_create)
+        monkeypatch.setattr(h.usage, "release", broken_release)
+
+        with pytest.raises(ConnectionError) as raised:
+            await h.app.create(USER, request())
+
+        assert raised.value is lost
+        assert h.reporter.reported == [(release_lost, None)]
+
     async def test_a_provider_without_access_needs_the_users_key(self) -> None:
         with pytest.raises(KeyRequiredError):
             await harness().app.create(USER, request(proveedor="anthropic"))
