@@ -47,16 +47,22 @@ Rutas reservadas: Cloud Run no deja pasar a la aplicación las rutas que empieza
 - `gh` con sesión iniciada, `jq`, `psql` (para las contraseñas de Neon) y el CLI de 1Password (`op`).
 - CLI de Vercel, para cargar las variables y para el script alternativo: `pnpm add --global vercel` y `vercel login`.
 
-Los secretos viven en la bóveda `CriterIA` de 1Password y los comandos los leen con `op read -n "op://CriterIA/<elemento>/<campo>"` (`-n` evita el salto de línea final). Cada rol de Neon tiene su elemento:
+Los secretos viven en la bóveda `CriterIA` de 1Password y los comandos los leen con `op read -n "op://CriterIA/<elemento>/<campo>"` (`-n` evita el salto de línea final):
 
-| Elemento | Rol | Campos |
+| Elemento | Campos | Uso |
 | --- | --- | --- |
-| `neon-migrator-role` | `migrator_role` | `password`, `url` |
-| `neon-api-role` | `api_role` | `password`, `url` |
-| `neon-eval-writer` | `eval_writer` | `password`, `url` |
-| `neon-web-role` | `web_role` | `password`, `url`, `url-pooler` |
+| `neon-migrator-role` | `password`, `url` | `migrator_role` |
+| `neon-api-role` | `password`, `url` | `api_role` |
+| `neon-eval-writer` | `password`, `url` | `eval_writer` |
+| `neon-web-role` | `password`, `url`, `url-pooler` | `web_role` |
+| `credentials-keys` | `password` | `CREDENTIALS_KEYS` de la API |
+| `groq-api-key` | `password` | `GROQ_API_KEY` del modo gratuito |
+| `sentry-api` | `dsn` | `SENTRY_DSN` de la API |
+| `sentry-web` | `dsn` | `NEXT_PUBLIC_SENTRY_DSN` de la web |
+| `github-oauth-prod` | `client-id`, `client-secret` | OAuth App de producción |
+| `better-auth-secret` | `password` | `BETTER_AUTH_SECRET` de la web |
 
-`url` es la URL directa y `url-pooler` la del pooler (sección 2). Groq, Sentry, la OAuth App, `BETTER_AUTH_SECRET` y `CREDENTIALS_KEYS` son elementos propios de la misma bóveda.
+En los elementos de Neon, `url` es la URL directa y `url-pooler` la del pooler (sección 2).
 
 ## 1. GCP
 
@@ -90,26 +96,48 @@ Una sola vez. Al terminar, `gcloud config set project <proyecto>` y `export GCP_
    | Secreto | Variable de la API | Origen en 1Password |
    | --- | --- | --- |
    | `criteria-database-url` | `DATABASE_URL` | `op://CriterIA/neon-api-role/url` (sección 2) |
-   | `criteria-credentials-keys` | `CREDENTIALS_KEYS` | Llave nueva, nunca la local |
-   | `criteria-groq-api-key` | `GROQ_API_KEY` | Clave de Groq del modo gratuito |
-   | `criteria-sentry-dsn` | `SENTRY_DSN` | DSN del proyecto de Sentry de la API |
+   | `criteria-credentials-keys` | `CREDENTIALS_KEYS` | `op://CriterIA/credentials-keys/password`, llave nueva, nunca la local |
+   | `criteria-groq-api-key` | `GROQ_API_KEY` | `op://CriterIA/groq-api-key/password` |
+   | `criteria-sentry-dsn` | `SENTRY_DSN` | `op://CriterIA/sentry-api/dsn` |
 
    La llave de las claves de usuario se genera una vez, directo a 1Password:
 
    ```bash
    key="1:$(openssl rand -base64 32)"
-   op item create --vault=CriterIA --category=password --title="CriterIA CREDENTIALS_KEYS" "password=$key"
+   op item create --vault=CriterIA --category=password --title=credentials-keys "password=$key"
    unset key
    ```
 
-   Después, por cada secreto, con su ruta de la tabla (para la base, `op://CriterIA/neon-api-role/url`):
+   Los 4 secretos se crean en un bucle, que funciona en zsh y en bash:
 
    ```bash
-   op read -n "op://CriterIA/<elemento>/<campo>" | gcloud secrets create <secreto> \
-     --replication-policy=user-managed --locations=us-central1 --data-file=-
-   gcloud secrets add-iam-policy-binding <secreto> \
-     --member="serviceAccount:criteria-api@$GCP_PROJECT_ID.iam.gserviceaccount.com" \
-     --role=roles/secretmanager.secretAccessor
+   for pair in \
+     "criteria-database-url op://CriterIA/neon-api-role/url" \
+     "criteria-credentials-keys op://CriterIA/credentials-keys/password" \
+     "criteria-groq-api-key op://CriterIA/groq-api-key/password" \
+     "criteria-sentry-dsn op://CriterIA/sentry-api/dsn"; do
+     secret=${pair%% *} ref=${pair#* }
+     op read -n "$ref" | gcloud secrets create "$secret" \
+       --replication-policy=user-managed --locations=us-central1 --data-file=-
+     gcloud secrets add-iam-policy-binding "$secret" --quiet \
+       --member="serviceAccount:criteria-api@$GCP_PROJECT_ID.iam.gserviceaccount.com" \
+       --role=roles/secretmanager.secretAccessor >/dev/null
+   done
+   ```
+
+   Para comprobar que cada secreto llegó completo sin mostrarlo, se comparan longitudes. Las dos cifras de cada línea deben coincidir; si el secreto mide uno más, se coló un salto de línea:
+
+   ```bash
+   for pair in \
+     "criteria-database-url op://CriterIA/neon-api-role/url" \
+     "criteria-credentials-keys op://CriterIA/credentials-keys/password" \
+     "criteria-groq-api-key op://CriterIA/groq-api-key/password" \
+     "criteria-sentry-dsn op://CriterIA/sentry-api/dsn"; do
+     secret=${pair%% *} ref=${pair#* }
+     printf '%s 1Password=%s SecretManager=%s\n' "$secret" \
+       "$(op read -n "$ref" | wc -c | tr -d ' ')" \
+       "$(gcloud secrets versions access latest --secret="$secret" | wc -c | tr -d ' ')"
+   done
    ```
 
    Para cambiar uno: `op read -n … | gcloud secrets versions add <secreto> --data-file=-`, desplegar de nuevo la API (los secretos se leen al arrancar cada instancia) y destruir la versión anterior con `gcloud secrets versions destroy <versión> --secret=<secreto>`.
@@ -141,29 +169,58 @@ El proyecto ya existe en `aws-us-east-2` (Ohio) con Postgres 16. La base se llam
    - **Cada contraseña:** se pega desde el campo `password` de su elemento cuando el bloque la pide.
    - **Por qué así:** `read -s` no muestra lo que se pega, y `psql` recibe la sentencia por la entrada estándar y cita la contraseña con `:'pw'`. Ni las contraseñas ni la URL quedan en el historial del shell, en el de `psql` (que solo guarda sesiones interactivas) ni en el editor SQL de Neon.
    - **Probado:** el bloque funciona en zsh y en bash. Se probó en un Postgres 16 desechable, con `criteria_owner` como dueño no superusuario.
-3. **URLs.** Se arman a mano y se guardan en 1Password, siempre con la base `criteria` y `?sslmode=require`:
+3. **URLs.** Se arman a mano y se guardan en 1Password, siempre con la base `criteria` y `sslmode=verify-full`:
 
    ```text
-   postgresql://<rol>:<password>@<host>/criteria?sslmode=require
+   postgresql://<rol>:<password>@<host>/criteria?sslmode=verify-full[&sslrootcert=<archivo de CA>]
    ```
 
    - **Host directo:** el del panel, por ejemplo `ep-<id>.c-8.us-east-2.aws.neon.tech`.
    - **Host con pooler:** se inserta `-pooler` después del primer segmento: `ep-<id>-pooler.c-8.us-east-2.aws.neon.tech`.
+   - **`sslrootcert`:** depende de quién usa la URL (ver «TLS con Neon» abajo).
 
-   | URL | Rol | Host | En 1Password | Destino |
-   | --- | --- | --- | --- | --- |
-   | API | `api_role` | directo | `op://CriterIA/neon-api-role/url` | Secret Manager `criteria-database-url` |
-   | Migraciones de la API | `migrator_role` | directo | `op://CriterIA/neon-migrator-role/url` | GitHub, `MIGRATION_DATABASE_URL` |
-   | Migraciones de Better Auth | `web_role` | directo | `op://CriterIA/neon-web-role/url` | GitHub, `AUTH_MIGRATION_DATABASE_URL` |
-   | Web | `web_role` | pooler | `op://CriterIA/neon-web-role/url-pooler` | Vercel, `AUTH_DATABASE_URL` |
-   | Evaluación | `eval_writer` | directo | `op://CriterIA/neon-eval-writer/url` | Solo la Mac, al publicar |
+   | URL | Rol | Host | Cliente | Final de la URL | En 1Password | Destino |
+   | --- | --- | --- | --- | --- | --- | --- |
+   | API | `api_role` | directo | psycopg en la imagen | `?sslmode=verify-full&sslrootcert=/etc/ssl/certs/ca-certificates.crt` | `op://CriterIA/neon-api-role/url` | Secret Manager `criteria-database-url` |
+   | Migraciones de la API | `migrator_role` | directo | psycopg en `ubuntu-24.04` | `?sslmode=verify-full&sslrootcert=/etc/ssl/certs/ca-certificates.crt` | `op://CriterIA/neon-migrator-role/url` | GitHub, `MIGRATION_DATABASE_URL` |
+   | Migraciones de Better Auth | `web_role` | directo | node-postgres | `?sslmode=verify-full` | `op://CriterIA/neon-web-role/url` | GitHub, `AUTH_MIGRATION_DATABASE_URL` |
+   | Web | `web_role` | pooler | node-postgres | `?sslmode=verify-full` | `op://CriterIA/neon-web-role/url-pooler` | Vercel, `AUTH_DATABASE_URL` |
+   | Evaluación | `eval_writer` | directo | psycopg en macOS | `?sslmode=verify-full&sslrootcert=/etc/ssl/cert.pem` | `op://CriterIA/neon-eval-writer/url` | Solo la Mac, al publicar |
+
+   **TLS con Neon.** El certificado de Neon es de Let's Encrypt, con comodín por región (`*.c-8.us-east-2.aws.neon.tech`). Cada cliente lo verifica distinto:
+   - **node-postgres** (web y migraciones de Better Auth):
+     - Trata `require` como un alias de `verify-full` y avisa que en su próxima versión mayor `require` adoptará la semántica de libpq, que no verifica el certificado.
+     - `verify-full` deja la verificación de hoy: TLS de Node con sus certificados raíz y el nombre del host.
+   - **psycopg** (API, migraciones de la API y evaluación) usa libpq 18. Con `verify-full`, libpq exige un certificado raíz:
+     - **Sin `sslrootcert`:** falla con `root certificate file "~/.postgresql/root.crt" does not exist`. Por eso esas tres URLs no pueden quedar solo con `verify-full`.
+     - **Con `sslrootcert=system`:** también falla (`certificate verify failed`), porque el OpenSSL que trae psycopg-binary no encuentra los certificados del sistema, ni en la imagen de la API ni en macOS.
+     - **Con la ruta explícita del archivo de CA:** verifica bien. En la imagen (Debian) y en el runner de GitHub (Ubuntu) es `/etc/ssl/certs/ca-certificates.crt`; en macOS, `/etc/ssl/cert.pem`.
+   - **Cómo se comprobó:** contra el proxy de Neon, con un endpoint inventado (`ep-criteria-tls-probe-000000`) y un usuario falso, sin credenciales:
+     - node-postgres con `verify-full`, y psycopg con la ruta del archivo (dentro de la imagen de la API y en la Mac), terminaron el TLS y llegaron a `password authentication failed`.
+     - Como control, la misma conexión dirigida a la IP fue rechazada por nombre de host.
+     - En el runner de GitHub no se probó: usa el mismo psycopg-binary y el mismo archivo que la imagen, y la primera corrida del workflow de migraciones lo confirma.
+
+   **Cambio de `require` a `verify-full`** en lo ya desplegado:
+   1. **1Password:** en los cinco campos de la tabla, cambiar el final de cada URL por el de su fila.
+   2. **Secret Manager:** nueva versión de la URL de la API, despliegue para que la lea y destrucción de la versión anterior:
+
+      ```bash
+      op read -n "op://CriterIA/neon-api-role/url" | gcloud secrets versions add criteria-database-url --data-file=-
+      services/api/scripts/deploy.sh <sha desplegado>
+      gcloud secrets versions destroy <versión anterior> --secret=criteria-database-url
+      ```
+
+   3. **GitHub:** los dos `gh secret set` de la sección 3 otra vez.
+   4. **Vercel:** reemplazar `AUTH_DATABASE_URL` (sección 5) y crear de nuevo el despliegue del SHA actual, porque las variables se leen al compilar y al arrancar cada función.
+   5. **Mac:** nada que cambiar; `EVAL_DATABASE_URL` se lee de 1Password al publicar.
 
 **Control:**
 - En el editor SQL, `SELECT rolname, rolconfig FROM pg_roles WHERE rolname LIKE '%_role' OR rolname = 'eval_writer';` lista los cuatro roles y `web_role` con `{search_path=auth}`.
-- La URL de la web entra por el pooler y cae en `auth` sin opciones de conexión. Este comando debe imprimir `web_role|auth`:
+- La URL de la web entra por el pooler y cae en `auth` sin opciones de conexión. Este comando debe imprimir `web_role|auth`. `PGSSLROOTCERT` le da a `psql` el archivo de CA de macOS, porque esa URL es para node-postgres y no lo trae:
 
   ```bash
-  psql "$(op read -n 'op://CriterIA/neon-web-role/url-pooler')" -XAtc "SELECT current_user, current_setting('search_path')"
+  PGSSLROOTCERT=/etc/ssl/cert.pem psql "$(op read -n 'op://CriterIA/neon-web-role/url-pooler')" \
+    -XAtc "SELECT current_user, current_setting('search_path')"
   ```
 
 Conexiones: con 0.25 CU, Neon admite 112 (105 para la aplicación). Cada instancia de la API abre hasta 30 (`DATABASE_POOL_SIZE` 10, más 10 de desborde y 10 para los checkpoints), así que 2 instancias usan como mucho 60. La web pasa por el pooler.
@@ -184,9 +241,9 @@ Las pruebas de integración lo comprueban terminando las sesiones de `api_role` 
    - Homepage URL: `https://criter-ia.vercel.app`.
    - Authorization callback URL: `https://criter-ia.vercel.app/api/auth/callback/github`.
    - Solo pide `user:email`; los tokens de GitHub no se guardan.
-   - El Client ID y un Client secret nuevo van a 1Password.
+   - El Client ID y un Client secret nuevo van a 1Password, en `github-oauth-prod` (`client-id` y `client-secret`).
 2. **Environment `production`.** Settings > Environments > New environment:
-   - **Required reviewers:** tu usuario. En un repositorio privado hace falta un plan de pago para esta regla.
+   - **Required reviewers:** no hay. En un repositorio privado del plan gratuito, GitHub no ofrece esta regla, así que el workflow de migraciones corre en cuanto se lanza. Cuando el repositorio sea público, se agrega tu usuario como revisor y el job `migrate` volverá a esperar la aprobación.
    - **Deployment branches and tags:** solo `main`.
    - **Secretos:**
 
@@ -201,8 +258,8 @@ Las pruebas de integración lo comprueban terminando las sesiones de `api_role` 
 
 Dos proyectos: uno de Python (FastAPI) para la API y uno de Next.js para la web.
 
-- **DSN de la API:** va a Secret Manager (`criteria-sentry-dsn`).
-- **DSN de la web:** va a Vercel como `NEXT_PUBLIC_SENTRY_DSN`. Es público por diseño y queda incrustado en el build. La CSP agrega sola el origen de ingesta del DSN (`https://o<n>.ingest.us.sentry.io`) a `connect-src`.
+- **DSN de la API:** `op://CriterIA/sentry-api/dsn`, a Secret Manager (`criteria-sentry-dsn`).
+- **DSN de la web:** `op://CriterIA/sentry-web/dsn`, a Vercel como `NEXT_PUBLIC_SENTRY_DSN`. Es público por diseño y queda incrustado en el build. La CSP agrega sola el origen de ingesta del DSN (`https://o<n>.ingest.us.sentry.io`) a `connect-src`.
 - **Sin PII:** ambos SDK la tienen desactivada y filtran `Authorization` y la clave propia.
 - **Source maps:** todavía no se suben.
 
@@ -217,32 +274,34 @@ Dos proyectos: uno de Python (FastAPI) para la API y uno de Next.js para la web.
      - **Qué pasaba sin esto:** el primer despliegue avisó `Could not enable corepack because package.json is missing "packageManager" property` y usó el pnpm 10 de la imagen, que falló con `ERR_PNPM_BROKEN_LOCKFILE … expected a single document in the stream`: el lockfile de pnpm 12 tiene dos documentos YAML. El mismo error sale con pnpm 10.10.0.
      - **No se define `ENABLE_EXPERIMENTAL_COREPACK`.**
    - **El dominio:** `criter-ia.vercel.app`. Es el `WEB_URL` de `production.env` y el origen de la OAuth App.
-   - **CLI:** `vercel link` en la raíz del repositorio liga este mismo proyecto y escribe `.vercel/`, que está ignorado. Lo necesitan `vercel env add` y el script alternativo.
-2. **Variables de producción.** Cada secreto entra desde 1Password, marcado como sensitive:
+   - **Deployment Protection:** Settings > Deployment Protection > Vercel Authentication con **Standard Protection**. Así, los URLs propios de cada despliegue (`criter-ia-<hash>-….vercel.app`) piden una sesión de Vercel, y solo `criter-ia.vercel.app` es público.
+   - **CLI:** `vercel link` en la raíz del repositorio liga este mismo proyecto y escribe `.vercel/`, que está ignorado. Lo necesita el script alternativo.
+2. **Variables de producción.** En Settings > Environment Variables, entorno Production. El panel distingue dos tipos:
+   - **Secret:** el valor no se vuelve a mostrar. Se pega directo desde 1Password.
+   - **Config:** valores que no son secretos.
 
-   ```bash
-   op read -n "op://CriterIA/<elemento>/<campo>" | vercel env add <VARIABLE> production --sensitive
-   ```
+   Con la CLI, el equivalente de Secret es `op read -n "op://CriterIA/<elemento>/<campo>" | vercel env add <VARIABLE> production --sensitive`.
 
-   Por ejemplo, `op read -n "op://CriterIA/neon-web-role/url-pooler" | vercel env add AUTH_DATABASE_URL production --sensitive`. Las públicas se agregan igual con `printf '%s' '<valor>' | vercel env add <VARIABLE> production`. También se pueden cargar en Settings > Environment Variables, pegando desde 1Password y marcando Sensitive.
+| Variable | Tipo | Valor | Nota |
+| --- | --- | --- | --- |
+| `NEXT_PUBLIC_APP_ENV` | Config | `production` | Activa `upgrade-insecure-requests` en la CSP y las cookies `Secure` |
+| `NEXT_PUBLIC_API_URL` | Config | URL de Cloud Run (`https://criteria-api-<número>.us-central1.run.app`) | Se incrusta en el build y entra en `connect-src`; se conoce tras el primer despliegue de la API |
+| `NEXT_PUBLIC_SENTRY_DSN` | Config | `op://CriterIA/sentry-web/dsn` | Público por diseño |
+| `NEXT_PUBLIC_OFFICE_VIEW` | Config | `false` | La vista oficina llega en F9 |
+| `EMAIL_PROVIDER` | Config | `none` | Sin dominio no hay envío ([ADR 0020](adr/0020-github-first-sign-in-without-email.md)) |
+| `BETTER_AUTH_URL` | Config | `https://criter-ia.vercel.app` | Origen público, sin barra final |
+| `BETTER_AUTH_SECRET` | Secret | `op://CriterIA/better-auth-secret/password`, nuevo, de 48 bytes (`openssl rand -base64 48`) | Firma sesiones y cifra la llave privada del JWKS: cambiarlo invalida las sesiones y obliga a borrar `auth.jwks` |
+| `AUTH_DATABASE_URL` | Secret | `op://CriterIA/neon-web-role/url-pooler` | URL de `web_role` con pooler y `sslmode=verify-full` |
+| `GITHUB_CLIENT_ID` | Secret | `op://CriterIA/github-oauth-prod/client-id` | OAuth App de producción |
+| `GITHUB_CLIENT_SECRET` | Secret | `op://CriterIA/github-oauth-prod/client-secret` | OAuth App de producción |
 
-| Variable | Valor | Nota |
-| --- | --- | --- |
-| `NEXT_PUBLIC_APP_ENV` | `production` | Activa `upgrade-insecure-requests` en la CSP y las cookies `Secure` |
-| `NEXT_PUBLIC_API_URL` | URL de Cloud Run (`https://criteria-api-<número>.us-central1.run.app`) | Se incrusta en el build y entra en `connect-src`; se conoce tras el primer despliegue de la API |
-| `NEXT_PUBLIC_SENTRY_DSN` | DSN del proyecto web | Público |
-| `NEXT_PUBLIC_OFFICE_VIEW` | `false` | La vista oficina llega en F9 |
-| `NEXT_PUBLIC_CONTACT_URL` | Vacía o un `mailto:` | Vacía enlaza `https://github.com/GDavila97` en "Privacidad y datos" |
-| `BETTER_AUTH_SECRET` | Nuevo, de 48 bytes (`openssl rand -base64 48` hacia 1Password) | Sensitive. Firma sesiones y cifra la llave privada del JWKS: cambiarlo invalida las sesiones y obliga a borrar `auth.jwks` |
-| `BETTER_AUTH_URL` | `https://criter-ia.vercel.app` | Origen público, sin barra final |
-| `AUTH_DATABASE_URL` | `op://CriterIA/neon-web-role/url-pooler` | Sensitive. URL de `web_role` con pooler |
-| `AUTH_JWT_ISSUER`, `AUTH_JWT_AUDIENCE` | Vacías | Usan `BETTER_AUTH_URL`, igual que `AUTH_ISSUER` y `AUTH_AUDIENCE` de la API |
-| `EMAIL_PROVIDER` | `none` | Sin dominio no hay envío ([ADR 0020](adr/0020-github-first-sign-in-without-email.md)) |
-| `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` | De la OAuth App de producción | El secreto, sensitive |
+**No se crean:**
+- **`NEXT_PUBLIC_CONTACT_URL`:** sin ella, "Privacidad y datos" enlaza `https://github.com/GDavila97`.
+- **`AUTH_JWT_ISSUER` y `AUTH_JWT_AUDIENCE`:** sin ellas, se usa `BETTER_AUTH_URL`, igual que `AUTH_ISSUER` y `AUTH_AUDIENCE` de la API.
 
 `GOOGLE_*`, `SMTP_URL`, `RESEND_API_KEY`, `EMAIL_FROM` y `GITHUB_STUB_URL` no se definen en producción.
 
-**Control:** `vercel env ls production`, o Settings > Environment Variables, lista solo los nombres de arriba.
+**Control:** Settings > Environment Variables (o `vercel env ls production`) lista solo los diez nombres de la tabla.
 
 ## 6. Cada despliegue
 
@@ -256,7 +315,7 @@ Tú haces `git push`; todo lo demás usa el SHA completo de ese commit (`git rev
    gh run watch
    ```
 
-   El job `verify` comprueba que el SHA esté en `main` y que el CI haya pasado. Después, el job `migrate` espera tu aprobación en la pestaña Actions, porque el environment `production` lo exige. Corre primero `pnpm auth:migrate` como `web_role` y luego `alembic upgrade head` como `migrator_role`. Las migraciones de Better Auth solo comparan y crean tablas: corren con un secreto aleatorio y no crean llaves del JWKS. Se comprobó que dejan `auth.jwks` vacía.
+   El job `verify` comprueba que el SHA esté en `main` y que el CI haya pasado. Después corre el job `migrate`, sin aprobación mientras el repositorio sea privado (sección 3); cuando sea público y el environment tenga revisor, esperará tu aprobación en la pestaña Actions. Corre primero `pnpm auth:migrate` como `web_role` y luego `alembic upgrade head` como `migrator_role`. Las migraciones de Better Auth solo comparan y crean tablas: corren con un secreto aleatorio y no crean llaves del JWKS. Se comprobó que dejan `auth.jwks` vacía.
    **Control:** el log termina con `alembic current` en la última revisión.
 3. **API.**
 
@@ -326,7 +385,7 @@ uv run criteria eval publish --human
 unset EVAL_DATABASE_URL
 ```
 
-La variable exportada gana sobre el `EVAL_DATABASE_URL` local de `.env`. **Control:** una segunda pasada no agrega resultados («0 resultados nuevos», «Puntajes humanos nuevos: 0»), y `/evaluation` de la API devuelve los tres lotes.
+`op read -n` deja la URL en la variable sin pasar por el historial ni por un archivo, y la variable exportada gana sobre el `EVAL_DATABASE_URL` local de `.env`. La URL lleva `sslrootcert=/etc/ssl/cert.pem` (sección 2). **Control:** una segunda pasada no agrega resultados («0 resultados nuevos», «Puntajes humanos nuevos: 0»), y `/evaluation` de la API devuelve los tres lotes.
 
 ## 8. Tope del modo gratuito
 
@@ -377,13 +436,30 @@ Debe haber una clave por red (`<tu IP>|/sign-in/email`) con tus IPs reales, y ni
 - [ ] Teléfono real (iPhone, 390 px): inicio, corrida completa, tablero y ajustes, en claro y oscuro.
 - [ ] Cabeceras y CORS: cubiertos por la prueba de humo. Revisa también https://securityheaders.com sobre la web.
 - [ ] IP real desde dos redes (sección 9).
-- [ ] Límite de uso con dos cuentas: con la cuenta A, la sexta corrida en una hora responde «Alcanzaste el límite de corridas por hora»; la cuenta B sigue pudiendo.
+- [ ] Límite de uso con dos cuentas: con la cuenta A, la sexta corrida en una hora muestra «Alcanzaste el límite de análisis por hora»; la cuenta B sigue pudiendo.
 - [ ] Flujo de GitHub: entrar, ver el correo verificado en "Cuenta" y salir.
 - [ ] Flujo de correo y contraseña: registro con el aviso de recuperación, entrada y borrado de la cuenta.
 - [ ] Una corrida real con Groq (modo gratuito) de principio a fin, con el costo mostrado.
 - [ ] PageSpeed Insights (https://pagespeed.web.dev) de la web en móvil y escritorio; anota los cuatro puntajes.
 - [ ] Alerta de presupuesto activa en Billing > Budgets, y límite de gasto de 3 USD en la consola de Groq.
-- [ ] Sentry recibe un evento de prueba de la API y de la web.
+- [ ] Sentry recibe un evento de prueba de la API y de la web (abajo).
+
+### Evento de prueba de Sentry
+
+Sin rutas nuevas: se envía desde la Mac con el `sentry-sdk` que ya trae la API, usando el DSN de cada proyecto. `sentry_sdk.init()` lee `SENTRY_DSN` del entorno, así que el DSN no pasa por la línea de comandos ni por el historial. El de la API sale de Secret Manager, para probar exactamente el que usa Cloud Run:
+
+```bash
+cd services/api
+SENTRY_DSN="$(gcloud secrets versions access latest --secret=criteria-sentry-dsn)" uv run python -c \
+  'import sentry_sdk; sentry_sdk.init(environment="production"); print(sentry_sdk.capture_message("Evento de prueba de la API")); sentry_sdk.flush()'
+SENTRY_DSN="$(op read -n 'op://CriterIA/sentry-web/dsn')" uv run python -c \
+  'import sentry_sdk; sentry_sdk.init(environment="production"); print(sentry_sdk.capture_message("Evento de prueba de la web")); sentry_sdk.flush()'
+```
+
+Cada comando imprime el id del evento. **Control:** en Sentry, Issues de cada proyecto muestra el mensaje con ese id y `environment: production`.
+- **Qué prueba:** el DSN y la ingesta de cada proyecto.
+- **Qué no prueba:** que el código desplegado reporte; eso lo muestran los errores reales, que llegan con el mismo DSN.
+- **DSN de la web:** se puede usar el SDK de Python con él, porque un DSN identifica al proyecto, no al lenguaje.
 
 ## Variables y secretos
 
