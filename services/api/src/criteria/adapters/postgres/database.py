@@ -186,12 +186,18 @@ def _with_driver(url: str, driver: str) -> str:
     return make_url(url).set(drivername=driver).render_as_string(hide_password=False)
 
 
+# Neon suspends an idle compute after 5 minutes and closes every session; pooled connections are
+# replaced before that and checked on checkout, so a closed one never reaches a request.
+CONNECTION_MAX_IDLE_SECONDS = 240
+
+
 def create_engine(database_url: str, pool_size: int) -> AsyncEngine:
     return create_async_engine(
         _with_driver(database_url, "postgresql+psycopg"),
         pool_size=pool_size,
         max_overflow=pool_size,
         pool_pre_ping=True,
+        pool_recycle=CONNECTION_MAX_IDLE_SECONDS,
     )
 
 
@@ -200,6 +206,8 @@ def create_checkpoint_pool(database_url: str, max_size: int) -> AsyncConnectionP
         _with_driver(database_url, "postgresql"),
         open=False,
         max_size=max_size,
+        check=AsyncConnectionPool.check_connection,
+        max_idle=CONNECTION_MAX_IDLE_SECONDS,
         kwargs={
             "autocommit": True,
             "prepare_threshold": 0,

@@ -451,7 +451,12 @@ class PostgresRunStore:
             try:
                 yield
             finally:
-                await conn.scalar(sa.select(sa.func.pg_advisory_unlock(key)))
+                try:
+                    await conn.scalar(sa.select(sa.func.pg_advisory_unlock(key)))
+                except sa.exc.DBAPIError as error:
+                    # A session closed by the server (Neon suspending) already released its locks.
+                    if not error.connection_invalidated:
+                        raise
 
 
 class PostgresHistoryStore:
