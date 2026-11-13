@@ -81,7 +81,7 @@ Detalle en [docs/architecture.md](docs/architecture.md), endpoints en [docs/api.
 
 ### Requisitos
 
-- Node.js 26 LTS (fijado en `apps/web/.nvmrc`) y pnpm 12 (lo selecciona Corepack o pnpm a partir de `packageManager`).
+- Node.js 26 LTS (fijado en `apps/web/.nvmrc`) y pnpm 12. La versión exacta está en `packageManager` de `apps/web/package.json`, y pnpm 10 o posterior cambia solo a ella; Node 26 ya no trae Corepack.
 - [uv](https://docs.astral.sh/uv/) 0.13.7 exactamente: `services/api/pyproject.toml` lo exige en `[tool.uv] required-version` y uv se niega a correr con otra versión. uv instala Python 3.13 según `services/api/.python-version`.
 - Docker, para el Postgres local, las pruebas de integración y la imagen de la API. `psql` para aplicar los roles.
 

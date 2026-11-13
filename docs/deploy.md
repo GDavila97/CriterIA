@@ -199,10 +199,13 @@ Dos proyectos: uno de Python (FastAPI) para la API y uno de Next.js para la web.
 ## 5. Vercel
 
 1. **Proyecto.** En el panel de Vercel, Add New > Project, importar el repositorio de GitHub con «Import single project», no con «Services».
-   - **Root Directory:** `apps/web`. Vercel lee de ahí `apps/web/vercel.json`, que fija el framework, la instalación con lockfile congelado y la región `cle1`.
+   - **Root Directory:** `apps/web`. Vercel lee de ahí `apps/web/vercel.json`, que fija el framework, los comandos de instalación y de build con pnpm 12.16.1 y la región `cle1`.
    - **Despliegues automáticos:** `vercel.json` desactiva los de `main` (`git.deploymentEnabled.main: false`), así que un push no despliega la web.
    - **Node.js Version:** 26.x en Settings > Build and Deployment. `engines.node` de `package.json` también la fija.
-   - **pnpm:** la variable `ENABLE_EXPERIMENTAL_COREPACK=1` hace que Vercel use el pnpm de `packageManager` (12.16.1). Sin ella, elegiría pnpm 9 o 10 por la versión del lockfile. El log del build debe mostrar `pnpm 12.16.1`.
+   - **pnpm:** `vercel.json` corre la instalación y el build con `npx --yes pnpm@12.16.1`, la misma versión de `packageManager` en `apps/web/package.json`. El log del build debe mostrar `Done in … using pnpm v12.16.1`.
+     - **Por qué no Corepack:** Vercel solo lee `packageManager` del `package.json` de la raíz del repositorio ([corepack.ts](https://github.com/vercel/vercel/blob/155eacfa16840e68ae54bc50ee72fc8e16733857/internals/cli-builder-integration/src/corepack.ts) lee `join(repoRootPath, 'package.json')`), y aquí no hay uno; tampoco se crea, para no tener dos fuentes de la versión. Además, Node 26 ya no trae Corepack, y Vercel no documenta si su imagen lo instala.
+     - **Qué pasaba sin esto:** el primer despliegue avisó `Could not enable corepack because package.json is missing "packageManager" property` y usó el pnpm 10 de la imagen, que falló con `ERR_PNPM_BROKEN_LOCKFILE … expected a single document in the stream`: el lockfile de pnpm 12 tiene dos documentos YAML. El mismo error sale con pnpm 10.10.0.
+     - **No se define `ENABLE_EXPERIMENTAL_COREPACK`.**
    - **El dominio:** `criter-ia.vercel.app`. Es el `WEB_URL` de `production.env` y el origen de la OAuth App.
    - **CLI:** `vercel link` en la raíz del repositorio liga este mismo proyecto y escribe `.vercel/`, que está ignorado. Lo necesitan `vercel env add` y el script alternativo.
 2. **Variables de producción.** Cada secreto entra desde 1Password, marcado como sensitive:
@@ -226,7 +229,6 @@ Dos proyectos: uno de Python (FastAPI) para la API y uno de Next.js para la web.
 | `AUTH_JWT_ISSUER`, `AUTH_JWT_AUDIENCE` | Vacías | Usan `BETTER_AUTH_URL`, igual que `AUTH_ISSUER` y `AUTH_AUDIENCE` de la API |
 | `EMAIL_PROVIDER` | `none` | Sin dominio no hay envío ([ADR 0020](adr/0020-github-first-sign-in-without-email.md)) |
 | `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` | De la OAuth App de producción | El secreto, sensitive |
-| `ENABLE_EXPERIMENTAL_COREPACK` | `1` | pnpm de `packageManager` |
 
 `GOOGLE_*`, `SMTP_URL`, `RESEND_API_KEY`, `EMAIL_FROM` y `GITHUB_STUB_URL` no se definen en producción.
 
@@ -266,7 +268,7 @@ Tú haces `git push`; todo lo demás usa el SHA completo de ese commit (`git rev
    2. En el panel de Vercel, en el proyecto, Deployments > Create Deployment: pega el SHA completo y crea el despliegue.
    3. Vercel clona ese commit de GitHub y compila con las variables de producción.
 
-   **Control:** el despliegue aparece como Production con ese commit, y el log del build muestra `pnpm 12.16.1`.
+   **Control:** el despliegue aparece como Production con ese commit, y el log del build muestra `using pnpm v12.16.1`.
 
    **Alternativa con la CLI** (requiere `vercel link`):
 
