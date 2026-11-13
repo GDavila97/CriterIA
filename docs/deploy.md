@@ -168,6 +168,16 @@ El proyecto ya existe en `aws-us-east-2` (Ohio) con Postgres 16. La base se llam
 
 Conexiones: con 0.25 CU, Neon admite 112 (105 para la aplicación). Cada instancia de la API abre hasta 30 (`DATABASE_POOL_SIZE` 10, más 10 de desborde y 10 para los checkpoints), así que 2 instancias usan como mucho 60. La web pasa por el pooler.
 
+**Suspensión de Neon.** Neon suspende el cómputo tras unos 5 minutos sin uso y cierra todas las sesiones. La primera petición después recibe `terminating connection due to administrator command` en cualquier conexión que el pool tenía guardada. Antes, eso hacía fallar `POST /runs` con un 500 que salía sin cabeceras CORS, y el navegador lo mostraba como error de CORS. La API lo maneja así:
+- **Pool de SQLAlchemy:** comprueba cada conexión al sacarla (`pool_pre_ping`) y la reemplaza a los 240 s (`pool_recycle`), antes de la suspensión.
+- **Pool de psycopg de los checkpoints:** comprueba cada conexión al entregarla (`check_connection`) y cierra las que pasan 240 s sin uso (`max_idle`).
+- **Lock del stream:** si Neon cierra la sesión que lo tenía, el servidor ya soltó el lock, y el stream termina sin error.
+- **Limpieza oportunista:** si falla al crear una corrida, se registra en el log y en Sentry, y la corrida se crea igual.
+- **Cupo:** si la corrida no se puede guardar, la reserva se devuelve.
+- **Errores no manejados:** responden `error_interno` con las cabeceras CORS de `WEB_ORIGIN`.
+
+Las pruebas de integración lo comprueban terminando las sesiones de `api_role` con `pg_terminate_backend`. El primer acceso después de una suspensión espera a que Neon reactive el cómputo.
+
 ## 3. GitHub
 
 1. **OAuth App de producción.** Settings > Developer settings > OAuth Apps, una app distinta de la de desarrollo:
