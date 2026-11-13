@@ -32,6 +32,7 @@ function controller(
   return {
     state,
     created: null,
+    requerimiento: '',
     error: null,
     connection: 'cerrado',
     lastBeat: null,

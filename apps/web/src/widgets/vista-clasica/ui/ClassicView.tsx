@@ -34,6 +34,8 @@ export interface ClassicViewProps {
   onUseFree?: () => void;
   /** The judge's readable name, such as "Groq · GPT-OSS 20B". */
   judgeLabel?: string;
+  /** Whether the finished analysis went to the history; unknown for saved ones being viewed. */
+  saved?: boolean;
 }
 
 const CONNECTION_TEXT: Record<Connection, string> = {
@@ -406,6 +408,7 @@ export function ClassicView({
   approval,
   onUseFree,
   judgeLabel,
+  saved,
 }: ClassicViewProps) {
   const waiting = state.fase === 'esperando_aprobacion' && approval;
   const finished = state.fase === 'completada' || state.fase === 'error';
@@ -442,7 +445,11 @@ export function ClassicView({
             extra={
               finished && (
                 <div className={styles.exports}>
-                  <ExportButtons state={state} requerimiento={requerimiento} />
+                  <ExportButtons
+                    state={state}
+                    requerimiento={requerimiento}
+                    unsaved={saved === false}
+                  />
                 </div>
               )
             }

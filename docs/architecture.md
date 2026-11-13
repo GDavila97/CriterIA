@@ -167,6 +167,17 @@ Reglas, verificadas con `eslint-plugin-boundaries`:
 
 Las dos vistas de la corrida (clásica y, en F9, oficina) son widgets sobre la misma entidad `corrida`: `runReducer` es una función pura que reduce los eventos SSE a estado (descarta los `seq` repetidos tras una reconexión) y ninguna vista interpreta eventos por su cuenta. El control de vista y `?vista=` ya existen, pero quedan ocultos con `NEXT_PUBLIC_OFFICE_VIEW=false`.
 
+El análisis en pantalla vive en `runSession` (`entities/corrida/model/session.ts`), un almacén del módulo leído con `useSyncExternalStore`:
+- **Alcance:** sobrevive a la navegación dentro de la app y se pierde al recargar o cerrar la pestaña. Nunca toca cookies, `localStorage` ni `sessionStorage`.
+- **Reconexión:** al volver a "Nuevo análisis", si seguía en curso o en espera de aprobación, el controlador se reconecta con `Last-Event-ID` ([ADR 0018](adr/0018-run-lifecycle-bound-to-the-stream.md)).
+- **Avisos:** `features/exportar` pregunta antes de iniciar otro análisis o cerrar sesión, y registra `beforeunload`, solo cuando el análisis se perdería de verdad: sigue vivo o terminó sin historial.
+- **Al cerrar sesión:** el almacén se vacía.
+
+Los paneles y diálogos usan `useModal` (`shared/ui/dialog`) sobre `<dialog>` nativo:
+- se cierran con Esc, con la X o con un clic en la capa de fondo;
+- bloquean el desplazamiento de la página;
+- devuelven el foco al control que los abrió.
+
 ### Autenticación y sesión
 
 [ADR 0008](adr/0008-better-auth-and-api-jwt.md), ajustado por el [ADR 0020](adr/0020-github-first-sign-in-without-email.md).

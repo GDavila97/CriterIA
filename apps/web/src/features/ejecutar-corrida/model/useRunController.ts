@@ -1,8 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { initialRunState, runReducer } from '@/entities/corrida';
+import { isLive, runSession, useRunSession } from '@/entities/corrida';
 import {
   api,
   ApiError,
@@ -33,16 +33,17 @@ function asApiError(error: unknown): ApiError {
     : new ApiError(0, 'error_interno', 'Ocurrió un error inesperado. Intenta de nuevo.');
 }
 
-/** Creates a run, follows its stream, answers the human pause and stops when the page goes. */
+/**
+ * Creates an analysis, follows its stream and answers the human pause. The analysis lives in the
+ * in-memory session, so leaving the page only closes the stream and coming back reconnects.
+ */
 export function useRunController(deps: RunControllerDeps = defaults) {
-  const [state, dispatch] = useReducer(runReducer, undefined, () => initialRunState());
-  const [created, setCreated] = useState<RunCreatedBody | null>(null);
+  const { state, created, requerimiento } = useRunSession();
   const [error, setError] = useState<ApiError | null>(null);
   const [connection, setConnection] = useState<Connection>('cerrado');
   const [lastBeat, setLastBeat] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const controller = useRef<AbortController | null>(null);
-  const lastSeq = useRef(0);
 
   const follow = useCallback(
     async (runId: string) => {
@@ -52,12 +53,9 @@ export function useRunController(deps: RunControllerDeps = defaults) {
       try {
         await deps.stream({
           runId,
-          lastEventId: lastSeq.current,
+          lastEventId: runSession.get().state.ultimoSeq,
           signal: current.signal,
-          onEvent: (evento) => {
-            lastSeq.current = evento.seq;
-            dispatch({ type: 'evento', evento });
-          },
+          onEvent: (evento) => runSession.apply({ type: 'evento', evento }),
           onHeartbeat: () => setLastBeat(Date.now()),
           onConnection: setConnection,
         });
@@ -76,9 +74,7 @@ export function useRunController(deps: RunControllerDeps = defaults) {
       setBusy(true);
       try {
         const run = await deps.createRun(body);
-        lastSeq.current = 0;
-        dispatch({ type: 'iniciar', runId: run.run_id });
-        setCreated(run);
+        runSession.start(run, body.requerimiento);
         setBusy(false);
         await follow(run.run_id);
       } catch (failure) {
@@ -107,9 +103,21 @@ export function useRunController(deps: RunControllerDeps = defaults) {
     [created, deps, follow],
   );
 
-  useEffect(() => () => controller.current?.abort(), []);
+  // Coming back to the page picks up an analysis that was still going.
+  useEffect(() => {
+    let left = false;
+    const session = runSession.get();
+    if (session.created && isLive(session)) {
+      const runId = session.created.run_id;
+      void Promise.resolve().then(() => (left ? undefined : follow(runId)));
+    }
+    return () => {
+      left = true;
+      controller.current?.abort();
+    };
+  }, [follow]);
 
-  return { state, created, error, connection, lastBeat, busy, start, respond };
+  return { state, created, requerimiento, error, connection, lastBeat, busy, start, respond };
 }
 
 export type RunController = ReturnType<typeof useRunController>;

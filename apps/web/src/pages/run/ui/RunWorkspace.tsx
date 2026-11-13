@@ -10,6 +10,7 @@ import {
   type RunController,
   type RunRequestDraft,
 } from '@/features/ejecutar-corrida';
+import { UnsavedRunDialog, useLossGuard } from '@/features/exportar';
 import {
   api,
   ApiError,
@@ -65,6 +66,7 @@ export function RunWorkspace({
   useController = useRunController,
 }: RunWorkspaceProps) {
   const run = useController();
+  const lossGuard = useLossGuard();
   const [data, setData] = useState<Loaded | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [draft, setDraft] = useState<RunRequestDraft | null>(null);
@@ -96,7 +98,7 @@ export function RunWorkspace({
     if (run.created) refreshUsage();
   }, [run.created, refreshUsage]);
 
-  const submit = (next: RunRequestDraft) => {
+  const start = (next: RunRequestDraft) => {
     setDraft(next);
     void run.start({
       requerimiento: next.requerimiento,
@@ -110,15 +112,19 @@ export function RunWorkspace({
     });
   };
 
-  // Only after the person clicks: the text goes to Groq, a provider they now chose.
+  const submit = (next: RunRequestDraft) => lossGuard.guard(() => start(next));
+
+  // Only after the person clicks: the text goes to Groq, a provider they now chose. It retries the
+  // same requirement after a key failure, so it does not ask before replacing that analysis.
   const useFree = () => {
-    if (!draft) return;
+    const requerimiento = draft?.requerimiento ?? run.requerimiento;
+    if (!requerimiento) return;
     void run.start({
-      requerimiento: draft.requerimiento,
+      requerimiento,
       proveedor: 'groq',
       nivel: 'economico',
       juez: 'groq',
-      guardar_historial: draft.guardarHistorial,
+      guardar_historial: draft?.guardarHistorial ?? run.created?.guardar_historial,
       max_rondas: maxRondas,
     });
   };
@@ -161,7 +167,7 @@ export function RunWorkspace({
             {run.error && <Notice tone="error">{run.error.message}</Notice>}
             <ClassicView
               state={run.state}
-              requerimiento={draft?.requerimiento ?? ''}
+              requerimiento={run.requerimiento}
               connection={run.connection}
               onOpenAgent={setAgent}
               approval={{ busy: run.busy, onAnswer: (respuesta) => void run.respond(respuesta) }}
@@ -171,6 +177,7 @@ export function RunWorkspace({
                   ? modelLabelFromId(run.state.modelos.juez, data.catalog)
                   : undefined
               }
+              saved={run.created?.guardar_historial}
             />
           </div>
           <AgentPanel
@@ -184,6 +191,7 @@ export function RunWorkspace({
             onMaxRondas={setMaxRondas}
             onClose={() => setAgent(null)}
           />
+          <UnsavedRunDialog guard={lossGuard} />
         </main>
       )}
     </div>

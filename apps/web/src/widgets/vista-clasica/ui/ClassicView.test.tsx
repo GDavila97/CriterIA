@@ -52,6 +52,18 @@ describe('ClassicView', () => {
     expect(screen.getByRole('button', { name: 'Exportar Markdown' })).toBeInTheDocument();
   });
 
+  it('marks a finished analysis kept only in this tab next to its downloads', () => {
+    const { rerender } = render(
+      <ClassicView state={reduce(fullRun())} requerimiento={REQ} saved={false} />,
+    );
+    expect(screen.getByText('No guardado en tu historial')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Exportar Markdown' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'JSON' })).toBeInTheDocument();
+
+    rerender(<ClassicView state={reduce(fullRun())} requerimiento={REQ} saved />);
+    expect(screen.queryByText('No guardado en tu historial')).not.toBeInTheDocument();
+  });
+
   it('pages long artifact lists inside the card', async () => {
     const historias = Array.from({ length: 12 }, (_, i) => historia(i + 1));
     const casos = Array.from({ length: 13 }, (_, i) => caso(i + 1));

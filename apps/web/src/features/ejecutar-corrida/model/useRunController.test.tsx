@@ -1,5 +1,6 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 
+import { runSession } from '@/entities/corrida';
 import { ApiError, type RunCreatedBody } from '@/shared/api';
 import { fullRun } from '@/shared/lib/testing';
 
@@ -26,6 +27,8 @@ function deps(overrides: Partial<RunControllerDeps> = {}): RunControllerDeps {
 }
 
 describe('useRunController', () => {
+  beforeEach(() => runSession.clear());
+
   it('creates the run, follows it to the pause and resumes after the answer', async () => {
     const d = deps();
     const { result } = renderHook(() => useRunController(d));
@@ -89,5 +92,45 @@ describe('useRunController', () => {
     unmount();
 
     expect(signal?.aborted).toBe(true);
+  });
+
+  it('keeps the analysis after leaving the page and reconnects from the last event on return', async () => {
+    const d = deps({
+      stream: vi.fn(async ({ onEvent, lastEventId, signal }) => {
+        events.filter((e) => e.seq > lastEventId && e.seq <= lastEventId + 3).forEach(onEvent);
+        // Stays open like a live stream until the page goes.
+        return new Promise<never>((_, reject) => signal?.addEventListener('abort', reject));
+      }),
+    });
+    const first = renderHook(() => useRunController(d));
+    act(() => {
+      void first.result.current.start({ requerimiento: 'Requerimiento de prueba largo' });
+    });
+    await waitFor(() => expect(first.result.current.state.ultimoSeq).toBe(3));
+    first.unmount();
+
+    const back = renderHook(() => useRunController(d));
+
+    expect(back.result.current.created?.run_id).toBe('run-1');
+    expect(back.result.current.requerimiento).toBe('Requerimiento de prueba largo');
+    await waitFor(() => expect(back.result.current.state.ultimoSeq).toBe(6));
+    expect(vi.mocked(d.stream).mock.calls[1]?.[0]).toMatchObject({
+      runId: 'run-1',
+      lastEventId: 3,
+    });
+    back.unmount();
+  });
+
+  it('does not reconnect to a finished analysis', async () => {
+    const d = deps();
+    const first = renderHook(() => useRunController(d));
+    await act(() => first.result.current.start({ requerimiento: 'x'.repeat(30) }));
+    await act(() => first.result.current.respond({ decision: 'aprobado' }));
+    first.unmount();
+
+    const back = renderHook(() => useRunController(d));
+
+    expect(back.result.current.state.fase).toBe('completada');
+    expect(d.stream).toHaveBeenCalledTimes(2);
   });
 });

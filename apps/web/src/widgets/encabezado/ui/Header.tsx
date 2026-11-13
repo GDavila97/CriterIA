@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useState, type ReactNode } from 'react';
 
+import { runSession } from '@/entities/corrida';
+import { UnsavedRunDialog, useLeaveWarning, useLossGuard } from '@/features/exportar';
 import { apiToken } from '@/shared/api';
 import { authClient } from '@/shared/lib/auth/client';
 import { Icon, Logo } from '@/shared/ui';
@@ -55,12 +57,16 @@ export function Header({ user, actions }: HeaderProps) {
   const router = useRouter();
   const [navOpen, setNavOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const lossGuard = useLossGuard();
+  useLeaveWarning();
 
   if (!user) return <PublicHeader />;
 
   const signOut = async () => {
     await authClient.signOut();
     apiToken.clear();
+    // The next person in this tab must not see the analysis.
+    runSession.clear();
     router.push('/');
     router.refresh();
   };
@@ -112,7 +118,14 @@ export function Header({ user, actions }: HeaderProps) {
                 >
                   Privacidad y datos
                 </Link>
-                <button type="button" className={styles.menuItem} onClick={signOut}>
+                <button
+                  type="button"
+                  className={styles.menuItem}
+                  onClick={() => {
+                    setMenuOpen(false);
+                    lossGuard.guard(() => void signOut());
+                  }}
+                >
                   Cerrar sesión
                 </button>
               </div>
@@ -130,6 +143,7 @@ export function Header({ user, actions }: HeaderProps) {
           </button>
         </div>
       </div>
+      <UnsavedRunDialog guard={lossGuard} />
     </header>
   );
 }

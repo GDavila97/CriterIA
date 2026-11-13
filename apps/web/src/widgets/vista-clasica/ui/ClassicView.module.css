@@ -145,6 +145,9 @@
 
 .exports {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
   gap: var(--space-8);
 }
 
@@ -425,6 +428,10 @@
 
   .exports > * {
     flex: 1;
+  }
+
+  .exports > p {
+    flex-basis: 100%;
   }
 }
 

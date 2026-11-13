@@ -1,8 +1,10 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
-import { apiToken } from '@/shared/api';
+import { runSession } from '@/entities/corrida';
+import { apiToken, type RunCreatedBody } from '@/shared/api';
 import { authClient } from '@/shared/lib/auth/client';
+import { fullRun } from '@/shared/lib/testing';
 
 import { Header, initials } from './Header';
 
@@ -43,6 +45,21 @@ describe('Header', () => {
     expect(authClient.signOut).toHaveBeenCalled();
     expect(clear).toHaveBeenCalled();
     expect(push).toHaveBeenCalledWith('/');
+  });
+
+  it('asks before signing out over an analysis without history and then forgets it', async () => {
+    vi.mocked(authClient.signOut).mockClear();
+    runSession.start({ run_id: 'run-1', guardar_historial: false } as RunCreatedBody, 'Req');
+    for (const evento of fullRun()) runSession.apply({ type: 'evento', evento });
+    render(<Header user={{ name: 'Ana', email: 'ana@example.test' }} />);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Cuenta de Ana' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Cerrar sesión' }));
+    expect(authClient.signOut).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByRole('button', { name: 'Continuar' }));
+
+    expect(authClient.signOut).toHaveBeenCalled();
+    expect(runSession.get().created).toBeNull();
   });
 
   it('opens the navigation on small screens and closes it after a choice', async () => {

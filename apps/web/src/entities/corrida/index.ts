@@ -29,3 +29,11 @@ export {
   totalUse,
   type AgentSummary,
 } from './model/selectors';
+export {
+  isLive,
+  isUnsavedResult,
+  runSession,
+  useRunSession,
+  wouldBeLost,
+  type RunSession,
+} from './model/session';
