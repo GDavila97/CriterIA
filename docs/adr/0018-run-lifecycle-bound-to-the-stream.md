@@ -1,6 +1,6 @@
 # 0018. Ciclo de la corrida ligado al stream SSE
 
-**Estado:** aceptada (5 nov 2026). Complementa la [0005](0005-langgraph-orchestration.md) y la [0011](0011-sse-typed-events.md).
+**Estado:** aceptada (5 nov 2026). Complementa la [0005](0005-langgraph-orchestration.md) y la [0011](0011-sse-typed-events.md); complementada por la [0023](0023-connections-closed-by-neon.md) (conexiones que Neon cierra).
 
 **Contexto:** Cloud Run solo asigna CPU mientras hay una petición abierta, así que un grafo que siguiera trabajando en segundo plano después de responder quedaría congelado o se perdería al escalar a cero. Una corrida dura minutos, se detiene en la pausa humana y el cliente puede desconectarse en cualquier momento.
 

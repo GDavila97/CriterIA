@@ -1,6 +1,6 @@
 # 0007. Base de datos: Neon Postgres con esquemas separados
 
-**Estado:** aceptada.
+**Estado:** aceptada; complementada por la [0023](0023-connections-closed-by-neon.md) (conexiones que Neon cierra al suspender el cómputo).
 
 **Contexto:** se persisten usuarios (Better Auth), checkpoints del grafo, límites de uso, historial opcional y resultados de evaluación. Los proyectos gratuitos de Supabase ya están ocupados.
 
