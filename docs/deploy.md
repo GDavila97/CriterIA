@@ -169,17 +169,19 @@ El proyecto ya existe en `aws-us-east-2` (Ohio) con Postgres 16. La base se llam
    - **Cada contraseña:** se pega desde el campo `password` de su elemento cuando el bloque la pide.
    - **Por qué así:** `read -s` no muestra lo que se pega, y `psql` recibe la sentencia por la entrada estándar y cita la contraseña con `:'pw'`. Ni las contraseñas ni la URL quedan en el historial del shell, en el de `psql` (que solo guarda sesiones interactivas) ni en el editor SQL de Neon.
    - **Probado:** el bloque funciona en zsh y en bash. Se probó en un Postgres 16 desechable, con `criteria_owner` como dueño no superusuario.
-3. **URLs.** Se arman a mano y se guardan en 1Password, siempre con la base `criteria` y `sslmode=verify-full`:
+3. **URLs.** Se arman a mano y se guardan en 1Password, siempre con la base `criteria`. Hoy usan `sslmode=require`:
 
    ```text
-   postgresql://<rol>:<password>@<host>/criteria?sslmode=verify-full[&sslrootcert=<archivo de CA>]
+   postgresql://<rol>:<password>@<host>/criteria?sslmode=require
    ```
+
+   > **Pendiente, no aplicado:** pasar a `sslmode=verify-full` con los finales de la tabla. Se pospuso hasta que la imagen de la API permita `sslrootcert=system` y quede un final de URL único donde se pueda.
 
    - **Host directo:** el del panel, por ejemplo `ep-<id>.c-8.us-east-2.aws.neon.tech`.
    - **Host con pooler:** se inserta `-pooler` después del primer segmento: `ep-<id>-pooler.c-8.us-east-2.aws.neon.tech`.
-   - **`sslrootcert`:** depende de quién usa la URL (ver «TLS con Neon» abajo).
+   - **`sslrootcert`:** con `verify-full`, depende de quién usa la URL (ver «TLS con Neon» abajo).
 
-   | URL | Rol | Host | Cliente | Final de la URL | En 1Password | Destino |
+   | URL | Rol | Host | Cliente | Final con `verify-full` (pendiente) | En 1Password | Destino |
    | --- | --- | --- | --- | --- | --- | --- |
    | API | `api_role` | directo | psycopg en la imagen | `?sslmode=verify-full&sslrootcert=/etc/ssl/certs/ca-certificates.crt` | `op://CriterIA/neon-api-role/url` | Secret Manager `criteria-database-url` |
    | Migraciones de la API | `migrator_role` | directo | psycopg en `ubuntu-24.04` | `?sslmode=verify-full&sslrootcert=/etc/ssl/certs/ca-certificates.crt` | `op://CriterIA/neon-migrator-role/url` | GitHub, `MIGRATION_DATABASE_URL` |
@@ -200,7 +202,7 @@ El proyecto ya existe en `aws-us-east-2` (Ohio) con Postgres 16. La base se llam
      - Como control, la misma conexión dirigida a la IP fue rechazada por nombre de host.
      - En el runner de GitHub no se probó: usa el mismo psycopg-binary y el mismo archivo que la imagen, y la primera corrida del workflow de migraciones lo confirma.
 
-   **Cambio de `require` a `verify-full`** en lo ya desplegado:
+   **Cambio de `require` a `verify-full`** en lo ya desplegado (pendiente, no aplicado):
    1. **1Password:** en los cinco campos de la tabla, cambiar el final de cada URL por el de su fila.
    2. **Secret Manager:** nueva versión de la URL de la API, despliegue para que la lea y destrucción de la versión anterior:
 
@@ -291,7 +293,7 @@ Dos proyectos: uno de Python (FastAPI) para la API y uno de Next.js para la web.
 | `EMAIL_PROVIDER` | Config | `none` | Sin dominio no hay envío ([ADR 0020](adr/0020-github-first-sign-in-without-email.md)) |
 | `BETTER_AUTH_URL` | Config | `https://criter-ia.vercel.app` | Origen público, sin barra final |
 | `BETTER_AUTH_SECRET` | Secret | `op://CriterIA/better-auth-secret/password`, nuevo, de 48 bytes (`openssl rand -base64 48`) | Firma sesiones y cifra la llave privada del JWKS: cambiarlo invalida las sesiones y obliga a borrar `auth.jwks` |
-| `AUTH_DATABASE_URL` | Secret | `op://CriterIA/neon-web-role/url-pooler` | URL de `web_role` con pooler y `sslmode=verify-full` |
+| `AUTH_DATABASE_URL` | Secret | `op://CriterIA/neon-web-role/url-pooler` | URL de `web_role` con pooler y `sslmode=require` (`verify-full` pendiente, sección 2) |
 | `GITHUB_CLIENT_ID` | Secret | `op://CriterIA/github-oauth-prod/client-id` | OAuth App de producción |
 | `GITHUB_CLIENT_SECRET` | Secret | `op://CriterIA/github-oauth-prod/client-secret` | OAuth App de producción |
 
