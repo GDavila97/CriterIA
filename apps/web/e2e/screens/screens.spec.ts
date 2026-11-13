@@ -99,6 +99,11 @@ test('vista clásica: pausa humana, corrida terminada y panel del agente', async
   await page.getByRole('button', { name: 'Ver agente Revisor' }).click();
   await expect(page.getByRole('dialog', { name: 'Agente' })).toBeVisible();
   await check(page, testInfo, '05-panel-agente', false);
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog', { name: 'Agente' })).toBeHidden();
+  await page.getByRole('button', { name: /^Ejecutar/ }).click();
+  await expect(page.getByRole('alertdialog', { name: '¿Descartar el análisis?' })).toBeVisible();
+  await check(page, testInfo, '15-aviso-sin-guardar', false);
 });
 
 test('corrida larga: artefactos paginados y registro completo', async ({

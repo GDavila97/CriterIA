@@ -157,3 +157,69 @@ test('una corrida larga: registro completo en vivo, artefactos paginados y expor
   expect(text).toContain('HU-12');
   expect(text).toContain('CP-90');
 });
+
+test('ir a Historial y volver conserva la pausa y el resultado sin historial', async ({ page }) => {
+  const nav = page.getByRole('navigation', { name: 'Principal' });
+  await startRun(page);
+  await waitForApproval(page);
+
+  await nav.getByRole('link', { name: 'Historial' }).click();
+  await expect(page.getByRole('heading', { name: 'Historial', level: 1 })).toBeVisible();
+  await nav.getByRole('link', { name: 'Nuevo análisis' }).click();
+  await waitForApproval(page);
+
+  await page.getByRole('button', { name: /^Aprobar/ }).click();
+  await finishRun(page);
+  await nav.getByRole('link', { name: 'Historial' }).click();
+  await expect(page.getByRole('heading', { name: 'Historial', level: 1 })).toBeVisible();
+  await nav.getByRole('link', { name: 'Nuevo análisis' }).click();
+
+  await finishRun(page);
+  await expect(page.getByText('No guardado en tu historial')).toBeVisible();
+  await expect(page.getByText(/quiero/).first()).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Exportar Markdown' })).toBeVisible();
+});
+
+test('iniciar otro análisis sin historial avisa antes de perder el actual', async ({ page }) => {
+  await startRun(page);
+  await waitForApproval(page);
+  await page.getByRole('button', { name: /^Aprobar/ }).click();
+  await finishRun(page);
+  const run = page.getByRole('button', { name: /^Ejecutar/ });
+  const warning = page.getByRole('alertdialog', { name: '¿Descartar el análisis?' });
+
+  await run.click();
+  await expect(warning).toContainText('Este análisis no está guardado en tu historial.');
+  await warning.getByRole('button', { name: 'Cancelar' }).click();
+  await expect(warning).toBeHidden();
+  await expect(page.getByText('No guardado en tu historial')).toBeVisible();
+
+  await run.click();
+  const download = page.waitForEvent('download');
+  await warning.getByRole('button', { name: 'Descargar' }).click();
+  expect((await download).suggestedFilename()).toMatch(/^criteria-.*\.md$/);
+  await warning.getByRole('button', { name: 'Continuar' }).click();
+
+  await waitForApproval(page);
+  await expect(page.getByText('No guardado en tu historial')).toBeHidden();
+});
+
+test('el panel del agente se cierra con Esc y con un clic fuera', async ({ page }) => {
+  const opener = page.getByRole('button', { name: 'Ver agente QA' });
+  const panel = page.getByRole('dialog', { name: 'Agente' });
+  const scrollLock = () => page.evaluate(() => document.documentElement.style.overflow);
+
+  await opener.click();
+  await expect(panel).toBeVisible();
+  expect(await scrollLock()).toBe('hidden');
+  await page.keyboard.press('Escape');
+  await expect(panel).toBeHidden();
+  await expect(opener).toBeFocused();
+  expect(await scrollLock()).toBe('');
+
+  await opener.click();
+  await expect(panel).toBeVisible();
+  await page.mouse.click(20, 300);
+  await expect(panel).toBeHidden();
+  await expect(opener).toBeFocused();
+});
