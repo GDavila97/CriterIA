@@ -119,6 +119,8 @@ jobs:
         run: pnpm lint
       - name: Prettier check
         run: pnpm format:check
+      - name: Prettier check of the docs
+        run: pnpm format:docs:check
       - name: Typecheck
         run: pnpm typecheck
       - name: API types match the contract

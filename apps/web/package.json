@@ -14,6 +14,8 @@
     "lint": "eslint --max-warnings=0 .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "format:docs": "prettier --write --config .prettierrc.json ../../docs ../../README.md ../../SECURITY.md",
+    "format:docs:check": "prettier --check --config .prettierrc.json ../../docs ../../README.md ../../SECURITY.md",
     "typecheck": "next typegen && tsc --noEmit",
     "gen:api": "json2ts --input ../../services/api/contract/schema.json --output src/shared/api/types.gen.ts --unreachableDefinitions --unknownAny --maxItems=-1 --bannerComment=\"// Generated from services/api/contract/schema.json by pnpm gen:api; do not edit.\" && prettier --write --log-level=warn src/shared/api/types.gen.ts",
     "auth:migrate": "auth migrate --config src/shared/lib/auth/cli.ts --yes",
