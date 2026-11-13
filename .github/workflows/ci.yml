@@ -43,6 +43,13 @@ jobs:
               exit 1
             fi
           done
+      # Previews of branches and Dependabot or fork PRs would build without the Production variables.
+      - name: Vercel never deploys from Git on its own
+        run: |
+          if [[ $(jq '.git.deploymentEnabled' apps/web/vercel.json) != false ]]; then
+            echo "::error file=apps/web/vercel.json::git.deploymentEnabled must be false"
+            exit 1
+          fi
 
   api:
     name: API

@@ -5,8 +5,6 @@
   "buildCommand": "npx --yes pnpm@12.16.1 run build",
   "regions": ["cle1"],
   "git": {
-    "deploymentEnabled": {
-      "main": false
-    }
+    "deploymentEnabled": false
   }
 }
