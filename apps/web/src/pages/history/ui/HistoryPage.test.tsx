@@ -52,7 +52,7 @@ describe('HistoryPage', () => {
     const { unmount } = render(
       <HistoryPage user={user} client={{ history: vi.fn(async () => []) }} />,
     );
-    expect(await screen.findByText('Aún no tienes corridas guardadas.')).toBeInTheDocument();
+    expect(await screen.findByText('Aún no tienes análisis guardados.')).toBeInTheDocument();
     unmount();
 
     render(

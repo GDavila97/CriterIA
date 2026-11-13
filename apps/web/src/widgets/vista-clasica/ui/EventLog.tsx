@@ -111,7 +111,7 @@ export function EventLog({ state }: { state: RunState }) {
                 : `${filtered.length} de ${total} eventos`}
             </p>
             {filtered.length ? (
-              <Timeline entries={filtered} start={start} label="Registro completo de la corrida" />
+              <Timeline entries={filtered} start={start} label="Registro completo del análisis" />
             ) : (
               <p className={styles.empty}>Este agente todavía no tiene eventos.</p>
             )}

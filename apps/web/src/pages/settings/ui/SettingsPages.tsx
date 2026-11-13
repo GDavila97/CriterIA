@@ -89,15 +89,15 @@ export function HistorySettingsPage({
     <SettingsLayout
       user={user}
       title="Historial"
-      lead="Tus corridas no se guardan a menos que lo actives. Puedes elegirlo también en cada corrida."
+      lead="Tus análisis no se guardan a menos que lo actives. Puedes elegirlo también en cada análisis."
     >
       {error && <Notice tone="error">{error}</Notice>}
       <section className={styles.card} aria-labelledby="history-title">
         <h2 id="history-title" className={styles.cardTitle}>
-          Guardar mis corridas
+          Guardar mis análisis
         </h2>
         <CheckboxField
-          label="Guardar mis corridas por defecto"
+          label="Guardar mis análisis por defecto"
           checked={settings?.save_history ?? false}
           disabled={!settings}
           onChange={(event) => void toggle(event.target.checked)}

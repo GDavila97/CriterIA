@@ -97,5 +97,5 @@ export function costText(
     genKind === 'local'
       ? ` La generación local no tiene costo; el juez (${judgeName}) ≈ ${usd(judgeCost)}.`
       : '';
-  return `Costo estimado: ≈ ${usd(generation + judgeCost)} por corrida, ${who}.${local}`;
+  return `Costo estimado: ≈ ${usd(generation + judgeCost)} por análisis, ${who}.${local}`;
 }

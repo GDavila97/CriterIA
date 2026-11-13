@@ -1,5 +1,6 @@
 import { publicEnv } from '@/shared/config';
 
+import { userMessage } from './messages';
 import { apiToken, type TokenStore } from './token';
 
 export class ApiError extends Error {
@@ -34,7 +35,7 @@ async function errorFrom(response: Response): Promise<ApiError> {
   try {
     const body = (await response.json()) as { code?: unknown; message?: unknown };
     if (typeof body.code === 'string' && typeof body.message === 'string') {
-      return new ApiError(response.status, body.code, body.message);
+      return new ApiError(response.status, body.code, userMessage(body.code, body.message));
     }
   } catch {
     // A body that is not the API's error shape falls through to the generic error.

@@ -44,7 +44,7 @@ export interface RunFormProps {
 
 function remainingText(usage: UsageBody): string {
   const left = Math.max(0, usage.limite_hora - usage.corridas_hora);
-  return `Te ${left === 1 ? 'queda' : 'quedan'} ${left} de ${usage.limite_hora} corridas esta hora`;
+  return `Te ${left === 1 ? 'queda' : 'quedan'} ${left} de ${usage.limite_hora} análisis esta hora`;
 }
 
 export function RunForm({
@@ -99,7 +99,7 @@ export function RunForm({
   };
 
   return (
-    <form className={styles.column} onSubmit={submit} aria-label="Nueva corrida" method="post">
+    <form className={styles.column} onSubmit={submit} aria-label="Nuevo análisis" method="post">
       <section className={styles.card} aria-labelledby="req-title">
         <h2 id="req-title" className={styles.title}>
           Requerimiento
@@ -182,7 +182,7 @@ export function RunForm({
           {costText(catalog, selected, judgeProvider, keyKind(judgeProvider, judgeClave))}
         </p>
         <CheckboxField
-          label="Guardar esta corrida en mi historial"
+          label="Guardar este análisis en mi historial"
           checked={save}
           onChange={(event) => setSave(event.target.checked)}
         />

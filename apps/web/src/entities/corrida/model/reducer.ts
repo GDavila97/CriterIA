@@ -1,14 +1,15 @@
-import type {
-  AgenteError,
-  CasoPrueba,
-  CriterioAceptacion,
-  Evento,
-  HistoriaUsuario,
-  ModelosCorrida,
-  Observacion,
-  Puntaje,
-  Totales,
-  Uso,
+import {
+  runMessage,
+  type AgenteError,
+  type CasoPrueba,
+  type CriterioAceptacion,
+  type Evento,
+  type HistoriaUsuario,
+  type ModelosCorrida,
+  type Observacion,
+  type Puntaje,
+  type Totales,
+  type Uso,
 } from '@/shared/api';
 
 import { AGENTS, isAgentId, type AgentId } from './agents';
@@ -168,7 +169,7 @@ function apply(state: RunState, evento: Evento): RunState {
           maxRondas: evento.max_rondas,
         },
         evento,
-        'La corrida empezó',
+        'El análisis empezó',
       );
     case 'agente_inicia': {
       if (!isAgentId(evento.agent)) return state;
@@ -274,14 +275,14 @@ function apply(state: RunState, evento: Evento): RunState {
       const agente = isAgentId(evento.agent) ? evento.agent : 'sistema';
       const next =
         agente === 'sistema' ? state : withAgent(state, agente, { estado: 'error', mensaje: null });
-      const quien = agente === 'sistema' ? 'La corrida' : AGENTS[agente].nombre;
+      const quien = agente === 'sistema' ? 'El análisis' : AGENTS[agente].nombre;
       return log(
         {
           ...next,
           error: {
             agente,
             codigo: evento.codigo,
-            mensaje: evento.mensaje,
+            mensaje: runMessage(evento.codigo, evento.mensaje),
             respaldoSugerido: evento.respaldo_sugerido,
           },
         },
@@ -297,7 +298,10 @@ function apply(state: RunState, evento: Evento): RunState {
           ? {
               agente: 'sistema' as const,
               codigo: evento.codigo,
-              mensaje: evento.mensaje ?? 'La corrida se detuvo por un error.',
+              mensaje: runMessage(
+                evento.codigo,
+                evento.mensaje ?? 'El análisis se detuvo por un error.',
+              ),
               respaldoSugerido: evento.respaldo_sugerido,
             }
           : null);
@@ -311,7 +315,7 @@ function apply(state: RunState, evento: Evento): RunState {
           error,
         },
         evento,
-        fallo ? 'La corrida terminó con un error' : 'La corrida terminó',
+        fallo ? 'El análisis terminó con un error' : 'El análisis terminó',
       );
     }
   }

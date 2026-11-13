@@ -48,7 +48,7 @@ export async function startRun(
     .fill(options.requirement ?? REQUIREMENT);
   if (options.generation)
     await page.getByLabel('Generación').selectOption({ label: options.generation });
-  if (options.save) await page.getByLabel('Guardar esta corrida en mi historial').check();
+  if (options.save) await page.getByLabel('Guardar este análisis en mi historial').check();
   await page.getByRole('button', { name: /^Ejecutar/ }).click();
 }
 
@@ -59,7 +59,7 @@ export async function waitForApproval(page: Page): Promise<void> {
 }
 
 export async function finishRun(page: Page): Promise<void> {
-  await expect(page.getByText(/^Corrida terminada/)).toBeVisible();
+  await expect(page.getByText(/^Análisis terminado/)).toBeVisible();
 }
 
 export function githubCode(id: number, email: string, verified = true): string {

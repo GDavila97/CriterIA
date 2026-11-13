@@ -27,7 +27,7 @@ describe('ClassicView', () => {
       />,
     );
 
-    expect(screen.getByText(/Corrida terminada · 1 ronda de revisión/)).toBeInTheDocument();
+    expect(screen.getByText(/Análisis terminado · 1 ronda de revisión/)).toBeInTheDocument();
     const flow = screen.getByRole('region', { name: 'Flujo de agentes' });
     expect(within(flow).getByText('3 casos · corrigió 1')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Ver agente Revisor' }));
@@ -133,7 +133,7 @@ describe('ClassicView', () => {
     const alert = screen.getByRole('alert');
     expect(alert).toHaveTextContent('Tu clave de OpenAI no tiene saldo');
     expect(alert).toHaveTextContent(
-      'La corrida se detuvo en QA. No se envió nada a otro proveedor.',
+      'El análisis se detuvo en QA. No se envió nada a otro proveedor.',
     );
     expect(within(alert).getByRole('link', { name: 'Ir a Modelos y claves' })).toHaveAttribute(
       'href',
@@ -158,7 +158,7 @@ describe('ClassicView', () => {
     );
     render(<ClassicView state={state} requerimiento={REQ} connection="reconectando" />);
 
-    expect(screen.getByRole('alert', { name: 'Error de la corrida' })).toHaveTextContent(
+    expect(screen.getByRole('alert', { name: 'Error del análisis' })).toHaveTextContent(
       'error interno',
     );
     expect(screen.getByText('Aún no hay historias.')).toBeInTheDocument();

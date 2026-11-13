@@ -39,7 +39,7 @@ describe('ModelsAndKeys', () => {
     const anthropic = await screen.findByRole('region', { name: 'Anthropic' });
     expect(within(anthropic).getByText('••••a1b2')).toBeInTheDocument();
     expect(within(anthropic).getByText(/Validada el 5 nov/)).toBeInTheDocument();
-    expect(within(anthropic).getByText('≈ $0.090 por corrida')).toBeInTheDocument();
+    expect(within(anthropic).getByText('≈ $0.090 por análisis')).toBeInTheDocument();
     const openai = screen.getByRole('region', { name: 'OpenAI' });
     expect(within(openai).getByText('Sin conectar')).toBeInTheDocument();
     expect(within(openai).getByLabelText('Clave de API de OpenAI')).toHaveAttribute(
@@ -106,7 +106,7 @@ describe('ModelsAndKeys', () => {
     expect(c.saveSettings).toHaveBeenLastCalledWith(
       expect.objectContaining({ default_provider: 'anthropic', default_tier: 'maximo' }),
     );
-    await userEvent.selectOptions(screen.getByLabelText('Quién califica tus corridas'), 'groq');
+    await userEvent.selectOptions(screen.getByLabelText('Quién califica tus análisis'), 'groq');
     expect(c.saveSettings).toHaveBeenLastCalledWith(
       expect.objectContaining({ judge_provider: 'groq' }),
     );
@@ -147,7 +147,7 @@ describe('ModelsAndKeys', () => {
     };
     render(<ModelsAndKeys client={c} />);
     await userEvent.selectOptions(
-      await screen.findByLabelText('Quién califica tus corridas'),
+      await screen.findByLabelText('Quién califica tus análisis'),
       'groq',
     );
     expect(screen.getByRole('alert')).toHaveTextContent('No se guardó el cambio.');

@@ -45,7 +45,7 @@ export function DataControls({
     run(async () => {
       const { deleted } = await client.clearHistory();
       return deleted
-        ? `Borramos ${deleted} ${deleted === 1 ? 'corrida' : 'corridas'} de tu historial.`
+        ? `Borramos ${deleted} análisis de tu historial.`
         : 'Tu historial ya estaba vacío.';
     });
 

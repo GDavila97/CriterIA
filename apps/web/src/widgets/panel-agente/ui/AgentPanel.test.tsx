@@ -43,7 +43,7 @@ describe('AgentPanel', () => {
     expect(screen.getByText('2,400')).toBeInTheDocument();
     expect(screen.getByText('3.0 s')).toBeInTheDocument();
     expect(screen.getByText('USD 0.0020')).toBeInTheDocument();
-    expect(screen.getByText('Los cambios aplican a tu siguiente corrida.')).toBeInTheDocument();
+    expect(screen.getByText('Los cambios aplican a tu siguiente análisis.')).toBeInTheDocument();
   });
 
   it('edits the model within its provider, the temperature, tokens and rounds', async () => {
@@ -65,7 +65,7 @@ describe('AgentPanel', () => {
     expect(props.onParams).toHaveBeenNthCalledWith(3, 'revisor', { max_tokens: 2048 });
     expect(props.onMaxRondas).toHaveBeenCalledWith(3);
     expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual([
-      'El de la corrida',
+      'El del análisis',
       'Groq · Económico',
       'Groq · Llama 3.3 70B Versatile',
     ]);
@@ -93,7 +93,7 @@ describe('AgentPanel', () => {
 
     expect(screen.getByLabelText('Modelo')).toHaveValue('');
     expect(screen.getByLabelText('Modelo')).toHaveAccessibleDescription(
-      'El modelo elegido al ejecutar la corrida.',
+      'El modelo elegido al ejecutar el análisis.',
     );
     expect(screen.getByText('0.5')).toBeInTheDocument();
     expect(screen.getByText('Entre 256 y 16384.')).toBeInTheDocument();

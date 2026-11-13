@@ -71,6 +71,6 @@ describe('HistoryDetailPage', () => {
       />,
     );
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('No se pudo abrir la corrida.');
+    expect(await screen.findByRole('alert')).toHaveTextContent('No se pudo abrir el análisis.');
   });
 });

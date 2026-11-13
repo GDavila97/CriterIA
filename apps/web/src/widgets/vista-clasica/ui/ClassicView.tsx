@@ -368,7 +368,7 @@ function Fallback({ state, onUseFree }: { state: RunState; onUseFree: () => void
           Tu clave de {nombre} {FALLBACK_TITLE[error.codigo] ?? 'falló'}
         </h2>
         <p className={styles.itemText}>
-          La corrida se detuvo{donde}. No se envió nada a otro proveedor.
+          El análisis se detuvo{donde}. No se envió nada a otro proveedor.
         </p>
         <div className={styles.fallbackActions}>
           <Button variant="primary" onClick={onUseFree}>
@@ -379,7 +379,7 @@ function Fallback({ state, onUseFree }: { state: RunState; onUseFree: () => void
           </Link>
         </div>
         <p className={styles.itemText}>
-          Si eliges el gratuito, tu requerimiento se enviará a Groq y la corrida empezará de nuevo.
+          Si eliges el gratuito, tu requerimiento se enviará a Groq y el análisis empezará de nuevo.
         </p>
       </div>
     </section>
@@ -419,7 +419,7 @@ export function ClassicView({
         <Fallback state={state} onUseFree={onUseFree} />
       )}
       {state.error && !state.error.respaldoSugerido && (
-        <section className={styles.fallback} role="alert" aria-label="Error de la corrida">
+        <section className={styles.fallback} role="alert" aria-label="Error del análisis">
           <span className={styles.fallbackIcon}>
             <Icon name="alerta" />
           </span>

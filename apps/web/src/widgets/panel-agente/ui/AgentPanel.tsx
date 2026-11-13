@@ -32,7 +32,7 @@ const DEFAULT_TEMPERATURE = 0.2;
 const DEFAULT_TOKENS = 16384;
 
 function modelOptions(provider: CatalogProviderBody | null) {
-  if (!provider) return [{ value: '', label: 'El de la corrida' }];
+  if (!provider) return [{ value: '', label: 'El del análisis' }];
   const tiers = provider.niveles.map((t) => ({
     value: `nivel:${t.nivel}`,
     label: `${PROVIDER_NAMES[provider.proveedor]} · ${TIER_NAMES[t.nivel]}`,
@@ -44,13 +44,13 @@ function modelOptions(provider: CatalogProviderBody | null) {
       value: `modelo:${m}`,
       label: modelLabel(provider.proveedor, provider.display_names[m] ?? m),
     }));
-  return [{ value: '', label: 'El de la corrida' }, ...tiers, ...models];
+  return [{ value: '', label: 'El del análisis' }, ...tiers, ...models];
 }
 
 function modelHint(provider: CatalogProviderBody | null, params: AgentParamsBody): string {
   if (params.modelo) return `Modelo: ${provider?.display_names[params.modelo] ?? params.modelo}`;
   const tier = provider?.niveles.find((t) => t.nivel === params.nivel);
-  return tier ? `Modelo: ${tier.display_name}` : 'El modelo elegido al ejecutar la corrida.';
+  return tier ? `Modelo: ${tier.display_name}` : 'El modelo elegido al ejecutar el análisis.';
 }
 
 function selectedModel(params: AgentParamsBody): string {
@@ -184,7 +184,7 @@ export function AgentPanel({
               />
             )}
           </div>
-          <p className={styles.note}>Los cambios aplican a tu siguiente corrida.</p>
+          <p className={styles.note}>Los cambios aplican a tu siguiente análisis.</p>
         </section>
 
         <section className={styles.box} aria-labelledby="prompt-title">
@@ -211,7 +211,7 @@ export function AgentPanel({
 
         <section className={styles.box} aria-labelledby="run-title">
           <h3 id="run-title" className={styles.boxHead}>
-            En esta corrida
+            En este análisis
           </h3>
           <p className={styles.note}>{summary.detalle ?? 'Todavía no entrega.'}</p>
           <dl className={styles.metrics}>

@@ -69,13 +69,13 @@ test('historial: guardar una corrida, verla y borrarla', async ({ page }) => {
   const item = page.getByRole('link', { name: /Groq · GPT-OSS 20B · Terminada/ });
   await expect(item).toBeVisible();
   await item.click();
-  await expect(page.getByRole('heading', { name: 'Corrida guardada' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Análisis guardado' })).toBeVisible();
   await expect(page.getByText(/La biblioteca de la unidad/)).toBeVisible();
   await page.getByRole('link', { name: 'Volver al historial' }).click();
   await page.getByRole('button', { name: 'Borrar mi historial' }).click();
-  await expect(page.getByText('Borramos 1 corrida de tu historial.')).toBeVisible();
+  await expect(page.getByText('Borramos 1 análisis de tu historial.')).toBeVisible();
   await page.reload();
-  await expect(page.getByText('Aún no tienes corridas guardadas.')).toBeVisible();
+  await expect(page.getByText('Aún no tienes análisis guardados.')).toBeVisible();
 });
 
 test('eliminar la cuenta borra al usuario', async ({ page }) => {

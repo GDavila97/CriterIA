@@ -2,6 +2,7 @@ import { publicEnv } from '@/shared/config';
 import { createSseParser } from '@/shared/lib/sse';
 
 import { ApiError, authHeaders } from './client';
+import { userMessage } from './messages';
 import { apiToken, type TokenStore } from './token';
 import type { Evento } from './types.gen';
 
@@ -48,10 +49,11 @@ const defaults: StreamDeps = {
 
 async function errorFrom(response: Response): Promise<ApiError> {
   const body = (await response.json().catch(() => ({}))) as { code?: string; message?: string };
+  const code = body.code ?? 'error_interno';
   return new ApiError(
     response.status,
-    body.code ?? 'error_interno',
-    body.message ?? 'No se pudo abrir la corrida.',
+    code,
+    userMessage(code, body.message ?? 'No se pudo abrir el análisis.'),
   );
 }
 
@@ -83,7 +85,7 @@ export async function streamRun(
       if (error instanceof ApiError) throw error;
       failures += 1;
       if (failures > deps.retryDelaysMs.length)
-        throw new ApiError(0, 'sin_conexion', 'Se perdió la conexión con la corrida.');
+        throw new ApiError(0, 'sin_conexion', 'Se perdió la conexión con el análisis.');
       await deps.sleep(deps.retryDelaysMs[failures - 1] ?? 0, options.signal);
       continue;
     }
@@ -128,7 +130,7 @@ export async function streamRun(
     // The connection closed before the run paused or ended: resume from the last event.
     failures += 1;
     if (failures > deps.retryDelaysMs.length) {
-      throw new ApiError(0, 'sin_conexion', 'Se perdió la conexión con la corrida.');
+      throw new ApiError(0, 'sin_conexion', 'Se perdió la conexión con el análisis.');
     }
     await deps.sleep(deps.retryDelaysMs[failures - 1] ?? 0, options.signal);
   }

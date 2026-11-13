@@ -105,14 +105,14 @@ describe('formatting', () => {
   it('summarizes the run in one line for each phase', () => {
     const done = reduce(fullRun());
 
-    expect(runHeadline(initialRunState())).toBe('Escribe un requerimiento y ejecuta la corrida');
+    expect(runHeadline(initialRunState())).toBe('Escribe un requerimiento y ejecuta el análisis');
     expect(runHeadline(reduce(fullRun().slice(0, 3)))).toBe('En curso');
     expect(runHeadline(reduce(fullRun().slice(0, 5)))).toBe('Esperando tu revisión');
     expect(runHeadline(done)).toBe(
-      'Corrida terminada · 1 ronda de revisión · 2 min 33 s · USD 0.012',
+      'Análisis terminado · 1 ronda de revisión · 2 min 33 s · USD 0.012',
     );
     expect(runHeadline({ ...done, fase: 'error', rondasRevision: 0, totales: null })).toBe(
-      'Corrida detenida · 2 min 33 s',
+      'Análisis detenido · 2 min 33 s',
     );
   });
 });

@@ -202,7 +202,7 @@ export function ApprovalPanel({ historias, otrasVersiones, busy, onAnswer }: App
       </div>
       {versionsLeft <= 0 && (
         <p id="versions-used" className={styles.note}>
-          Ya pediste dos versiones nuevas en esta corrida. Edita las historias o apruébalas para
+          Ya pediste dos versiones nuevas en este análisis. Edita las historias o apruébalas para
           seguir.
         </p>
       )}
@@ -212,7 +212,7 @@ export function ApprovalPanel({ historias, otrasVersiones, busy, onAnswer }: App
         </p>
       )}
       <p className={styles.note}>
-        La corrida espera hasta 1 hora. Después se descarta y no se guarda nada.
+        El análisis espera hasta 1 hora. Después se descarta y no se guarda nada.
       </p>
     </section>
   );

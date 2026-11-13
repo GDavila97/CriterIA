@@ -48,19 +48,36 @@ describe('createApiClient', () => {
     expect(fetchMock.mock.calls[1]?.[1]).toMatchObject({ headers: { authorization: 'Bearer t2' } });
   });
 
-  it('turns API errors into ApiError with the code and message', async () => {
+  it('turns API errors into ApiError with the code and the interface wording', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn(async () =>
-        Response.json({ code: 'limite_hora', message: 'Alcanzaste el límite.' }, { status: 429 }),
-      ),
+      vi
+        .fn()
+        .mockResolvedValueOnce(
+          Response.json(
+            { code: 'limite_hora', message: 'Alcanzaste el límite de corridas por hora.' },
+            { status: 429 },
+          ),
+        )
+        .mockResolvedValueOnce(
+          Response.json(
+            { code: 'clave_invalida', message: 'El proveedor rechazó la clave.' },
+            {
+              status: 422,
+            },
+          ),
+        ),
     );
     const request = createApiClient({ baseUrl: 'http://api.test', tokens: tokens() });
 
     await expect(request('/runs')).rejects.toMatchObject({
       status: 429,
       code: 'limite_hora',
-      message: 'Alcanzaste el límite.',
+      message: 'Alcanzaste el límite de análisis por hora.',
+    });
+    await expect(request('/me/credentials')).rejects.toMatchObject({
+      code: 'clave_invalida',
+      message: 'El proveedor rechazó la clave.',
     });
   });
 

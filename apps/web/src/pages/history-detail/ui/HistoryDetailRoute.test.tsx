@@ -31,6 +31,8 @@ describe('HistoryDetailRoute', () => {
   it('renders one saved run', async () => {
     render(await HistoryDetailRoute({ params: Promise.resolve({ id: 'r1' }) }));
 
-    expect(screen.getByRole('heading', { level: 1, name: 'Corrida guardada' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Análisis guardado' }),
+    ).toBeInTheDocument();
   });
 });

@@ -150,12 +150,12 @@ test('evaluación, historial, privacidad y cuenta', async ({
   await expect(
     page.getByRole('heading', { name: 'Acuerdo del juez con una persona' }),
   ).toBeVisible();
-  await expect(page.getByText(/32 pares criterio por corrida/)).toBeVisible();
+  await expect(page.getByText(/32 pares criterio por análisis/)).toBeVisible();
   await expect(page.getByText(/El juez es consistente pero no está validado/)).toBeVisible();
   await check(page, testInfo, '08-evaluacion');
   await signIn(page, page.request, baseURL ?? '', clientIp);
   await page.goto('/historial');
-  await expect(page.getByText('Aún no tienes corridas guardadas.')).toBeVisible();
+  await expect(page.getByText('Aún no tienes análisis guardados.')).toBeVisible();
   await check(page, testInfo, '09-historial');
   await page.goto('/privacidad');
   await check(page, testInfo, '10-privacidad');

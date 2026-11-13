@@ -72,14 +72,14 @@ export function formatUsd(value: number | null | undefined): string {
 export function runHeadline(state: RunState): string {
   switch (state.fase) {
     case 'inactiva':
-      return 'Escribe un requerimiento y ejecuta la corrida';
+      return 'Escribe un requerimiento y ejecuta el análisis';
     case 'esperando_aprobacion':
       return 'Esperando tu revisión';
     case 'en_curso':
       return 'En curso';
     case 'completada':
     case 'error': {
-      const partes = [state.fase === 'completada' ? 'Corrida terminada' : 'Corrida detenida'];
+      const partes = [state.fase === 'completada' ? 'Análisis terminado' : 'Análisis detenido'];
       if (state.rondasRevision) {
         partes.push(plural(state.rondasRevision, 'ronda de revisión', 'rondas de revisión'));
       }

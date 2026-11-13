@@ -66,19 +66,19 @@ describe('costText', () => {
 
   it('adds both parts for the free mode', () => {
     expect(costText(catalog(), generationChoices(catalog())[0]!, 'groq', 'servidor')).toBe(
-      'Costo estimado: ≈ USD 0.0040 por corrida, cubierto por CriterIA.',
+      'Costo estimado: ≈ USD 0.0040 por análisis, cubierto por CriterIA.',
     );
   });
 
   it('adds the judge to a local generation and says the local part is free', () => {
     expect(costText(full, pick('ollama|llama3.1:8b'), 'anthropic', 'propia')).toBe(
-      'Costo estimado: ≈ USD 0.0010 por corrida, cobrado a tu cuenta del proveedor. La generación local no tiene costo; el juez (Anthropic) ≈ USD 0.0010.',
+      'Costo estimado: ≈ USD 0.0010 por análisis, cobrado a tu cuenta del proveedor. La generación local no tiene costo; el juez (Anthropic) ≈ USD 0.0010.',
     );
   });
 
   it('splits who pays when the parts use different keys', () => {
     expect(costText(full, pick('openai|equilibrado'), 'groq', 'servidor')).toBe(
-      'Costo estimado: ≈ USD 0.0710 por corrida, una parte la cubre CriterIA y otra se cobra a tu cuenta del proveedor.',
+      'Costo estimado: ≈ USD 0.0710 por análisis, una parte la cubre CriterIA y otra se cobra a tu cuenta del proveedor.',
     );
   });
 
@@ -103,7 +103,7 @@ describe('costText', () => {
     };
 
     expect(costText(free, pick('ollama|llama3.1:8b'), 'ollama', 'local')).toBe(
-      'Costo estimado: ≈ USD 0.0000 por corrida, sin costo. La generación local no tiene costo; el juez (Ollama) ≈ USD 0.0000.',
+      'Costo estimado: ≈ USD 0.0000 por análisis, sin costo. La generación local no tiene costo; el juez (Ollama) ≈ USD 0.0000.',
     );
   });
 });

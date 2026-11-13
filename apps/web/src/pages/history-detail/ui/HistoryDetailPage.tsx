@@ -39,7 +39,7 @@ export function HistoryDetailPage({
         }),
       )
       .catch((failure: unknown) =>
-        setError(failure instanceof ApiError ? failure.message : 'No se pudo abrir la corrida.'),
+        setError(failure instanceof ApiError ? failure.message : 'No se pudo abrir el análisis.'),
       );
   }, [client, runId]);
 
@@ -50,9 +50,9 @@ export function HistoryDetailPage({
         <Link href="/historial" className={styles.back}>
           Volver al historial
         </Link>
-        <h1 className={styles.title}>Corrida guardada</h1>
+        <h1 className={styles.title}>Análisis guardado</h1>
         {error && <Notice tone="error">{error}</Notice>}
-        {!saved && !error && <SkeletonCard lines={4} label="Cargando la corrida" />}
+        {!saved && !error && <SkeletonCard lines={4} label="Cargando el análisis" />}
         {saved && (
           <>
             <section className={styles.card} aria-label="Requerimiento">

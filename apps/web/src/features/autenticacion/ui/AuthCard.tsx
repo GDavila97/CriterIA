@@ -141,7 +141,7 @@ export function AuthCard({ githubEnabled, emailMode, oauthError }: AuthCardProps
       {mode === 'crear' && (
         <p className={styles.note}>
           {sendsEmail
-            ? 'Te enviaremos un correo para verificar tu cuenta antes de tu primera corrida.'
+            ? 'Te enviaremos un correo para verificar tu cuenta antes de tu primer análisis.'
             : 'Por ahora no hay recuperación de contraseña. Guárdala en un lugar seguro.'}
         </p>
       )}

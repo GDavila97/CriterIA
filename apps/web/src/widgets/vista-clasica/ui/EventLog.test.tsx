@@ -41,7 +41,7 @@ describe('EventLog', () => {
 
     await userEvent.click(screen.getByRole('button', { name: `Ver registro completo (${total})` }));
     const panel = screen.getByRole('dialog', { name: 'Registro completo' });
-    const full = within(panel).getByRole('log', { name: 'Registro completo de la corrida' });
+    const full = within(panel).getByRole('log', { name: 'Registro completo del análisis' });
     expect(within(full).getAllByRole('listitem')).toHaveLength(total);
     expect(within(panel).getByText(`${total} eventos`)).toBeInTheDocument();
   });
@@ -55,7 +55,7 @@ describe('EventLog', () => {
 
     await userEvent.selectOptions(within(panel).getByLabelText('Filtrar por agente'), 'qa');
 
-    const full = within(panel).getByRole('log', { name: 'Registro completo de la corrida' });
+    const full = within(panel).getByRole('log', { name: 'Registro completo del análisis' });
     expect(within(full).getAllByRole('listitem')).toHaveLength(fromQa);
     expect(
       within(panel).getByText(`${fromQa} de ${state.registro.length} eventos`),
@@ -65,7 +65,7 @@ describe('EventLog', () => {
     await userEvent.selectOptions(within(panel).getByLabelText('Filtrar por agente'), 'evaluador');
     await userEvent.selectOptions(within(panel).getByLabelText('Filtrar por agente'), 'sistema');
     expect(
-      within(panel).getByRole('log', { name: 'Registro completo de la corrida' }),
+      within(panel).getByRole('log', { name: 'Registro completo del análisis' }),
     ).toBeVisible();
   });
 
@@ -79,7 +79,7 @@ describe('EventLog', () => {
 
     const panel = screen.getByRole('dialog', { name: 'Registro completo' });
     expect(panel).toHaveAttribute('open');
-    const full = within(panel).getByRole('log', { name: 'Registro completo de la corrida' });
+    const full = within(panel).getByRole('log', { name: 'Registro completo del análisis' });
     expect(within(full).getAllByRole('listitem')).toHaveLength(later.registro.length);
     expect(
       screen.getByRole('button', { name: `Ver registro completo (${later.registro.length})` }),

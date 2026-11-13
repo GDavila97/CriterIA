@@ -41,10 +41,10 @@ export function PrivacyPage({
           <h2 id="req-title">Tu requerimiento</h2>
           <p>
             Para que los agentes trabajen, el texto que escribes se envía al proveedor de modelos
-            que elegiste. Antes de cada corrida verás a qué proveedor se envía y con qué clave.
+            que elegiste. Antes de cada análisis verás a qué proveedor se envía y con qué clave.
           </p>
           <p>
-            CriterIA no guarda tus corridas, salvo que actives &quot;Guardar mis corridas&quot; o lo
+            CriterIA no guarda tus análisis, salvo que actives &quot;Guardar mis análisis&quot; o lo
             elijas al ejecutar. No escribas datos personales ni información confidencial.
           </p>
         </section>
@@ -94,8 +94,8 @@ export function PrivacyPage({
             </table>
           </div>
           <p>
-            Nunca cambiamos de proveedor sin preguntarte. Si tu clave falla, la corrida se detiene y
-            tú decides si continuar con el modo gratuito.
+            Nunca cambiamos de proveedor sin preguntarte. Si tu clave falla, el análisis se detiene
+            y tú decides si continuar con el modo gratuito.
           </p>
         </section>
 
@@ -113,17 +113,17 @@ export function PrivacyPage({
               </li>
             )}
             <li>
-              <strong>Tus claves de API:</strong> cifradas; solo se usan durante tus corridas.
+              <strong>Tus claves de API:</strong> cifradas; solo se usan durante tus análisis.
             </li>
             <li>
-              <strong>Tu uso:</strong> cuántas corridas haces al día, para aplicar los límites.
+              <strong>Tu uso:</strong> cuántos análisis haces al día, para aplicar los límites.
             </li>
             <li>
-              <strong>Tus corridas:</strong> solo si activas el historial.
+              <strong>Tus análisis:</strong> solo si activas el historial.
             </li>
             <li>
               <strong>Errores técnicos:</strong> registros de fallos sin datos personales ni
-              contenido de tus corridas.
+              contenido de tus análisis.
             </li>
           </ul>
           <p>

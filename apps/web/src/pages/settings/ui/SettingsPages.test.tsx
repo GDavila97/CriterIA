@@ -47,7 +47,7 @@ describe('settings pages', () => {
     };
     render(<HistorySettingsPage user={user} client={client} />);
 
-    const box = await screen.findByLabelText('Guardar mis corridas por defecto');
+    const box = await screen.findByLabelText('Guardar mis análisis por defecto');
     await screen.findByRole('checkbox', { checked: false });
     await userEvent.click(box);
     expect(client.saveSettings).toHaveBeenCalledWith(

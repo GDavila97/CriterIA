@@ -49,7 +49,7 @@ export function HomePage({ githubEnabled, emailMode, oauthError, accountDeleted 
             ))}
           </ul>
           <p className={styles.note}>
-            Tú decides qué se queda: el sistema propone y la persona aprueba. Tus corridas no se
+            Tú decides qué se queda: el sistema propone y la persona aprueba. Tus análisis no se
             guardan a menos que lo actives.
           </p>
         </div>

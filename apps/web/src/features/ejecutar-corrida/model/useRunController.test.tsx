@@ -47,7 +47,7 @@ describe('useRunController', () => {
   });
 
   it('keeps API errors to show them and ignores answers without a run', async () => {
-    const limit = new ApiError(429, 'limite_hora', 'Alcanzaste el límite de corridas por hora.');
+    const limit = new ApiError(429, 'limite_hora', 'Alcanzaste el límite de análisis por hora.');
     const d = deps({ createRun: vi.fn().mockRejectedValue(limit) });
     const { result } = renderHook(() => useRunController(d));
 

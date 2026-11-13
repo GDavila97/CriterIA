@@ -40,7 +40,7 @@ describe('runReducer', () => {
         'Revisor pidió 1 corrección a QA (ronda 1)',
         'QA empezó la ronda 1',
         'Evaluador calificó: 4.0 de 5',
-        'La corrida terminó',
+        'El análisis terminó',
       ]),
     );
   });
@@ -156,7 +156,11 @@ describe('runReducer', () => {
       }),
     );
 
-    expect(state.error).toMatchObject({ agente: 'sistema', codigo: 'error_interno' });
+    expect(state.error).toMatchObject({
+      agente: 'sistema',
+      codigo: 'error_interno',
+      mensaje: 'El análisis se detuvo por un error interno. Intenta de nuevo.',
+    });
   });
 
   it('records system errors and reviews that leave observations pending', () => {
@@ -195,7 +199,7 @@ describe('runReducer', () => {
       expect.arrayContaining([
         'Revisor encontró 2 observaciones',
         'Revisor dejó 2 observaciones pendientes',
-        'La corrida no pudo terminar',
+        'El análisis no pudo terminar',
         'QA entregó 1 caso de prueba',
       ]),
     );

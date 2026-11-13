@@ -30,7 +30,7 @@ test('una corrida completa con la aprobación editada', async ({ page }) => {
 
   await finishRun(page);
   await page.getByRole('button', { name: /^Ver registro completo/ }).click();
-  const fullLog = page.getByRole('log', { name: 'Registro completo de la corrida' });
+  const fullLog = page.getByRole('log', { name: 'Registro completo del análisis' });
   await expect(fullLog.getByText('Editaste las historias (1 modificada, 1 quitada)')).toBeVisible();
   await page.getByRole('button', { name: 'Cerrar' }).click();
   await expect(page.getByText(/quiero apartar un libro desde el celular/)).toBeVisible();
@@ -53,7 +53,7 @@ test('el Analista escribe otra versión hasta dos veces', async ({ page }) => {
     await page.getByRole('button', { name: 'Enviar al Analista' }).click();
     // The full log tells when the new version arrived: one more request and one more pause.
     await page.getByRole('button', { name: /^Ver registro completo/ }).click();
-    const fullLog = page.getByRole('log', { name: 'Registro completo de la corrida' });
+    const fullLog = page.getByRole('log', { name: 'Registro completo del análisis' });
     await expect(fullLog.getByText('Pediste otra versión de las historias')).toHaveCount(index + 1);
     await expect(fullLog.getByText(/^Esperando tu revisión/)).toHaveCount(index + 2);
     await page.getByRole('button', { name: 'Cerrar' }).click();
@@ -61,7 +61,7 @@ test('el Analista escribe otra versión hasta dos veces', async ({ page }) => {
   }
 
   await expect(page.getByRole('button', { name: 'Pedir otra versión al Analista' })).toBeDisabled();
-  await expect(page.getByText(/Ya pediste dos versiones nuevas en esta corrida/)).toBeVisible();
+  await expect(page.getByText(/Ya pediste dos versiones nuevas en este análisis/)).toBeVisible();
   await page.getByRole('button', { name: /^Aprobar 2 historias/ }).click();
   await finishRun(page);
 });
@@ -88,7 +88,7 @@ test('el stream se reconecta con Last-Event-ID tras un corte', async ({ page }) 
 
   expect(resumedFrom).toEqual(['3']);
   await expect(page.getByText(/^Analista entregó \d historias$/)).toHaveCount(1);
-  await expect(page.getByText('La corrida empezó')).toHaveCount(1);
+  await expect(page.getByText('El análisis empezó')).toHaveCount(1);
 });
 
 test('una corrida larga: registro completo en vivo, artefactos paginados y exportación completa', async ({
@@ -110,12 +110,12 @@ test('una corrida larga: registro completo en vivo, artefactos paginados y expor
   await expect(recent.getByRole('listitem')).toHaveCount(5);
   await page.getByRole('button', { name: /^Ver registro completo \(\d+\)$/ }).click();
   const panel = page.getByRole('dialog', { name: 'Registro completo' });
-  const timeline = panel.getByRole('log', { name: 'Registro completo de la corrida' });
+  const timeline = panel.getByRole('log', { name: 'Registro completo del análisis' });
   await expect(panel).toBeVisible();
   // The panel opens while the run is still going and it keeps streaming behind it.
-  await expect(timeline.getByText('La corrida terminó')).toHaveCount(0);
+  await expect(timeline.getByText('El análisis terminó')).toHaveCount(0);
   const atOpen = await timeline.getByRole('listitem').count();
-  await expect(timeline.getByText('La corrida terminó')).toBeVisible();
+  await expect(timeline.getByText('El análisis terminó')).toBeVisible();
   expect(await timeline.getByRole('listitem').count()).toBeGreaterThan(atOpen);
   await expect(page).toHaveURL(/\/corrida$/);
   expect(streams).toHaveLength(2);

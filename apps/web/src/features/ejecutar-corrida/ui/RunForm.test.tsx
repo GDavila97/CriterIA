@@ -27,9 +27,9 @@ describe('RunForm', () => {
       'Tu texto se enviará a Groq con la clave de CriterIA. No incluyas datos personales ni confidenciales. El juez es del mismo proveedor',
     );
     expect(screen.getByText(/Costo estimado/)).toHaveTextContent(
-      '≈ USD 0.0040 por corrida, cubierto por CriterIA',
+      '≈ USD 0.0040 por análisis, cubierto por CriterIA',
     );
-    expect(screen.getByText('Te quedan 3 de 5 corridas esta hora')).toBeInTheDocument();
+    expect(screen.getByText('Te quedan 3 de 5 análisis esta hora')).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: EXAMPLES[0].label }));
     await userEvent.click(screen.getByRole('button', { name: 'Ejecutar' }));
@@ -63,7 +63,7 @@ describe('RunForm', () => {
     expect(onSubmit).not.toHaveBeenCalled();
     expect(screen.getByRole('alert')).toHaveTextContent('Escribe entre 20 y 2000 caracteres.');
     expect(screen.getByText('9 / 2000')).toBeInTheDocument();
-    expect(screen.getByText('Te quedan 0 de 5 corridas esta hora')).toBeInTheDocument();
+    expect(screen.getByText('Te quedan 0 de 5 análisis esta hora')).toBeInTheDocument();
   });
 
   it('sends own-key runs to each chosen provider and keeps the history choice', async () => {
@@ -94,9 +94,9 @@ describe('RunForm', () => {
     expect(screen.getByText(/Costo estimado/)).toHaveTextContent(
       'cobrado a tu cuenta del proveedor',
     );
-    expect(screen.getByText('Te queda 1 de 5 corridas esta hora')).toBeInTheDocument();
+    expect(screen.getByText('Te queda 1 de 5 análisis esta hora')).toBeInTheDocument();
     await userEvent.selectOptions(screen.getByLabelText('Juez'), 'groq');
-    await userEvent.click(screen.getByLabelText('Guardar esta corrida en mi historial'));
+    await userEvent.click(screen.getByLabelText('Guardar este análisis en mi historial'));
     await userEvent.click(screen.getByRole('button', { name: 'Ejecutar' }));
 
     expect(onSubmit).toHaveBeenCalledWith(

@@ -39,12 +39,12 @@ export function HistoryPage({
       <main className={styles.main}>
         <h1 className={styles.title}>Historial</h1>
         <p className={styles.lead}>
-          Solo aparecen las corridas que guardaste. Activa &quot;Guardar mis corridas&quot; en{' '}
-          <Link href="/ajustes/historial">Ajustes</Link> o elige guardarla al ejecutar.
+          Solo aparecen los análisis que guardaste. Activa &quot;Guardar mis análisis&quot; en{' '}
+          <Link href="/ajustes/historial">Ajustes</Link> o elige guardarlo al ejecutar.
         </p>
         {error && <Notice tone="error">{error}</Notice>}
         {items === null && !error && <SkeletonCard lines={3} label="Cargando tu historial" />}
-        {items?.length === 0 && <p className={styles.lead}>Aún no tienes corridas guardadas.</p>}
+        {items?.length === 0 && <p className={styles.lead}>Aún no tienes análisis guardados.</p>}
         {items && items.length > 0 && (
           <ul className={styles.list}>
             {items.map((item) => {

@@ -24,7 +24,7 @@ export interface HeaderProps {
 }
 
 const LINKS = [
-  { href: '/corrida', label: 'Nueva corrida' },
+  { href: '/corrida', label: 'Nuevo análisis' },
   { href: '/historial', label: 'Historial' },
   { href: '/evaluacion', label: 'Evaluación' },
   { href: '/ajustes', label: 'Ajustes' },

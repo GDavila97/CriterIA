@@ -54,7 +54,7 @@ function JudgeAgreement({ acuerdo }: { acuerdo: JudgeAgreementBody | null }) {
             </div>
           </dl>
           <p className={styles.note}>
-            {acuerdo.pares} pares criterio por corrida, calificados a ciegas. Entre paréntesis, el
+            {acuerdo.pares} pares criterio por análisis, calificados a ciegas. Entre paréntesis, el
             intervalo al 95 % por bootstrap.
             {bias !== null &&
               ` En promedio, el juez califica ${Math.abs(bias).toFixed(2)} puntos ${
@@ -64,7 +64,7 @@ function JudgeAgreement({ acuerdo }: { acuerdo: JudgeAgreementBody | null }) {
           {unvalidated && (
             <p className={styles.note}>
               El juez es consistente pero no está validado: con esta persona no hay acuerdo claro a
-              nivel de corrida, así que las diferencias de puntaje se leen con cautela.
+              nivel de análisis, así que las diferencias de puntaje se leen con cautela.
             </p>
           )}
         </>
@@ -83,7 +83,7 @@ function Methodology() {
         <li>15 requerimientos: 5 fáciles, 5 medios y 5 con ambigüedades sembradas.</li>
         <li>Rúbrica de 1 a 5: claridad, verificabilidad, completitud y consistencia.</li>
         <li>
-          Una corrida por caso; las historias se aprueban sin cambios para no influir en los
+          Un análisis por caso; las historias se aprueban sin cambios para no influir en los
           modelos.
         </li>
         <li>
@@ -197,7 +197,7 @@ export function EvaluationBoard({
                       Latencia
                     </th>
                     <th scope="col" rowSpan={2}>
-                      <abbr title="Costo medio por corrida completa, en dólares">Costo</abbr>
+                      <abbr title="Costo medio por análisis completo, en dólares">Costo</abbr>
                     </th>
                     <th scope="colgroup" colSpan={2} className={styles.group}>
                       Puntaje del juez
@@ -205,13 +205,13 @@ export function EvaluationBoard({
                   </tr>
                   <tr>
                     <th scope="col">
-                      <abbr title="Mediana de la latencia por corrida completa">p50</abbr>
+                      <abbr title="Mediana de la latencia por análisis completo">p50</abbr>
                     </th>
                     <th scope="col">
-                      <abbr title="Percentil 95 de la latencia por corrida completa">p95</abbr>
+                      <abbr title="Percentil 95 de la latencia por análisis completo">p95</abbr>
                     </th>
                     <th scope="col">
-                      <abbr title="Promedio de todas las corridas completas">Todas</abbr>
+                      <abbr title="Promedio de todos los análisis completos">Todas</abbr>
                     </th>
                     <th scope="col">
                       <abbr title="Promedio de los casos que todos los modelos completaron">
@@ -246,11 +246,11 @@ export function EvaluationBoard({
             </div>
             <p className={styles.note}>
               Válidas 1.ª: llamadas a un agente con salida válida al primer intento. Latencia p50 y
-              p95: mediana y percentil 95 por corrida completa. Costo: promedio por corrida
-              completa, en dólares.
+              p95: mediana y percentil 95 por análisis completo. Costo: promedio por análisis
+              completo, en dólares.
             </p>
             <p className={styles.note}>
-              El puntaje del juez usa todas las corridas completas de cada modelo; el de casos
+              El puntaje del juez usa todos los análisis completos de cada modelo; el de casos
               comunes, solo los {common} casos que todos los modelos de esta versión completaron,
               para compararlos sobre el mismo terreno. Es secundario a la robustez, la latencia y el
               costo mientras el juez no esté validado.

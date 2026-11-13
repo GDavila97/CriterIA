@@ -231,7 +231,7 @@ export function ModelsAndKeys({ client = api }: { client?: Api }) {
                 <span className={styles.mono}>
                   {tier.costo_estimado_usd === null
                     ? 'sin precio'
-                    : `≈ $${tier.costo_estimado_usd.toFixed(3)} por corrida`}
+                    : `≈ $${tier.costo_estimado_usd.toFixed(3)} por análisis`}
                 </span>
               </label>
             ))}
@@ -283,8 +283,8 @@ export function ModelsAndKeys({ client = api }: { client?: Api }) {
           })}
         </fieldset>
         <p className={styles.small}>
-          El modo gratuito usa Groq con la clave de CriterIA y tiene un límite de corridas por hora.
-          Lo puedes cambiar en cada corrida.
+          El modo gratuito usa Groq con la clave de CriterIA y tiene un límite de análisis por hora.
+          Lo puedes cambiar en cada análisis.
         </p>
       </section>
 
@@ -298,7 +298,7 @@ export function ModelsAndKeys({ client = api }: { client?: Api }) {
           {keyCard(
             'groq',
             'Groq con tu cuenta',
-            'Opcional. Ya usas Groq gratis con la clave de CriterIA; conecta la tuya si necesitas más corridas.',
+            'Opcional. Ya usas Groq gratis con la clave de CriterIA; conecta la tuya si necesitas más análisis.',
           )}
           {keyCard(
             'openai_compatible',
@@ -314,7 +314,7 @@ export function ModelsAndKeys({ client = api }: { client?: Api }) {
           Juez de la rúbrica
         </h2>
         <SelectField
-          label="Quién califica tus corridas"
+          label="Quién califica tus análisis"
           value={settings.judge_provider ?? ''}
           onChange={(event) =>
             saveSettings({ judge_provider: (event.target.value || null) as ProviderId | null })
@@ -326,7 +326,7 @@ export function ModelsAndKeys({ client = api }: { client?: Api }) {
             },
             ...judges.map((p) => ({ value: p, label: PROVIDER_NAMES[p] })),
           ]}
-          hint="Un modelo tiende a calificar mejor lo que escribió su propio proveedor. Si solo tienes uno configurado, la corrida te lo indicará."
+          hint="Un modelo tiende a calificar mejor lo que escribió su propio proveedor. Si solo tienes uno configurado, el análisis te lo indicará."
         />
       </section>
 
@@ -341,7 +341,7 @@ export function ModelsAndKeys({ client = api }: { client?: Api }) {
               Se guardan cifradas (AES-256) y la llave de cifrado no está en nuestra base de datos.
             </li>
             <li>Nunca vuelven a tu navegador: solo ves los últimos 4 caracteres.</li>
-            <li>Se usan únicamente durante tus corridas y no aparecen en registros.</li>
+            <li>Se usan únicamente durante tus análisis y no aparecen en registros.</li>
             <li>Nunca cambiamos de proveedor sin preguntarte.</li>
             <li>Puedes eliminarlas cuando quieras; se borran también al eliminar tu cuenta.</li>
           </ul>

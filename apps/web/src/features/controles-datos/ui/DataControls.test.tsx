@@ -29,7 +29,7 @@ describe('DataControls', () => {
     render(<DataControls client={c} />);
 
     await userEvent.click(screen.getByRole('button', { name: 'Borrar mi historial' }));
-    expect(screen.getByText('Borramos 2 corridas de tu historial.')).toBeInTheDocument();
+    expect(screen.getByText('Borramos 2 análisis de tu historial.')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Borrar mi historial' }));
     expect(screen.getByText('Tu historial ya estaba vacío.')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Eliminar mis claves' }));

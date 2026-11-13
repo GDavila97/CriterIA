@@ -148,13 +148,13 @@ export function RunWorkspace({
       {!data ? (
         !loadError && (
           <main className={styles.layout} aria-busy="true">
-            <SkeletonCard lines={5} label="Cargando la corrida" />
+            <SkeletonCard lines={5} label="Cargando el análisis" />
             <SkeletonCard lines={3} label="Cargando el tablero" />
           </main>
         )
       ) : (
         <main className={styles.layout}>
-          <h1 className="sr-only">Nueva corrida</h1>
+          <h1 className="sr-only">Nuevo análisis</h1>
           <RunForm
             catalog={data.catalog}
             settings={data.settings}

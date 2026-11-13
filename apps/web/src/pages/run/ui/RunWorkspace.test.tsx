@@ -125,7 +125,7 @@ describe('RunWorkspace', () => {
 
   it('shows API and loading errors', async () => {
     const run = controller(initialRunState(), {
-      error: new ApiError(429, 'limite_hora', 'Alcanzaste el límite de corridas por hora.'),
+      error: new ApiError(429, 'limite_hora', 'Alcanzaste el límite de análisis por hora.'),
     });
     const { unmount } = render(
       <RunWorkspace
@@ -137,7 +137,7 @@ describe('RunWorkspace', () => {
       />,
     );
     expect(
-      await screen.findByText('Alcanzaste el límite de corridas por hora.'),
+      await screen.findByText('Alcanzaste el límite de análisis por hora.'),
     ).toBeInTheDocument();
     unmount();
 
