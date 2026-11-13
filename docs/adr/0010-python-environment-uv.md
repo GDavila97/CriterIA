@@ -2,7 +2,7 @@
 
 **Estado:** aceptada.
 
-**Contexto:** el entorno debe ser idéntico en la máquina de Gus, el CI y la imagen Docker.
+**Contexto:** el entorno debe ser idéntico en la máquina de desarrollo, el CI y la imagen Docker.
 
 **Decisión:** uv con `.venv` local (ignorado en Git), versión de Python fijada en `.python-version` y `uv.lock` versionado. El CI y el Dockerfile instalan con `uv sync --frozen`.
 

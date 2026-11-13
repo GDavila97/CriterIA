@@ -22,7 +22,7 @@ flowchart LR
   providers["Proveedor de modelos<br/>OpenAI | Anthropic | Groq | Ollama | compatible"]
   db[("Neon Postgres<br/>esquemas auth, app, graph")]
 
-  subgraph local["Máquina de Gus"]
+  subgraph local["Máquina local"]
     cli["CLI de evaluación<br/>(Ollama + APIs)"]
   end
 

@@ -367,7 +367,7 @@ Pendiente: comparación pareada (Wilcoxon) con tamaño del efecto. Se hará solo
 - **Variación por modelo.** Hacer tres corridas por caso para estimarla.
 - **Comparación v1 contra v2.** Solo con Haiku y GPT-OSS 20B, de forma pareada (Wilcoxon) y con tamaño del efecto.
 
-**Prompts y orquestación** (candidatas en el plan de F8)
+**Prompts y orquestación** (candidatas para v2)
 
 - Darle al Revisor sus observaciones de la ronda anterior.
 - Limitar los casos por historia en QA.

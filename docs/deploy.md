@@ -393,7 +393,7 @@ unset EVAL_DATABASE_URL
 
 `production.env` fija 0.10 USD y 11 corridas diarias. 30 días suman el límite mensual de 3 USD de Groq, y cada corrida gratuita reserva unos 0.0087 USD con el perfil calibrado en F5. El día se cuenta en UTC: en Ciudad de México se reinicia a las 18:00. Los meses de 31 días pueden tocar el límite de Groq el último día. El límite de gasto de la consola de Groq es el corte duro.
 
-El día de la entrevista, subirlo sin desplegar código, por ejemplo a 0.50 USD (57 corridas):
+Para un día de uso intenso, por ejemplo una clase con todo el grupo, subirlo sin desplegar código, por ejemplo a 0.50 USD (57 corridas):
 
 ```bash
 gcloud run services update criteria-api --region=us-central1 \
