@@ -28,7 +28,7 @@ describe('HomeRoute', () => {
     });
 
     await expect(HomeRoute({ searchParams: Promise.resolve({}) })).rejects.toThrow('NEXT_REDIRECT');
-    expect(redirect).toHaveBeenCalledWith('/corrida');
+    expect(redirect).toHaveBeenCalledWith('/analisis');
   });
 
   it('shows GitHub and the email mode from the server settings', async () => {

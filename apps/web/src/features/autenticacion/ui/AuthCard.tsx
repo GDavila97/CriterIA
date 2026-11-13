@@ -22,7 +22,7 @@ export interface AuthCardProps {
 }
 
 const MIN_PASSWORD = 12;
-const AFTER_SIGN_IN = '/corrida';
+const AFTER_SIGN_IN = '/analisis';
 
 export function AuthCard({ githubEnabled, emailMode, oauthError }: AuthCardProps) {
   const router = useRouter();

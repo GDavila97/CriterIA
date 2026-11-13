@@ -73,7 +73,7 @@ async function expectNoHorizontalOverflow(page: Page): Promise<void> {
 
 async function signIn(page: Page, request: Page['request'], baseURL: string, ip: string) {
   await signUpByApi(request, baseURL, ip);
-  await page.goto('/corrida');
+  await page.goto('/analisis');
 }
 
 test('inicio y registro', async ({ page }, testInfo) => {
@@ -88,14 +88,14 @@ test('vista clásica: pausa humana, corrida terminada y panel del agente', async
   clientIp,
 }, testInfo) => {
   await signIn(page, page.request, baseURL ?? '', clientIp);
-  await check(page, testInfo, '02-corrida-nueva');
+  await check(page, testInfo, '02-analisis-nuevo');
   await startRun(page);
   await waitForApproval(page);
   await check(page, testInfo, '03-pausa-humana');
   await page.getByRole('button', { name: /^Aprobar/ }).click();
   await finishRun(page);
   await page.getByRole('tab', { name: 'Casos de prueba' }).click();
-  await check(page, testInfo, '04-corrida-terminada');
+  await check(page, testInfo, '04-analisis-terminado');
   await page.getByRole('button', { name: 'Ver agente Revisor' }).click();
   await expect(page.getByRole('dialog', { name: 'Agente' })).toBeVisible();
   await check(page, testInfo, '05-panel-agente', false);

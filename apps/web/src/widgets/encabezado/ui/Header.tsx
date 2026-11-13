@@ -24,7 +24,7 @@ export interface HeaderProps {
 }
 
 const LINKS = [
-  { href: '/corrida', label: 'Nuevo análisis' },
+  { href: '/analisis', label: 'Nuevo análisis' },
   { href: '/historial', label: 'Historial' },
   { href: '/evaluacion', label: 'Evaluación' },
   { href: '/ajustes', label: 'Ajustes' },
@@ -74,7 +74,7 @@ export function Header({ user, actions }: HeaderProps) {
   return (
     <header className={styles.header}>
       <div className={styles.bar}>
-        <Logo href="/corrida" />
+        <Logo href="/analisis" />
         <nav aria-label="Principal" className={styles.nav} id="main-nav" data-open={navOpen}>
           {LINKS.map((link) => (
             <Link

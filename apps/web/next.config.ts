@@ -9,6 +9,10 @@ const nextConfig: NextConfig = {
   async headers() {
     return [{ source: '/:path*', headers: [...staticSecurityHeaders] }];
   },
+  async redirects() {
+    // The page was renamed; old links and bookmarks keep working.
+    return [{ source: '/corrida/:path*', destination: '/analisis/:path*', permanent: true }];
+  },
 };
 
 export default nextConfig;

@@ -11,7 +11,7 @@ interface Search {
 }
 
 export async function HomeRoute({ searchParams }: { searchParams: Promise<Search> }) {
-  if (await optionalUser()) redirect('/corrida');
+  if (await optionalUser()) redirect('/analisis');
   const env = getServerEnv();
   const params = await searchParams;
   return (

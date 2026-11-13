@@ -59,9 +59,9 @@ describe('AuthCard', () => {
       name: 'Ana',
       email: 'ana@example.test',
       password: 'short-long-enough',
-      callbackURL: '/corrida',
+      callbackURL: '/analisis',
     });
-    expect(push).toHaveBeenCalledWith('/corrida');
+    expect(push).toHaveBeenCalledWith('/analisis');
   });
 
   it('asks to verify the email when it can be sent', async () => {
@@ -96,7 +96,7 @@ describe('AuthCard', () => {
     expect(screen.queryByText('raw')).not.toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: 'Entrar' }));
-    expect(push).toHaveBeenCalledWith('/corrida');
+    expect(push).toHaveBeenCalledWith('/analisis');
   });
 
   it('starts GitHub and shows the linking message after a refused link', async () => {
@@ -110,7 +110,7 @@ describe('AuthCard', () => {
 
     expect(client.signIn.social).toHaveBeenCalledWith({
       provider: 'github',
-      callbackURL: '/corrida',
+      callbackURL: '/analisis',
       errorCallbackURL: '/',
     });
     expect(screen.getByRole('alert')).toHaveTextContent('No se pudo completar');

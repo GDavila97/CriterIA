@@ -20,7 +20,7 @@ export async function signUpByUi(page: Page, email: string, name = 'Ana Prueba')
   await page.getByLabel('Correo').fill(email);
   await page.getByLabel('Contraseña').fill(PASSWORD);
   await page.getByRole('button', { name: 'Crear cuenta' }).click();
-  await expect(page).toHaveURL(/\/corrida$/);
+  await expect(page).toHaveURL(/\/analisis$/);
 }
 
 /** A session cookie without going through the form, for tests about other screens. */
@@ -42,7 +42,7 @@ export async function startRun(
   page: Page,
   options: { save?: boolean; generation?: string; requirement?: string } = {},
 ): Promise<void> {
-  await page.goto('/corrida');
+  await page.goto('/analisis');
   await page
     .getByLabel('Describe lo que el sistema debe hacer, en lenguaje natural')
     .fill(options.requirement ?? REQUIREMENT);

@@ -22,7 +22,7 @@ test('con EMAIL_PROVIDER=smtp el registro pide verificar el correo', async ({ pa
   ).toBeVisible();
 
   await page.goto(await latestLink(request, email, 'Verifica tu correo en CriterIA'));
-  await expect(page).toHaveURL(/\/corrida$/);
+  await expect(page).toHaveURL(/\/analisis$/);
 });
 
 test('con EMAIL_PROVIDER=smtp se recupera la contraseña por correo', async ({ page, request }) => {
@@ -33,7 +33,7 @@ test('con EMAIL_PROVIDER=smtp se recupera la contraseña por correo', async ({ p
   await page.getByLabel('Contraseña').fill(PASSWORD);
   await page.getByRole('button', { name: 'Crear cuenta' }).click();
   await page.goto(await latestLink(request, email, 'Verifica tu correo en CriterIA'));
-  await expect(page).toHaveURL(/\/corrida$/);
+  await expect(page).toHaveURL(/\/analisis$/);
   await page.context().clearCookies();
 
   await page.goto('/');
@@ -53,5 +53,5 @@ test('con EMAIL_PROVIDER=smtp se recupera la contraseña por correo', async ({ p
   await page.getByLabel('Correo').fill(email);
   await page.getByLabel('Contraseña').fill('otra-clave-nueva-123');
   await page.getByRole('button', { name: 'Entrar' }).click();
-  await expect(page).toHaveURL(/\/corrida$/);
+  await expect(page).toHaveURL(/\/analisis$/);
 });

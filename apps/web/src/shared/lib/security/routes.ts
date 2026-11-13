@@ -1,4 +1,4 @@
-const PRIVATE_PREFIXES = ['/corrida', '/historial', '/ajustes'];
+const PRIVATE_PREFIXES = ['/analisis', '/historial', '/ajustes'];
 
 export function isPrivatePath(pathname: string): boolean {
   return PRIVATE_PREFIXES.some(

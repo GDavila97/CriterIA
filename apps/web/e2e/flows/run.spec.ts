@@ -14,7 +14,7 @@ import {
 
 test.beforeEach(async ({ page }) => {
   await signUpByUi(page, uniqueEmail('corrida'));
-  await expect(page).toHaveURL(/\/corrida$/);
+  await expect(page).toHaveURL(/\/analisis$/);
 });
 
 test('una corrida completa con la aprobación editada', async ({ page }) => {
@@ -117,7 +117,7 @@ test('una corrida larga: registro completo en vivo, artefactos paginados y expor
   const atOpen = await timeline.getByRole('listitem').count();
   await expect(timeline.getByText('El análisis terminó')).toBeVisible();
   expect(await timeline.getByRole('listitem').count()).toBeGreaterThan(atOpen);
-  await expect(page).toHaveURL(/\/corrida$/);
+  await expect(page).toHaveURL(/\/analisis$/);
   expect(streams).toHaveLength(2);
 
   await panel.getByLabel('Filtrar por agente').selectOption('qa');

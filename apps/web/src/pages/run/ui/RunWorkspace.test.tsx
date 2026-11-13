@@ -10,7 +10,7 @@ import { RunWorkspace } from './RunWorkspace';
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
-  usePathname: () => '/corrida',
+  usePathname: () => '/analisis',
 }));
 vi.mock('@/shared/lib/auth/client', () => ({ authClient: {} }));
 

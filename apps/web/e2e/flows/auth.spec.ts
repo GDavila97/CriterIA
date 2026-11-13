@@ -24,19 +24,19 @@ test('registro con correo y contraseña, con el aviso de que no hay recuperació
   await expect(page).toHaveURL('/');
 
   await signUpByUi(page, email);
-  await expect(page).toHaveURL(/\/corrida$/);
+  await expect(page).toHaveURL(/\/analisis$/);
   await expect(page.getByRole('button', { name: 'Cuenta de Ana Prueba' })).toBeVisible();
 
   await page.getByRole('button', { name: 'Cuenta de Ana Prueba' }).click();
   await page.getByRole('button', { name: 'Cerrar sesión' }).click();
   await expect(page).toHaveURL('/');
-  await page.goto('/corrida');
+  await page.goto('/analisis');
   await expect(page).toHaveURL('/');
   await page.getByRole('radio', { name: 'Iniciar sesión' }).click();
   await page.getByLabel('Correo').fill(email);
   await page.getByLabel('Contraseña').fill(PASSWORD);
   await page.getByRole('button', { name: 'Entrar' }).click();
-  await expect(page).toHaveURL(/\/corrida$/);
+  await expect(page).toHaveURL(/\/analisis$/);
 });
 
 test('GitHub crea la cuenta con el intercambio simulado', async ({ page }) => {
@@ -45,13 +45,13 @@ test('GitHub crea la cuenta con el intercambio simulado', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'Continuar con GitHub' }).click();
 
-  await expect(page).toHaveURL(/\/corrida$/);
+  await expect(page).toHaveURL(/\/analisis$/);
 });
 
 test('GitHub nunca se vincula a una cuenta con el correo sin verificar', async ({ page }) => {
   const email = uniqueEmail('vinculo');
   await signUpByUi(page, email);
-  await expect(page).toHaveURL(/\/corrida$/);
+  await expect(page).toHaveURL(/\/analisis$/);
   await page.context().clearCookies();
   await fakeGithubAuthorize(page, githubCode(Date.now() % 1_000_000, email));
 
@@ -77,4 +77,16 @@ test('el registro tiene un límite por IP guardado en la base', async ({ request
 
   expect(statuses.slice(0, 20).every((s) => s === 200)).toBe(true);
   expect(statuses[20]).toBe(429);
+});
+
+test('la ruta vieja /corrida redirige de forma permanente a /analisis', async ({ page }) => {
+  const old = await page.request.get('/corrida?vista=clasica', { maxRedirects: 0 });
+  expect(old.status()).toBe(308);
+  expect(old.headers().location).toBe('/analisis?vista=clasica');
+  const nested = await page.request.get('/corrida/abc', { maxRedirects: 0 });
+  expect(nested.headers().location).toBe('/analisis/abc');
+
+  await signUpByUi(page, uniqueEmail('ruta-vieja'));
+  await page.goto('/corrida');
+  await expect(page).toHaveURL(/\/analisis$/);
 });
