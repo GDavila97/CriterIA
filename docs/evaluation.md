@@ -13,23 +13,23 @@ Comparar modelos (API y local) y versiones de prompts con métricas reproducible
 - 5 fáciles y 5 medios, de dominios variados: educación, comercio, salud administrativa, logística, finanzas, trámites de gobierno, recursos humanos y seguros.
 - 5 difíciles con 5 problemas sembrados cada uno (25 en total): ambigüedades, inconsistencias y faltantes, del mismo tipo que las observaciones del Revisor. Los problemas viven en los metadatos del caso y nunca llegan a los agentes.
 
-| Id | Título | Dominio |
-| --- | --- | --- |
-| facil-01 | Asistencia a talleres extracurriculares | educación |
-| facil-02 | Lista de deseos de una tienda en línea | comercio |
-| facil-03 | Recordatorios de citas de una clínica dental | salud administrativa |
-| facil-04 | Rastreo de envíos por número de guía | logística |
-| facil-05 | Registro de gastos personales | finanzas |
-| medio-01 | Licencia de funcionamiento para comercios | trámites de gobierno |
-| medio-02 | Inscripción a materias con cupo y prerrequisitos | educación |
-| medio-03 | Solicitudes de vacaciones con aprobación | recursos humanos |
-| medio-04 | Pedidos para recoger en una cadena de cafeterías | comercio |
-| medio-05 | Reembolso de gastos médicos | seguros y salud administrativa |
-| dificil-01 | Rutas de reparto de una distribuidora | logística |
-| dificil-02 | Apoyo económico a pequeños productores | trámites de gobierno |
-| dificil-03 | Préstamos de una caja de ahorro | finanzas |
-| dificil-04 | Entrega y calificación de tareas | educación |
-| dificil-05 | Programación de quirófanos de un hospital | salud administrativa |
+| Id         | Título                                           | Dominio                        |
+| ---------- | ------------------------------------------------ | ------------------------------ |
+| facil-01   | Asistencia a talleres extracurriculares          | educación                      |
+| facil-02   | Lista de deseos de una tienda en línea           | comercio                       |
+| facil-03   | Recordatorios de citas de una clínica dental     | salud administrativa           |
+| facil-04   | Rastreo de envíos por número de guía             | logística                      |
+| facil-05   | Registro de gastos personales                    | finanzas                       |
+| medio-01   | Licencia de funcionamiento para comercios        | trámites de gobierno           |
+| medio-02   | Inscripción a materias con cupo y prerrequisitos | educación                      |
+| medio-03   | Solicitudes de vacaciones con aprobación         | recursos humanos               |
+| medio-04   | Pedidos para recoger en una cadena de cafeterías | comercio                       |
+| medio-05   | Reembolso de gastos médicos                      | seguros y salud administrativa |
+| dificil-01 | Rutas de reparto de una distribuidora            | logística                      |
+| dificil-02 | Apoyo económico a pequeños productores           | trámites de gobierno           |
+| dificil-03 | Préstamos de una caja de ahorro                  | finanzas                       |
+| dificil-04 | Entrega y calificación de tareas                 | educación                      |
+| dificil-05 | Programación de quirófanos de un hospital        | salud administrativa           |
 
 ## Método
 
@@ -79,11 +79,11 @@ Un modelo con corridas fallidas promedia sobre menos casos, y no siempre los mis
 
 ## Modelos comparados
 
-| Modelo | Modo de salida | Tope de tokens | Nota |
-| --- | --- | --- | --- |
-| Anthropic · Claude Haiku 5.5 (`claude-haiku-5-5`) | `tool` | 16,384 | El juez es del mismo proveedor (`*`) |
-| Groq · GPT-OSS 20B (`openai/gpt-oss-20b`) | `native` | 16,384 | Modelo del modo gratuito en producción |
-| Ollama · Llama 3.1 8B (`llama3.1:8b`) | `native` | 8,192 | Local, RTX 4060; ver [la selección](#selección-del-modelo-local) |
+| Modelo                                            | Modo de salida | Tope de tokens | Nota                                                             |
+| ------------------------------------------------- | -------------- | -------------- | ---------------------------------------------------------------- |
+| Anthropic · Claude Haiku 5.5 (`claude-haiku-5-5`) | `tool`         | 16,384         | El juez es del mismo proveedor (`*`)                             |
+| Groq · GPT-OSS 20B (`openai/gpt-oss-20b`)         | `native`       | 16,384         | Modelo del modo gratuito en producción                           |
+| Ollama · Llama 3.1 8B (`llama3.1:8b`)             | `native`       | 8,192          | Local, RTX 4060; ver [la selección](#selección-del-modelo-local) |
 
 **Cambio de alcance.** El plan incluía OpenAI `gpt-6-luna`, pero su lote se detuvo en el primer caso con `sin_saldo`: el crédito de la cuenta venció. La evaluación v1 queda con tres modelos. OpenAI se probará en producción con la clave de cada usuario, y el catálogo conserva sus modelos.
 
@@ -119,26 +119,26 @@ Prueba de selección hecha en F2b (5 nov 2026). No es la evaluación formal: son
 
 Afecta la latencia, así que forma parte del resultado:
 
-| Parámetro | Valor |
-| --- | --- |
-| Equipo | PC con NVIDIA RTX 4060 (8 GB de VRAM), en la red local |
-| Ollama | 0.40.14 |
-| `OLLAMA_CONTEXT_LENGTH` | 16384 |
-| `OLLAMA_FLASH_ATTENTION` | 1 |
-| `OLLAMA_KV_CACHE_TYPE` | `q8_0` |
-| Carga en GPU | 100 % para los dos modelos (`qwen3:8b` 6.28 GB, `llama3.1:8b` 5.90 GB) |
-| Razonamiento de `qwen3:8b` | apagado con `reasoning_effort: "none"` |
+| Parámetro                  | Valor                                                                  |
+| -------------------------- | ---------------------------------------------------------------------- |
+| Equipo                     | PC con NVIDIA RTX 4060 (8 GB de VRAM), en la red local                 |
+| Ollama                     | 0.40.14                                                                |
+| `OLLAMA_CONTEXT_LENGTH`    | 16384                                                                  |
+| `OLLAMA_FLASH_ATTENTION`   | 1                                                                      |
+| `OLLAMA_KV_CACHE_TYPE`     | `q8_0`                                                                 |
+| Carga en GPU               | 100 % para los dos modelos (`qwen3:8b` 6.28 GB, `llama3.1:8b` 5.90 GB) |
+| Razonamiento de `qwen3:8b` | apagado con `reasoning_effort: "none"`                                 |
 
 Con 16,384 tokens de contexto y la caché en `f16`, `qwen3:8b` solo cabía al 80 % en la GPU. Flash attention y la caché en `q8_0` lo dejaron al 100 % sin reducir el contexto. Un contexto de 8,192 tokens se descartó porque una ronda de corrección de QA puede acercarse a ese tamaño. La petición más grande medida fue de 6,652 tokens (40.6 % del contexto).
 
 ### Resultados
 
-| Modo de salida | Modelo | Corridas completas | Salidas válidas a la primera | Latencia media (corridas completas) | Puntaje medio |
-| --- | --- | --- | --- | --- | --- |
-| nativa | `llama3.1:8b` | 3 de 3 | 25 de 26 (96 %) | 170 s | 2.17 |
-| nativa | `qwen3:8b` | 2 de 3 | 24 de 25 (96 %) | 233 s | 2.25 |
-| herramienta | `qwen3:8b` | 1 de 3 | 4 de 7 (57 %) | 70 s | 2.50 |
-| herramienta | `llama3.1:8b` | 0 de 3 | 3 de 7 (43 %) | — | — |
+| Modo de salida | Modelo        | Corridas completas | Salidas válidas a la primera | Latencia media (corridas completas) | Puntaje medio |
+| -------------- | ------------- | ------------------ | ---------------------------- | ----------------------------------- | ------------- |
+| nativa         | `llama3.1:8b` | 3 de 3             | 25 de 26 (96 %)              | 170 s                               | 2.17          |
+| nativa         | `qwen3:8b`    | 2 de 3             | 24 de 25 (96 %)              | 233 s                               | 2.25          |
+| herramienta    | `qwen3:8b`    | 1 de 3             | 4 de 7 (57 %)                | 70 s                                | 2.50          |
+| herramienta    | `llama3.1:8b` | 0 de 3             | 3 de 7 (43 %)                | —                                   | —             |
 
 Las salidas válidas a la primera cuentan las llamadas a Analista, QA y Revisor (el juez no es local). La latencia de las corridas completas no es comparable entre modos: con salida por herramienta, la única corrida completa no tuvo rondas de corrección. El puntaje medio es el promedio de los cuatro criterios del juez en las corridas completas, de 1 a 5, con un juez que pide severidad.
 
@@ -175,11 +175,11 @@ Lotes del 10 y 11 de noviembre de 2026, prompts v1 y juez v1. Los archivos de ca
 
 ### Detección de problemas sembrados
 
-| Modelo | Casos emparejados | Total | Ambigüedad | Inconsistencia | Faltante | En los 3 difíciles comunes |
-| --- | --- | --- | --- | --- | --- | --- |
-| Anthropic · Claude Haiku 5.5 (tool) * | 5 de 5 | 52% (13 de 25) | 71% (5 de 7) | 67% (4 de 6) | 33% (4 de 12) | 60% (9 de 15) |
-| Groq · GPT-OSS 20B (native) | 5 de 5 | 32% (8 de 25) | 14% (1 de 7) | 67% (4 de 6) | 25% (3 de 12) | 27% (4 de 15) |
-| Ollama · Llama 3.1 8B (native) | 3 de 5 † | 7% (1 de 15) | 20% (1 de 5) | 0% (0 de 3) | 0% (0 de 7) | 7% (1 de 15) |
+| Modelo                                | Casos emparejados | Total          | Ambigüedad   | Inconsistencia | Faltante      | En los 3 difíciles comunes |
+| ------------------------------------- | ----------------- | -------------- | ------------ | -------------- | ------------- | -------------------------- |
+| Anthropic · Claude Haiku 5.5 (tool) * | 5 de 5            | 52% (13 de 25) | 71% (5 de 7) | 67% (4 de 6)   | 33% (4 de 12) | 60% (9 de 15)              |
+| Groq · GPT-OSS 20B (native)           | 5 de 5            | 32% (8 de 25)  | 14% (1 de 7) | 67% (4 de 6)   | 25% (3 de 12) | 27% (4 de 15)              |
+| Ollama · Llama 3.1 8B (native)        | 3 de 5 †          | 7% (1 de 15)   | 20% (1 de 5) | 0% (0 de 3)    | 0% (0 de 7)   | 7% (1 de 15)               |
 
 † No directamente comparable: Llama no completó `dificil-02` ni `dificil-05`, y el emparejador solo lee corridas completas. La última columna compara a los tres sobre `dificil-01`, `dificil-03` y `dificil-04`.
 
@@ -189,13 +189,14 @@ Ningún modelo detectó 9 de los 25 problemas, y 7 de ellos son faltantes. Por e
 
 ### Robustez, latencia y costo
 
-| Modelo | Completas | Válidas a la primera | Rondas medias | Latencia p50 | Latencia p95 | Tokens por corrida | Costo por corrida (USD) | Costo del lote (USD) | Errores |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Anthropic · Claude Haiku 5.5 (tool) * | 15 de 15 | 97% (145 de 149) | 2.0 | 148 s | 207 s | 127,841 | 0.0296 | 0.4442 | ninguno |
-| Groq · GPT-OSS 20B (native) | 14 de 15 | 96% (102 de 106) | 1.6 | 33 s | 61 s | 47,129 | 0.0089 | 0.1264 | `salida_invalida`: 1 |
-| Ollama · Llama 3.1 8B (native) | 11 de 15 | 90% (111 de 123) | 2.0 | 329 s | 476 s | 54,328 | 0.0015 | 0.0160 | `proveedor_no_disponible`: 4 |
+| Modelo                                | Completas | Válidas a la primera | Rondas medias | Latencia p50 | Latencia p95 | Tokens por corrida | Costo por corrida (USD) | Costo del lote (USD) | Errores                      |
+| ------------------------------------- | --------- | -------------------- | ------------- | ------------ | ------------ | ------------------ | ----------------------- | -------------------- | ---------------------------- |
+| Anthropic · Claude Haiku 5.5 (tool) * | 15 de 15  | 97% (145 de 149)     | 2.0           | 148 s        | 207 s        | 127,841            | 0.0296                  | 0.4442               | ninguno                      |
+| Groq · GPT-OSS 20B (native)           | 14 de 15  | 96% (102 de 106)     | 1.6           | 33 s         | 61 s         | 47,129             | 0.0089                  | 0.1264               | `salida_invalida`: 1         |
+| Ollama · Llama 3.1 8B (native)        | 11 de 15  | 90% (111 de 123)     | 2.0           | 329 s        | 476 s        | 54,328             | 0.0015                  | 0.0160               | `proveedor_no_disponible`: 4 |
 
 **Cómo leer la tabla**
+
 - **Válidas a la primera** cuenta cada llamada a un agente.
 - **Latencia, tokens y costo por corrida** son de las corridas completas.
 - **Costo:** incluye el juez; en el lote local es solo el juez. El de Groq es un mínimo, porque sus rechazos no devuelven uso.
@@ -204,13 +205,14 @@ Ningún modelo detectó 9 de los 25 problemas, y 7 de ellos son faltantes. Por e
 
 ### Puntajes del juez (secundarios)
 
-| Modelo | Global (todas) | Global (11 comunes) | Claridad | Verificabilidad | Completitud | Consistencia |
-| --- | --- | --- | --- | --- | --- | --- |
-| Anthropic · Claude Haiku 5.5 (tool) * | 2.73 | 2.70 | 3.00 | 2.87 | 2.47 | 2.60 |
-| Groq · GPT-OSS 20B (native) | 2.82 | 2.82 | 3.07 | 3.07 | 2.50 | 2.64 |
-| Ollama · Llama 3.1 8B (native) | 2.05 | 2.05 | 2.18 | 2.18 | 2.00 | 1.82 |
+| Modelo                                | Global (todas) | Global (11 comunes) | Claridad | Verificabilidad | Completitud | Consistencia |
+| ------------------------------------- | -------------- | ------------------- | -------- | --------------- | ----------- | ------------ |
+| Anthropic · Claude Haiku 5.5 (tool) * | 2.73           | 2.70                | 3.00     | 2.87            | 2.47        | 2.60         |
+| Groq · GPT-OSS 20B (native)           | 2.82           | 2.82                | 3.07     | 3.07            | 2.50        | 2.64         |
+| Ollama · Llama 3.1 8B (native)        | 2.05           | 2.05                | 2.18     | 2.18            | 2.00        | 1.82         |
 
 **Cómo leer la tabla**
+
 - **Escala:** los puntajes van de 1 a 5, con un juez que pide severidad, y su escala absoluta no coincide con la de una persona.
 - **Criterios:** son los promedios de todas las corridas completas.
 - **Casos comunes:** son los 11 que los tres modelos completaron: `dificil-01`, `dificil-03`, `dificil-04`, `facil-02` a `facil-05`, `medio-01`, `medio-02`, `medio-04` y `medio-05`.
@@ -221,32 +223,32 @@ Ningún modelo detectó 9 de los 25 problemas, y 7 de ellos son faltantes. Por e
 
 ![Puntaje medio del juez por criterio y modelo](evaluation/criterios-v1.svg)
 
-| Modelo | Fáciles | Medios | Difíciles |
-| --- | --- | --- | --- |
+| Modelo                                | Fáciles       | Medios        | Difíciles     |
+| ------------------------------------- | ------------- | ------------- | ------------- |
 | Anthropic · Claude Haiku 5.5 (tool) * | 5 de 5 · 3.00 | 5 de 5 · 2.70 | 5 de 5 · 2.50 |
-| Groq · GPT-OSS 20B (native) | 5 de 5 · 2.90 | 4 de 5 · 2.94 | 5 de 5 · 2.65 |
-| Ollama · Llama 3.1 8B (native) | 4 de 5 · 2.19 | 4 de 5 · 1.94 | 3 de 5 · 2.00 |
+| Groq · GPT-OSS 20B (native)           | 5 de 5 · 2.90 | 4 de 5 · 2.94 | 5 de 5 · 2.65 |
+| Ollama · Llama 3.1 8B (native)        | 4 de 5 · 2.19 | 4 de 5 · 1.94 | 3 de 5 · 2.00 |
 
 Cada celda da las corridas completas y su puntaje global según el juez.
 
 ### Acuerdo del juez con la calificación humana
 
-| Criterio | Pares | Kappa ponderada | Spearman | Exacto | ±1 | Juez menos humano |
-| --- | --- | --- | --- | --- | --- | --- |
-| Todos | 32 | -0.02 [-0.08, 0.05] | -0.12 [-0.46, 0.22] | 9% [0%, 22%] | 38% [22%, 53%] | -1.78 [-2.09, -1.47] |
-| Claridad | 8 | 0.03 [-0.02, 0.08] | 0.27 [-0.15, 0.77] | 12% [0%, 38%] | 38% [12%, 75%] | -1.50 [-1.88, -1.00] |
-| Verificabilidad | 8 | -0.17 [-0.31, 0.00] | -0.58 [-1.00, -0.14] | 25% [0%, 50%] | 75% [38%, 100%] | -1.12 [-1.75, -0.50] |
-| Completitud | 8 | 0.01 [0.00, 0.06] | 0.29 [0.14, 0.75] | 0% [0%, 0%] | 0% [0%, 0%] | -2.50 [-2.88, -2.12] |
-| Consistencia | 8 | 0.05 [-0.04, 0.25] | 0.18 [-0.58, 0.74] | 0% [0%, 0%] | 38% [0%, 75%] | -2.00 [-2.62, -1.38] |
+| Criterio        | Pares | Kappa ponderada     | Spearman             | Exacto        | ±1              | Juez menos humano    |
+| --------------- | ----- | ------------------- | -------------------- | ------------- | --------------- | -------------------- |
+| Todos           | 32    | -0.02 [-0.08, 0.05] | -0.12 [-0.46, 0.22]  | 9% [0%, 22%]  | 38% [22%, 53%]  | -1.78 [-2.09, -1.47] |
+| Claridad        | 8     | 0.03 [-0.02, 0.08]  | 0.27 [-0.15, 0.77]   | 12% [0%, 38%] | 38% [12%, 75%]  | -1.50 [-1.88, -1.00] |
+| Verificabilidad | 8     | -0.17 [-0.31, 0.00] | -0.58 [-1.00, -0.14] | 25% [0%, 50%] | 75% [38%, 100%] | -1.12 [-1.75, -0.50] |
+| Completitud     | 8     | 0.01 [0.00, 0.06]   | 0.29 [0.14, 0.75]    | 0% [0%, 0%]   | 0% [0%, 0%]     | -2.50 [-2.88, -2.12] |
+| Consistencia    | 8     | 0.05 [-0.04, 0.25]  | 0.18 [-0.58, 0.74]   | 0% [0%, 0%]   | 38% [0%, 75%]   | -2.00 [-2.62, -1.38] |
 
 La muestra tiene 8 corridas (3 de Haiku, 3 de GPT-OSS y 2 de Llama), con 4 criterios cada una. Las calificó a ciegas una persona, que es el autor del proyecto. Los intervalos son al 95 % por bootstrap.
 
 Distribución de los 32 puntajes:
 
-| Quién | 1 | 2 | 3 | 4 | 5 | Media |
-| --- | --- | --- | --- | --- | --- | --- |
-| Juez | 0 | 14 | 15 | 3 | 0 | 2.66 |
-| Persona | 0 | 0 | 2 | 14 | 16 | 4.44 |
+| Quién   | 1   | 2   | 3   | 4   | 5   | Media |
+| ------- | --- | --- | --- | --- | --- | ----- |
+| Juez    | 0   | 14  | 15  | 3   | 0   | 2.66  |
+| Persona | 0   | 0   | 2   | 14  | 16  | 4.44  |
 
 **Observación del evaluador.** Las 8 corridas le parecieron de buena calidad y le costó distinguirlas, así que sus puntajes probablemente se concentran en 4 y 5.
 
@@ -261,11 +263,11 @@ La distribución confirma la observación: 30 de los 32 puntajes humanos son 4 o
 
 **Por modelo en la muestra (descriptivo, no concluyente)**
 
-| Modelo | Corridas | Juez | Persona |
-| --- | --- | --- | --- |
-| Anthropic · Claude Haiku 5.5 (tool) * | 3 | 2.83 | 4.58 |
-| Groq · GPT-OSS 20B (native) | 3 | 2.75 | 4.25 |
-| Ollama · Llama 3.1 8B (native) | 2 | 2.25 | 4.50 |
+| Modelo                                | Corridas | Juez | Persona |
+| ------------------------------------- | -------- | ---- | ------- |
+| Anthropic · Claude Haiku 5.5 (tool) * | 3        | 2.83 | 4.58    |
+| Groq · GPT-OSS 20B (native)           | 3        | 2.75 | 4.25    |
+| Ollama · Llama 3.1 8B (native)        | 2        | 2.25 | 4.50    |
 
 - **El orden no coincide del todo.** Los dos ponen primero a Haiku. Pero el juez pone a Llama al final, y la persona lo pone segundo, por delante de GPT-OSS.
 - **Las diferencias de la persona son pequeñas** (de 0.08 a 0.33 puntos) y salen de 2 o 3 corridas por modelo. No permiten ordenar los modelos.
@@ -277,26 +279,26 @@ La persona confirmó las 10 decisiones revisadas (10 de 10). El bootstrap da [10
 
 ### Estabilidad
 
-| Quién | Pares | Kappa | Acuerdo exacto |
-| --- | --- | --- | --- |
-| Juez (puntaje por criterio, ponderada cuadrática) | 40 | 0.74 [0.59, 0.85] | 72% [57%, 85%] |
-| Emparejador (detectado o no) | 25 | 0.91 [0.69, 1.00] | 96% [88%, 100%] |
+| Quién                                             | Pares | Kappa             | Acuerdo exacto  |
+| ------------------------------------------------- | ----- | ----------------- | --------------- |
+| Juez (puntaje por criterio, ponderada cuadrática) | 40    | 0.74 [0.59, 0.85] | 72% [57%, 85%]  |
+| Emparejador (detectado o no)                      | 25    | 0.91 [0.69, 1.00] | 96% [88%, 100%] |
 
 Al volver a calificar las mismas 10 corridas, el juez cambia 11 de 40 puntajes individuales, siempre por un punto. El emparejador cambió 1 de 25 decisiones.
 
 ### Costo real
 
-| Concepto | USD |
-| --- | --- |
-| Lote de Haiku (generación y juez) | 0.4442 |
-| Lote de GPT-OSS 20B (generación y juez) | 0.1264 |
-| Lote de Llama 3.1 8B (solo juez) | 0.0160 |
-| Emparejador (los tres lotes) | 0.0146 |
-| Estabilidad del juez y del emparejador | 0.0196 |
-| **Resultados v1** | **0.6208** |
-| Lotes descartados por los [hallazgos de integración](#hallazgos-de-integración-antes-de-los-lotes-v1) | 0.5782 |
-| Diagnósticos (reproducir los rechazos de Groq), estimado | ~0.04 |
-| **Total de la fase** | **~1.24** |
+| Concepto                                                                                              | USD        |
+| ----------------------------------------------------------------------------------------------------- | ---------- |
+| Lote de Haiku (generación y juez)                                                                     | 0.4442     |
+| Lote de GPT-OSS 20B (generación y juez)                                                               | 0.1264     |
+| Lote de Llama 3.1 8B (solo juez)                                                                      | 0.0160     |
+| Emparejador (los tres lotes)                                                                          | 0.0146     |
+| Estabilidad del juez y del emparejador                                                                | 0.0196     |
+| **Resultados v1**                                                                                     | **0.6208** |
+| Lotes descartados por los [hallazgos de integración](#hallazgos-de-integración-antes-de-los-lotes-v1) | 0.5782     |
+| Diagnósticos (reproducir los rechazos de Groq), estimado                                              | ~0.04      |
+| **Total de la fase**                                                                                  | **~1.24**  |
 
 Los lotes descartados se guardaron fuera del repositorio. El de salida por herramienta de Groq y el de OpenAI registran 0 porque terminaron antes de que se contara el costo de las llamadas fallidas.
 

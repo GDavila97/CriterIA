@@ -2,6 +2,8 @@
 
 CriterIA es un monorepo con dos partes independientes que comparten un contrato de eventos: la web en Next.js (`apps/web`) y la API en Python (`services/api`). Cada parte usa su propio gestor de paquetes (pnpm y uv) y tiene su propio job en el CI ([ADR 0001](adr/0001-monorepo.md)).
 
+**Terminología.** La interfaz llama _análisis_ a cada ejecución del flujo de agentes. La API, el código y la documentación técnica la llaman _corrida_ (`run`): rutas como `/runs`, eventos como `corrida_inicia`, la entidad `entities/corrida` y los códigos de error. La web traduce a «análisis» los mensajes de la API que todavía dicen «corrida» según su código (`shared/api/messages.ts`).
+
 ## Vista general
 
 ```mermaid
@@ -19,7 +21,7 @@ flowchart LR
     agents["Agentes Pydantic AI"]
   end
 
-  providers["Proveedor de modelos<br/>OpenAI | Anthropic | Groq | Ollama | compatible"]
+  providers["Proveedor de modelos<br/>Groq (modo gratuito) | OpenAI | Anthropic<br/>| compatible (clave del usuario) | Ollama (local)"]
   db[("Neon Postgres<br/>esquemas auth, app, graph")]
 
   subgraph local["Máquina local"]
@@ -27,6 +29,7 @@ flowchart LR
   end
 
   board["Tablero público"]
+  sentry["Sentry<br/>errores sin datos personales"]
 
   browser --> web
   browser -- "SSE directo" --> api
@@ -36,6 +39,8 @@ flowchart LR
   web --> db
   cli -- "publica resultados" --> db
   db --> board
+  web -.-> sentry
+  api -.-> sentry
 ```
 
 El navegador habla con la web para la interfaz y la sesión, y abre el stream SSE directamente contra Cloud Run con un JWT de cinco minutos guardado solo en memoria ([ADR 0008](adr/0008-better-auth-and-api-jwt.md), [ADR 0011](adr/0011-sse-typed-events.md)).
@@ -44,22 +49,24 @@ El navegador habla con la web para la interfaz y la sesión, y abre el stream SS
 
 Relacional: Neon Postgres en capa gratuita, con esquemas separados y roles de mínimo privilegio ([ADR 0007](adr/0007-neon-postgres-schemas.md)).
 
-| Esquema | Dueño | Migraciones | Contenido |
-| --- | --- | --- | --- |
-| `auth` | web (`web_role`) | CLI de Better Auth (`pnpm auth:migrate`) | Usuarios, sesiones, cuentas, verificaciones, JWKS (llave privada cifrada) y rate limit |
-| `app` | `migrator_role` (la API lee y escribe con `api_role`) | Alembic | Ajustes, claves cifradas, uso y cupos, corridas en curso y sus eventos, historial, evaluación |
-| `graph` | `migrator_role` (la API lee y escribe con `api_role`) | Migraciones de LangGraph, aplicadas por Alembic | Checkpoints de las corridas en curso |
+| Esquema | Dueño                                                 | Migraciones                                     | Contenido                                                                                     |
+| ------- | ----------------------------------------------------- | ----------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `auth`  | web (`web_role`)                                      | CLI de Better Auth (`pnpm auth:migrate`)        | Usuarios, sesiones, cuentas, verificaciones, JWKS (llave privada cifrada) y rate limit        |
+| `app`   | `migrator_role` (la API lee y escribe con `api_role`) | Alembic                                         | Ajustes, claves cifradas, uso y cupos, corridas en curso y sus eventos, historial, evaluación |
+| `graph` | `migrator_role` (la API lee y escribe con `api_role`) | Migraciones de LangGraph, aplicadas por Alembic | Checkpoints de las corridas en curso                                                          |
 
 Roles ([services/api/db/roles.sql](../services/api/db/roles.sql), idempotente):
 
-| Rol | Puede | No puede |
-| --- | --- | --- |
-| `migrator_role` | DDL en `app` y `graph` | leer `auth` |
-| `api_role` | leer y escribir filas de `app` y `graph`; solo leer las tablas de evaluación | crear o alterar tablas, tocar la versión de Alembic o de los checkpoints, ver `auth` |
-| `eval_writer` | insertar resultados de evaluación desde la CLI local | leer corridas, claves o ajustes, borrar o actualizar |
-| `web_role` | dueño de `auth` (Better Auth, desde F4) | tocar `app` o `graph` |
+| Rol             | Puede                                                                        | No puede                                                                             |
+| --------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| `migrator_role` | DDL en `app` y `graph`                                                       | leer `auth`                                                                          |
+| `api_role`      | leer y escribir filas de `app` y `graph`; solo leer las tablas de evaluación | crear o alterar tablas, tocar la versión de Alembic o de los checkpoints, ver `auth` |
+| `eval_writer`   | insertar resultados de evaluación desde la CLI local                         | leer corridas, claves o ajustes, borrar o actualizar                                 |
+| `web_role`      | dueño de `auth` (Better Auth, desde F4)                                      | tocar `app` o `graph`                                                                |
 
-La API nunca ejecuta DDL: al arrancar comprueba que los checkpoints estén en la última migración y, si no, se niega a arrancar. `user_id` es texto sin llave foránea hasta que exista `auth.user` en F4.
+La API nunca ejecuta DDL: al arrancar comprueba que los checkpoints estén en la última migración y, si no, se niega a arrancar. Cada `user_id` de `app` tiene una llave foránea hacia `auth."user"` con borrado en cascada (migración 0004).
+
+Neon suspende el cómputo tras unos minutos sin uso y cierra todas las sesiones. Los dos pools de la API comprueban cada conexión antes de usarla y la reemplazan antes de la suspensión, y un error no manejado responde `error_interno` dentro de CORS ([ADR 0023](adr/0023-connections-closed-by-neon.md)).
 
 Se eligió un modelo relacional porque las métricas de evaluación se comparan con SQL (agregados por modelo, versión y criterio). Los artefactos y puntajes viven en `jsonb` validado por esquema en la API.
 
@@ -104,33 +111,33 @@ services/api/
   examples/        requerimientos de ejemplo para la CLI
 ```
 
-| Capa | Puede depender de | No puede depender de |
-| --- | --- | --- |
-| `domain` | biblioteca estándar y Pydantic | todo lo demás |
-| `application` | `domain`, `ports`, LangGraph | `adapters`, frameworks de transporte |
-| `ports` | `domain`; `Checkpointer` expone el saver de LangGraph ([ADR 0005](adr/0005-langgraph-orchestration.md)) | `adapters` |
-| `adapters` | `domain`, `application`, `ports`, bibliotecas externas | — |
+| Capa          | Puede depender de                                                                                       | No puede depender de                 |
+| ------------- | ------------------------------------------------------------------------------------------------------- | ------------------------------------ |
+| `domain`      | biblioteca estándar y Pydantic                                                                          | todo lo demás                        |
+| `application` | `domain`, `ports`, LangGraph                                                                            | `adapters`, frameworks de transporte |
+| `ports`       | `domain`; `Checkpointer` expone el saver de LangGraph ([ADR 0005](adr/0005-langgraph-orchestration.md)) | `adapters`                           |
+| `adapters`    | `domain`, `application`, `ports`, bibliotecas externas                                                  | —                                    |
 
 Puertos:
 
-| Puerto | Responsabilidad | Adaptadores |
-| --- | --- | --- |
-| `AgentRunner[Entrada, Salida]` | Ejecuta un agente y devuelve la salida validada con su uso (tokens, latencia, costo, reintentos); si falla, lanza `AgentRunError` con un código y un mensaje seguros | `PydanticAgentRunner` |
-| `EventSink` | Recibe los eventos de una corrida en orden y les asigna `seq` creciente y `ts` | `ListEventSink` (pruebas), `PrintingEventSink` (CLI), `StoreEventSink` (guarda en `app.run_event` y entrega al stream) |
-| `Checkpointer` | Guarda el estado del grafo entre la pausa humana y la reanudación, y lo borra al terminar | `MemoryCheckpointer`, `PostgresCheckpointer` |
-| `Clock` | Hora con zona y reloj monotónico, para que las pruebas controlen `ts` y latencia | `SystemClock`; `FakeClock` en pruebas |
-| `KeyValidator` | Comprueba una clave con la llamada más barata del proveedor (listar modelos) y devuelve `valida`, `invalida` o `no_verificable` con los últimos 4 caracteres, sin guardar ni registrar la clave | `HttpKeyValidator` |
-| `ModelRouter` | Acceso del servidor por proveedor, niveles, validación de la selección y costo estimado por parte | `ProviderRegistry` |
-| `TokenVerifier` | Convierte un JWT en `Principal` (`user_id`, correo verificado) o lanza `AuthError` | `JwtVerifier` con `JwksCache` |
-| `Cipher` | Cifra y descifra una clave con datos asociados | `AesGcmCipher` |
-| `CredentialStore`, `SettingsStore`, `HistoryStore`, `EvaluationReader` | Persistencia por usuario | adaptadores de `postgres/`; en memoria en las pruebas unitarias |
-| `RunStore` | Corrida en curso, sus eventos, estado, aprobación, abandonadas y lock del stream | `PostgresRunStore` (advisory lock de sesión) |
-| `UsageGuard` | Reserva atómica de los límites por usuario y del cupo global, y ajuste al costo real una sola vez por corrida | `PostgresUsageGuard` |
-| `ErrorReporter` | Reporta un error no previsto de una corrida sin datos del usuario | `SentryErrorReporter` (tipo, traza y `run_id`; sin mensaje, variables ni breadcrumbs) |
+| Puerto                                                                 | Responsabilidad                                                                                                                                                                                 | Adaptadores                                                                                                            |
+| ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `AgentRunner[Entrada, Salida]`                                         | Ejecuta un agente y devuelve la salida validada con su uso (tokens, latencia, costo, reintentos); si falla, lanza `AgentRunError` con un código y un mensaje seguros                            | `PydanticAgentRunner`                                                                                                  |
+| `EventSink`                                                            | Recibe los eventos de una corrida en orden y les asigna `seq` creciente y `ts`                                                                                                                  | `ListEventSink` (pruebas), `PrintingEventSink` (CLI), `StoreEventSink` (guarda en `app.run_event` y entrega al stream) |
+| `Checkpointer`                                                         | Guarda el estado del grafo entre la pausa humana y la reanudación, y lo borra al terminar                                                                                                       | `MemoryCheckpointer`, `PostgresCheckpointer`                                                                           |
+| `Clock`                                                                | Hora con zona y reloj monotónico, para que las pruebas controlen `ts` y latencia                                                                                                                | `SystemClock`; `FakeClock` en pruebas                                                                                  |
+| `KeyValidator`                                                         | Comprueba una clave con la llamada más barata del proveedor (listar modelos) y devuelve `valida`, `invalida` o `no_verificable` con los últimos 4 caracteres, sin guardar ni registrar la clave | `HttpKeyValidator`                                                                                                     |
+| `ModelRouter`                                                          | Acceso del servidor por proveedor, niveles, validación de la selección y costo estimado por parte                                                                                               | `ProviderRegistry`                                                                                                     |
+| `TokenVerifier`                                                        | Convierte un JWT en `Principal` (`user_id`, correo verificado) o lanza `AuthError`                                                                                                              | `JwtVerifier` con `JwksCache`                                                                                          |
+| `Cipher`                                                               | Cifra y descifra una clave con datos asociados                                                                                                                                                  | `AesGcmCipher`                                                                                                         |
+| `CredentialStore`, `SettingsStore`, `HistoryStore`, `EvaluationReader` | Persistencia por usuario                                                                                                                                                                        | adaptadores de `postgres/`; en memoria en las pruebas unitarias                                                        |
+| `RunStore`                                                             | Corrida en curso, sus eventos, estado, aprobación, abandonadas y lock del stream                                                                                                                | `PostgresRunStore` (advisory lock de sesión)                                                                           |
+| `UsageGuard`                                                           | Reserva atómica de los límites por usuario y del cupo global, y ajuste al costo real una sola vez por corrida                                                                                   | `PostgresUsageGuard`                                                                                                   |
+| `ErrorReporter`                                                        | Reporta un error no previsto de una corrida sin datos del usuario                                                                                                                               | `SentryErrorReporter` (tipo, traza y `run_id`; sin mensaje, variables ni breadcrumbs)                                  |
 
 Detalle de agentes, grafo, reintentos y rondas en [agents.md](agents.md), de los eventos en [events.md](events.md) y de los endpoints, la autenticación, los límites y los errores en [api.md](api.md).
 
-Estado en F3: la API expone las corridas por HTTP con el ciclo ligado al stream ([ADR 0018](adr/0018-run-lifecycle-bound-to-the-stream.md)), claves cifradas, ajustes, catálogo, historial y el tablero público de evaluación. Las rutas viven en `adapters/http` y `create_app` arma los servicios dentro del lifespan, porque los pools de Postgres y el checkpointer se atan al event loop que sirve. En producción no se publican `/docs` ni `/openapi.json`.
+La API expone las corridas por HTTP con el ciclo ligado al stream ([ADR 0018](adr/0018-run-lifecycle-bound-to-the-stream.md)), claves cifradas, ajustes, catálogo, historial y el tablero público de evaluación. Las rutas viven en `adapters/http`; la de salud es `/health`, porque Cloud Run reserva las rutas que terminan en `z`. `create_app` arma los servicios dentro del lifespan, porque los pools de Postgres y el checkpointer se atan al event loop que sirve. En producción no se publican `/docs` ni `/openapi.json`.
 
 ## Web: Feature-Sliced Design
 
@@ -157,6 +164,8 @@ apps/web/
                  testing), ui (Ficha, botones, campos, pestañas, cajón, avisos)
 ```
 
+Rutas públicas: `/` (inicio y acceso), `/evaluacion`, `/privacidad`, `/recuperar` y `/restablecer`. Rutas con sesión: `/analisis`, `/historial`, `/historial/[id]` y `/ajustes/*`. `/corrida` y `/corrida/<ruta>` redirigen con un 308 a `/analisis`, conservando la consulta, para no romper enlaces anteriores (`next.config.ts`).
+
 Reglas, verificadas con `eslint-plugin-boundaries`:
 
 - Cada capa importa solo capas inferiores (`app` > `pages` > `widgets` > `features` > `entities` > `shared`).
@@ -168,12 +177,14 @@ Reglas, verificadas con `eslint-plugin-boundaries`:
 Las dos vistas de la corrida (clásica y, en F9, oficina) son widgets sobre la misma entidad `corrida`: `runReducer` es una función pura que reduce los eventos SSE a estado (descarta los `seq` repetidos tras una reconexión) y ninguna vista interpreta eventos por su cuenta. El control de vista y `?vista=` ya existen, pero quedan ocultos con `NEXT_PUBLIC_OFFICE_VIEW=false`.
 
 El análisis en pantalla vive en `runSession` (`entities/corrida/model/session.ts`), un almacén del módulo leído con `useSyncExternalStore`:
+
 - **Alcance:** sobrevive a la navegación dentro de la app y se pierde al recargar o cerrar la pestaña. Nunca toca cookies, `localStorage` ni `sessionStorage`.
 - **Reconexión:** al volver a "Nuevo análisis", si seguía en curso o en espera de aprobación, el controlador se reconecta con `Last-Event-ID` ([ADR 0018](adr/0018-run-lifecycle-bound-to-the-stream.md)).
 - **Avisos:** `features/exportar` pregunta antes de iniciar otro análisis o cerrar sesión, y registra `beforeunload`, solo cuando el análisis se perdería de verdad: sigue vivo o terminó sin historial.
 - **Al cerrar sesión:** el almacén se vacía.
 
 Los paneles y diálogos usan `useModal` (`shared/ui/dialog`) sobre `<dialog>` nativo:
+
 - se cierran con Esc, con la X o con un clic en la capa de fondo;
 - bloquean el desplazamiento de la página;
 - devuelven el foco al control que los abrió.
@@ -214,7 +225,7 @@ Eventos SSE: todos llevan `run_id`, `seq` (entero creciente), `ts` y `agent`. El
 
 ## Despliegue
 
-Manual y con el mismo SHA: migraciones en un workflow de GitHub con aprobación, la API con `services/api/scripts/deploy.sh` (imagen `amd64` construida en local, Cloud Run con 512 MiB, concurrencia 10 y de 0 a 2 instancias) y la web desde el panel de Vercel con Create Deployment y el SHA (región `cle1`; `apps/web/scripts/deploy.sh` es la alternativa con la CLI). `scripts/smoke-prod.sh` comprueba el resultado. Pasos y valores en [deploy.md](deploy.md); decisiones en el [ADR 0022](adr/0022-production-deployment.md).
+Manual y con el mismo SHA: migraciones en un workflow de GitHub con aprobación, la API con `services/api/scripts/deploy.sh` (imagen `amd64` construida en local, Cloud Run con 512 MiB, concurrencia 10 y de 0 a 2 instancias) y la web desde el panel de Vercel con Create Deployment y el SHA (región `cle1`; `apps/web/scripts/deploy.sh` es la alternativa con la CLI). `scripts/smoke-prod.sh` comprueba el resultado. Vercel instala y compila con `npx --yes pnpm@<versión>`, la de `packageManager`, porque solo lee esa propiedad en la raíz del repositorio ([ADR 0024](adr/0024-pnpm-on-vercel-with-npx.md)). Las URLs de Neon usan hoy `sslmode=require`; el paso a `verify-full` está documentado y pendiente. Pasos y valores en [deploy.md](deploy.md); decisiones en el [ADR 0022](adr/0022-production-deployment.md).
 
 ## Principios
 
@@ -226,30 +237,30 @@ Manual y con el mismo SHA: migraciones en un workflow de GitHub con aprobación,
 
 ## Patrones
 
-| Patrón | Dónde | Por qué |
-| --- | --- | --- |
-| Puertos y adaptadores | API | Proveedores, persistencia y transporte intercambiables y probables sin red |
-| Composition root | `services/api/src/criteria/bootstrap.py` | Un solo lugar arma las dependencias para la CLI y la API |
-| Fábrica de aplicación | `create_app(settings)` | Pruebas con configuración aislada |
-| Capas y slices (FSD) | Web | Las vistas crecen sin mezclar lógica de corrida y presentación |
-| Funciones puras para políticas | `buildContentSecurityPolicy`, `scrub_sensitive_data`, `marcar_origen`, `cambios_historias` | Reglas de seguridad y de dominio probadas unitariamente |
-| Plantilla (template method) | `EventSink.emit` y `deliver` | La numeración de `seq` vive en un solo lugar; cada adaptador solo entrega |
-| Reserva y liquidación | `UsageGuard.reserve` y `settle` | El cupo se toma de forma atómica al crear y se ajusta al costo real al terminar |
-| Lock consultivo | `RunStore.stream_lock` y la reserva por usuario | Un stream por corrida y reservas serializadas sin tablas de bloqueo; Postgres lo libera si la conexión cae |
-| Repositorio | stores de `adapters/postgres` | Los casos de uso no conocen SQL y se prueban con stores en memoria |
-| Uniones discriminadas | `Evento` por `type`, `Artefactos` por `tipo` | Un solo esquema de eventos para la CLI, SSE y los tipos TypeScript |
-| Modelos simulados | `FunctionModel` de Pydantic AI en las pruebas | El grafo completo se prueba sin red ni modelos reales |
+| Patrón                         | Dónde                                                                                      | Por qué                                                                                                    |
+| ------------------------------ | ------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------- |
+| Puertos y adaptadores          | API                                                                                        | Proveedores, persistencia y transporte intercambiables y probables sin red                                 |
+| Composition root               | `services/api/src/criteria/bootstrap.py`                                                   | Un solo lugar arma las dependencias para la CLI y la API                                                   |
+| Fábrica de aplicación          | `create_app(settings)`                                                                     | Pruebas con configuración aislada                                                                          |
+| Capas y slices (FSD)           | Web                                                                                        | Las vistas crecen sin mezclar lógica de corrida y presentación                                             |
+| Funciones puras para políticas | `buildContentSecurityPolicy`, `scrub_sensitive_data`, `marcar_origen`, `cambios_historias` | Reglas de seguridad y de dominio probadas unitariamente                                                    |
+| Plantilla (template method)    | `EventSink.emit` y `deliver`                                                               | La numeración de `seq` vive en un solo lugar; cada adaptador solo entrega                                  |
+| Reserva y liquidación          | `UsageGuard.reserve` y `settle`                                                            | El cupo se toma de forma atómica al crear y se ajusta al costo real al terminar                            |
+| Lock consultivo                | `RunStore.stream_lock` y la reserva por usuario                                            | Un stream por corrida y reservas serializadas sin tablas de bloqueo; Postgres lo libera si la conexión cae |
+| Repositorio                    | stores de `adapters/postgres`                                                              | Los casos de uso no conocen SQL y se prueban con stores en memoria                                         |
+| Uniones discriminadas          | `Evento` por `type`, `Artefactos` por `tipo`                                               | Un solo esquema de eventos para la CLI, SSE y los tipos TypeScript                                         |
+| Modelos simulados              | `FunctionModel` de Pydantic AI en las pruebas                                              | El grafo completo se prueba sin red ni modelos reales                                                      |
 
 ## Stack
 
-| Parte | Tecnología |
-| --- | --- |
-| Web | Next.js 16 (App Router, Turbopack), React 19, TypeScript 6 estricto, zod 4, CSS Modules, Better Auth 1.7 con `pg`, nodemailer (SMTP), `@sentry/nextjs` |
-| Calidad web | ESLint 9 (`eslint-config-next`, `eslint-plugin-boundaries`), Prettier, Vitest con Testing Library, Playwright con `@axe-core/playwright` contra la API real con modelos simulados, Postgres y Mailpit |
-| Runtime web | Node.js 26 LTS, pnpm 12 |
-| API | Python 3.13, FastAPI, pydantic-settings, uvicorn, `sentry-sdk`, Pydantic AI 2, LangGraph 1, httpx2, SQLAlchemy 2 (Core, async) con psycopg 3, Alembic, `langgraph-checkpoint-postgres`, PyJWT, `cryptography` |
-| Calidad API | Ruff (lint y formato), mypy estricto, pytest con pytest-asyncio y cobertura, pruebas de integración contra Postgres 16, pip-audit |
-| Entorno API | uv con `.venv` local y `uv.lock` versionado ([ADR 0010](adr/0010-python-environment-uv.md)) |
-| Datos | Neon Postgres en producción y Postgres 16 en Docker en local y en el CI; Mailpit en local y en el CI |
-| Nube | GCP Cloud Run para la API y Vercel para la web, con despliegue manual ([ADR 0009](adr/0009-cloud-run-and-vercel.md)) |
-| CI | GitHub Actions en cada push a `main`; Dependabot semanal agrupado |
+| Parte       | Tecnología                                                                                                                                                                                                    |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Web         | Next.js 16 (App Router, Turbopack), React 19, TypeScript 6 estricto, zod 4, CSS Modules, Better Auth 1.7 con `pg`, nodemailer (SMTP), `@sentry/nextjs`                                                        |
+| Calidad web | ESLint 9 (`eslint-config-next`, `eslint-plugin-boundaries`), Prettier, Vitest con Testing Library, Playwright con `@axe-core/playwright` contra la API real con modelos simulados, Postgres y Mailpit         |
+| Runtime web | Node.js 26 LTS, pnpm 12                                                                                                                                                                                       |
+| API         | Python 3.13, FastAPI, pydantic-settings, uvicorn, `sentry-sdk`, Pydantic AI 2, LangGraph 1, httpx2, SQLAlchemy 2 (Core, async) con psycopg 3, Alembic, `langgraph-checkpoint-postgres`, PyJWT, `cryptography` |
+| Calidad API | Ruff (lint y formato), mypy estricto, pytest con pytest-asyncio y cobertura, pruebas de integración contra Postgres 16, pip-audit                                                                             |
+| Entorno API | uv con `.venv` local y `uv.lock` versionado ([ADR 0010](adr/0010-python-environment-uv.md))                                                                                                                   |
+| Datos       | Neon Postgres en producción y Postgres 16 en Docker en local y en el CI; Mailpit en local y en el CI                                                                                                          |
+| Nube        | GCP Cloud Run para la API, Vercel para la web y Sentry para los errores, con despliegue manual ([ADR 0009](adr/0009-cloud-run-and-vercel.md))                                                                 |
+| CI          | GitHub Actions en cada push a `main` (incluida la verificación de formato de `docs/` y del README); Dependabot semanal agrupado                                                                               |

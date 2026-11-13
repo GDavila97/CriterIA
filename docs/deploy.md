@@ -10,29 +10,29 @@ Los secretos van de 1Password directo a cada servicio con `op read`, nunca a arc
 
 ## Decisiones
 
-| Tema | Decisión | Por qué |
-| --- | --- | --- |
-| Imagen de la API | Se construye en la Mac para `linux/amd64` con `docker buildx` y se sube a Artifact Registry | Costo cero en GCP y la imagen sale exactamente del SHA verificado. La compilación emulada tardó 79 s. Cloud Build daría 2,500 minutos gratis al mes en `e2-standard-2`, pero exige su API, permisos para su cuenta de servicio y un bucket para el código; ese bucket es multirregional y la capa gratuita de Cloud Storage solo cubre `us-east1`, `us-west1` y `us-central1` |
-| CPU y facturación | 1 vCPU, CPU solo durante las peticiones (`--cpu-throttling`), primera generación | Con menos de 1 vCPU, Cloud Run exige concurrencia 1. La primera generación arranca más rápido y admite desde 128 MiB |
-| Memoria | 512 MiB | Medido con la imagen `amd64` y modelos simulados: 209 MiB en reposo y 235 MiB de pico con 20 corridas simultáneas |
-| Concurrencia | 10 peticiones por instancia, máximo 2 instancias | Cada stream retiene una conexión de la base para su lock ([ADR 0018](adr/0018-run-lifecycle-bound-to-the-stream.md)). Con 20 streams en una instancia se agotó el pool de SQLAlchemy (10 más 10 de desborde) y fallaron 14 de 20; con 10, terminaron 10 de 10 |
-| Tiempo límite de petición | 900 s (15 min) | El grafo solo avanza con el stream abierto. En la evaluación v1, una corrida completa tardó como p95 61 s con GPT-OSS 20B y 207 s con Haiku. 15 min dejan margen para las claves de usuario y para los dos intentos por llamada. Google recomienda tolerar reconexiones por encima de 15 min, y la web ya reconecta con `Last-Event-ID` |
-| Base de la web | URL con pooler de Neon | Neon recomienda el pooler para funciones serverless. Better Auth no usa locks de sesión, y `search_path=auth` vive en `web_role`, no en la conexión. Las migraciones de Better Auth usan la URL directa |
-| Base de la API | URL directa | El lock del stream es un advisory lock de sesión, que el pooler por transacción no conserva |
-| IP del cliente | Solo `x-forwarded-for`, primera dirección | Vercel documenta que sobrescribe esa cabecera con la IP del cliente para evitar suplantación; de `x-real-ip` no lo promete |
-| Despliegue de la web | Create Deployment en el panel de Vercel con el SHA; `apps/web/scripts/deploy.sh` queda como alternativa con la CLI | Vercel clona de GitHub exactamente ese commit, sin subir nada de la Mac |
-| Región de la web | `cle1` (Cleveland) | Junto a Neon en `aws-us-east-2` (Ohio); Neon no tiene regiones en GCP |
+| Tema                      | Decisión                                                                                                           | Por qué                                                                                                                                                                                                                                                                                                                                                                       |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Imagen de la API          | Se construye en la Mac para `linux/amd64` con `docker buildx` y se sube a Artifact Registry                        | Costo cero en GCP y la imagen sale exactamente del SHA verificado. La compilación emulada tardó 79 s. Cloud Build daría 2,500 minutos gratis al mes en `e2-standard-2`, pero exige su API, permisos para su cuenta de servicio y un bucket para el código; ese bucket es multirregional y la capa gratuita de Cloud Storage solo cubre `us-east1`, `us-west1` y `us-central1` |
+| CPU y facturación         | 1 vCPU, CPU solo durante las peticiones (`--cpu-throttling`), primera generación                                   | Con menos de 1 vCPU, Cloud Run exige concurrencia 1. La primera generación arranca más rápido y admite desde 128 MiB                                                                                                                                                                                                                                                          |
+| Memoria                   | 512 MiB                                                                                                            | Medido con la imagen `amd64` y modelos simulados: 209 MiB en reposo y 235 MiB de pico con 20 corridas simultáneas                                                                                                                                                                                                                                                             |
+| Concurrencia              | 10 peticiones por instancia, máximo 2 instancias                                                                   | Cada stream retiene una conexión de la base para su lock ([ADR 0018](adr/0018-run-lifecycle-bound-to-the-stream.md)). Con 20 streams en una instancia se agotó el pool de SQLAlchemy (10 más 10 de desborde) y fallaron 14 de 20; con 10, terminaron 10 de 10                                                                                                                 |
+| Tiempo límite de petición | 900 s (15 min)                                                                                                     | El grafo solo avanza con el stream abierto. En la evaluación v1, una corrida completa tardó como p95 61 s con GPT-OSS 20B y 207 s con Haiku. 15 min dejan margen para las claves de usuario y para los dos intentos por llamada. Google recomienda tolerar reconexiones por encima de 15 min, y la web ya reconecta con `Last-Event-ID`                                       |
+| Base de la web            | URL con pooler de Neon                                                                                             | Neon recomienda el pooler para funciones serverless. Better Auth no usa locks de sesión, y `search_path=auth` vive en `web_role`, no en la conexión. Las migraciones de Better Auth usan la URL directa                                                                                                                                                                       |
+| Base de la API            | URL directa                                                                                                        | El lock del stream es un advisory lock de sesión, que el pooler por transacción no conserva                                                                                                                                                                                                                                                                                   |
+| IP del cliente            | Solo `x-forwarded-for`, primera dirección                                                                          | Vercel documenta que sobrescribe esa cabecera con la IP del cliente para evitar suplantación; de `x-real-ip` no lo promete                                                                                                                                                                                                                                                    |
+| Despliegue de la web      | Create Deployment en el panel de Vercel con el SHA; `apps/web/scripts/deploy.sh` queda como alternativa con la CLI | Vercel clona de GitHub exactamente ese commit, sin subir nada de la Mac                                                                                                                                                                                                                                                                                                       |
+| Región de la web          | `cle1` (Cleveland)                                                                                                 | Junto a Neon en `aws-us-east-2` (Ohio); Neon no tiene regiones en GCP                                                                                                                                                                                                                                                                                                         |
 
 ### Capa gratuita y costos
 
 Cifras de la tabla de la capa gratuita de Google Cloud ([free-cloud-features](https://cloud.google.com/free/docs/free-cloud-features)), por cuenta de facturación y por mes:
 
-| Servicio | Gratis al mes | Uso previsto |
-| --- | --- | --- |
+| Servicio                             | Gratis al mes                                                                                            | Uso previsto                                                                                                                                                                                   |
+| ------------------------------------ | -------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Cloud Run (facturación por petición) | 2 millones de peticiones, 360,000 GB-segundos, 180,000 vCPU-segundos y 1 GB de salida desde Norteamérica | Una corrida gratuita mantiene el stream abierto alrededor de 1 min: 11 corridas diarias son unos 20,000 vCPU-segundos al mes. Con `--min-instances=0` no hay instancias encendidas sin tráfico |
-| Artifact Registry | 0.5 GB de almacenamiento | Unos 110 MB por imagen. La política de limpieza conserva las 3 más recientes |
-| Secret Manager | 6 versiones activas de secretos y 10,000 accesos | 4 secretos. Al rotar uno, se destruye la versión anterior |
-| Cloud Build | 2,500 minutos de compilación en `e2-standard-2` | No se usa |
+| Artifact Registry                    | 0.5 GB de almacenamiento                                                                                 | Unos 110 MB por imagen. La política de limpieza conserva las 3 más recientes                                                                                                                   |
+| Secret Manager                       | 6 versiones activas de secretos y 10,000 accesos                                                         | 4 secretos. Al rotar uno, se destruye la versión anterior                                                                                                                                      |
+| Cloud Build                          | 2,500 minutos de compilación en `e2-standard-2`                                                          | No se usa                                                                                                                                                                                      |
 
 Las alertas de presupuesto solo avisan: «doesn't automatically cap Google Cloud […] usage or spending» ([budgets](https://cloud.google.com/billing/docs/how-to/budgets)). Lo que limita el gasto es `--max-instances=2`, la CPU solo durante las peticiones y el tope diario de Groq.
 
@@ -49,18 +49,18 @@ Rutas reservadas: Cloud Run no deja pasar a la aplicación las rutas que empieza
 
 Los secretos viven en la bóveda `CriterIA` de 1Password y los comandos los leen con `op read -n "op://CriterIA/<elemento>/<campo>"` (`-n` evita el salto de línea final):
 
-| Elemento | Campos | Uso |
-| --- | --- | --- |
-| `neon-migrator-role` | `password`, `url` | `migrator_role` |
-| `neon-api-role` | `password`, `url` | `api_role` |
-| `neon-eval-writer` | `password`, `url` | `eval_writer` |
-| `neon-web-role` | `password`, `url`, `url-pooler` | `web_role` |
-| `credentials-keys` | `password` | `CREDENTIALS_KEYS` de la API |
-| `groq-api-key` | `password` | `GROQ_API_KEY` del modo gratuito |
-| `sentry-api` | `dsn` | `SENTRY_DSN` de la API |
-| `sentry-web` | `dsn` | `NEXT_PUBLIC_SENTRY_DSN` de la web |
-| `github-oauth-prod` | `client-id`, `client-secret` | OAuth App de producción |
-| `better-auth-secret` | `password` | `BETTER_AUTH_SECRET` de la web |
+| Elemento             | Campos                          | Uso                                |
+| -------------------- | ------------------------------- | ---------------------------------- |
+| `neon-migrator-role` | `password`, `url`               | `migrator_role`                    |
+| `neon-api-role`      | `password`, `url`               | `api_role`                         |
+| `neon-eval-writer`   | `password`, `url`               | `eval_writer`                      |
+| `neon-web-role`      | `password`, `url`, `url-pooler` | `web_role`                         |
+| `credentials-keys`   | `password`                      | `CREDENTIALS_KEYS` de la API       |
+| `groq-api-key`       | `password`                      | `GROQ_API_KEY` del modo gratuito   |
+| `sentry-api`         | `dsn`                           | `SENTRY_DSN` de la API             |
+| `sentry-web`         | `dsn`                           | `NEXT_PUBLIC_SENTRY_DSN` de la web |
+| `github-oauth-prod`  | `client-id`, `client-secret`    | OAuth App de producción            |
+| `better-auth-secret` | `password`                      | `BETTER_AUTH_SECRET` de la web     |
 
 En los elementos de Neon, `url` es la URL directa y `url-pooler` la del pooler (sección 2).
 
@@ -93,12 +93,12 @@ Una sola vez. Al terminar, `gcloud config set project <proyecto>` y `export GCP_
 
 6. **Secretos.** Cada uno se crea desde 1Password y solo la cuenta de la API puede leerlo:
 
-   | Secreto | Variable de la API | Origen en 1Password |
-   | --- | --- | --- |
-   | `criteria-database-url` | `DATABASE_URL` | `op://CriterIA/neon-api-role/url` (sección 2) |
+   | Secreto                     | Variable de la API | Origen en 1Password                                                    |
+   | --------------------------- | ------------------ | ---------------------------------------------------------------------- |
+   | `criteria-database-url`     | `DATABASE_URL`     | `op://CriterIA/neon-api-role/url` (sección 2)                          |
    | `criteria-credentials-keys` | `CREDENTIALS_KEYS` | `op://CriterIA/credentials-keys/password`, llave nueva, nunca la local |
-   | `criteria-groq-api-key` | `GROQ_API_KEY` | `op://CriterIA/groq-api-key/password` |
-   | `criteria-sentry-dsn` | `SENTRY_DSN` | `op://CriterIA/sentry-api/dsn` |
+   | `criteria-groq-api-key`     | `GROQ_API_KEY`     | `op://CriterIA/groq-api-key/password`                                  |
+   | `criteria-sentry-dsn`       | `SENTRY_DSN`       | `op://CriterIA/sentry-api/dsn`                                         |
 
    La llave de las claves de usuario se genera una vez, directo a 1Password:
 
@@ -169,6 +169,7 @@ El proyecto ya existe en `aws-us-east-2` (Ohio) con Postgres 16. La base se llam
    - **Cada contraseña:** se pega desde el campo `password` de su elemento cuando el bloque la pide.
    - **Por qué así:** `read -s` no muestra lo que se pega, y `psql` recibe la sentencia por la entrada estándar y cita la contraseña con `:'pw'`. Ni las contraseñas ni la URL quedan en el historial del shell, en el de `psql` (que solo guarda sesiones interactivas) ni en el editor SQL de Neon.
    - **Probado:** el bloque funciona en zsh y en bash. Se probó en un Postgres 16 desechable, con `criteria_owner` como dueño no superusuario.
+
 3. **URLs.** Se arman a mano y se guardan en 1Password, siempre con la base `criteria`. Hoy usan `sslmode=require`:
 
    ```text
@@ -176,18 +177,17 @@ El proyecto ya existe en `aws-us-east-2` (Ohio) con Postgres 16. La base se llam
    ```
 
    > **Pendiente, no aplicado:** pasar a `sslmode=verify-full` con los finales de la tabla. Se pospuso hasta que la imagen de la API permita `sslrootcert=system` y quede un final de URL único donde se pueda.
-
    - **Host directo:** el del panel, por ejemplo `ep-<id>.c-8.us-east-2.aws.neon.tech`.
    - **Host con pooler:** se inserta `-pooler` después del primer segmento: `ep-<id>-pooler.c-8.us-east-2.aws.neon.tech`.
    - **`sslrootcert`:** con `verify-full`, depende de quién usa la URL (ver «TLS con Neon» abajo).
 
-   | URL | Rol | Host | Cliente | Final con `verify-full` (pendiente) | En 1Password | Destino |
-   | --- | --- | --- | --- | --- | --- | --- |
-   | API | `api_role` | directo | psycopg en la imagen | `?sslmode=verify-full&sslrootcert=/etc/ssl/certs/ca-certificates.crt` | `op://CriterIA/neon-api-role/url` | Secret Manager `criteria-database-url` |
-   | Migraciones de la API | `migrator_role` | directo | psycopg en `ubuntu-24.04` | `?sslmode=verify-full&sslrootcert=/etc/ssl/certs/ca-certificates.crt` | `op://CriterIA/neon-migrator-role/url` | GitHub, `MIGRATION_DATABASE_URL` |
-   | Migraciones de Better Auth | `web_role` | directo | node-postgres | `?sslmode=verify-full` | `op://CriterIA/neon-web-role/url` | GitHub, `AUTH_MIGRATION_DATABASE_URL` |
-   | Web | `web_role` | pooler | node-postgres | `?sslmode=verify-full` | `op://CriterIA/neon-web-role/url-pooler` | Vercel, `AUTH_DATABASE_URL` |
-   | Evaluación | `eval_writer` | directo | psycopg en macOS | `?sslmode=verify-full&sslrootcert=/etc/ssl/cert.pem` | `op://CriterIA/neon-eval-writer/url` | Solo la Mac, al publicar |
+   | URL                        | Rol             | Host    | Cliente                   | Final con `verify-full` (pendiente)                                   | En 1Password                             | Destino                                |
+   | -------------------------- | --------------- | ------- | ------------------------- | --------------------------------------------------------------------- | ---------------------------------------- | -------------------------------------- |
+   | API                        | `api_role`      | directo | psycopg en la imagen      | `?sslmode=verify-full&sslrootcert=/etc/ssl/certs/ca-certificates.crt` | `op://CriterIA/neon-api-role/url`        | Secret Manager `criteria-database-url` |
+   | Migraciones de la API      | `migrator_role` | directo | psycopg en `ubuntu-24.04` | `?sslmode=verify-full&sslrootcert=/etc/ssl/certs/ca-certificates.crt` | `op://CriterIA/neon-migrator-role/url`   | GitHub, `MIGRATION_DATABASE_URL`       |
+   | Migraciones de Better Auth | `web_role`      | directo | node-postgres             | `?sslmode=verify-full`                                                | `op://CriterIA/neon-web-role/url`        | GitHub, `AUTH_MIGRATION_DATABASE_URL`  |
+   | Web                        | `web_role`      | pooler  | node-postgres             | `?sslmode=verify-full`                                                | `op://CriterIA/neon-web-role/url-pooler` | Vercel, `AUTH_DATABASE_URL`            |
+   | Evaluación                 | `eval_writer`   | directo | psycopg en macOS          | `?sslmode=verify-full&sslrootcert=/etc/ssl/cert.pem`                  | `op://CriterIA/neon-eval-writer/url`     | Solo la Mac, al publicar               |
 
    **TLS con Neon.** El certificado de Neon es de Let's Encrypt, con comodín por región (`*.c-8.us-east-2.aws.neon.tech`). Cada cliente lo verifica distinto:
    - **node-postgres** (web y migraciones de Better Auth):
@@ -217,6 +217,7 @@ El proyecto ya existe en `aws-us-east-2` (Ohio) con Postgres 16. La base se llam
    5. **Mac:** nada que cambiar; `EVAL_DATABASE_URL` se lee de 1Password al publicar.
 
 **Control:**
+
 - En el editor SQL, `SELECT rolname, rolconfig FROM pg_roles WHERE rolname LIKE '%_role' OR rolname = 'eval_writer';` lista los cuatro roles y `web_role` con `{search_path=auth}`.
 - La URL de la web entra por el pooler y cae en `auth` sin opciones de conexión. Este comando debe imprimir `web_role|auth`. `PGSSLROOTCERT` le da a `psql` el archivo de CA de macOS, porque esa URL es para node-postgres y no lo trae:
 
@@ -227,7 +228,8 @@ El proyecto ya existe en `aws-us-east-2` (Ohio) con Postgres 16. La base se llam
 
 Conexiones: con 0.25 CU, Neon admite 112 (105 para la aplicación). Cada instancia de la API abre hasta 30 (`DATABASE_POOL_SIZE` 10, más 10 de desborde y 10 para los checkpoints), así que 2 instancias usan como mucho 60. La web pasa por el pooler.
 
-**Suspensión de Neon.** Neon suspende el cómputo tras unos 5 minutos sin uso y cierra todas las sesiones. La primera petición después recibe `terminating connection due to administrator command` en cualquier conexión que el pool tenía guardada. Antes, eso hacía fallar `POST /runs` con un 500 que salía sin cabeceras CORS, y el navegador lo mostraba como error de CORS. La API lo maneja así:
+**Suspensión de Neon.** Neon suspende el cómputo tras unos 5 minutos sin uso y cierra todas las sesiones. La primera petición después recibe `terminating connection due to administrator command` en cualquier conexión que el pool tenía guardada. Antes, eso hacía fallar `POST /runs` con un 500 que salía sin cabeceras CORS, y el navegador lo mostraba como error de CORS. La API lo maneja así ([ADR 0023](adr/0023-connections-closed-by-neon.md)):
+
 - **Pool de SQLAlchemy:** comprueba cada conexión al sacarla (`pool_pre_ping`) y la reemplaza a los 240 s (`pool_recycle`), antes de la suspensión.
 - **Pool de psycopg de los checkpoints:** comprueba cada conexión al entregarla (`check_connection`) y cierra las que pasan 240 s sin uso (`max_idle`).
 - **Lock del stream:** si Neon cierra la sesión que lo tenía, el servidor ya soltó el lock, y el stream termina sin error.
@@ -245,7 +247,7 @@ Las pruebas de integración lo comprueban terminando las sesiones de `api_role` 
    - Solo pide `user:email`; los tokens de GitHub no se guardan.
    - El Client ID y un Client secret nuevo van a 1Password, en `github-oauth-prod` (`client-id` y `client-secret`).
 2. **Environment `production`.** Settings > Environments > New environment:
-   - **Required reviewers:** no hay. En un repositorio privado del plan gratuito, GitHub no ofrece esta regla, así que el workflow de migraciones corre en cuanto se lanza. Cuando el repositorio sea público, se agrega tu usuario como revisor y el job `migrate` volverá a esperar la aprobación.
+   - **Required reviewers:** tu usuario. En un repositorio privado del plan gratuito GitHub no ofrece esta regla; con el repositorio público sí, y el job `migrate` espera tu aprobación. Mientras el repositorio fue privado, el workflow corría en cuanto se lanzaba.
    - **Deployment branches and tags:** solo `main`.
    - **Secretos:**
 
@@ -274,7 +276,7 @@ Dos proyectos: uno de Python (FastAPI) para la API y uno de Next.js para la web.
    - **pnpm:** `vercel.json` corre la instalación y el build con `npx --yes pnpm@12.16.1`, la misma versión de `packageManager` en `apps/web/package.json`. El CI falla si las dos difieren. El log del build debe mostrar `Done in … using pnpm v12.16.1`.
      - **Por qué no Corepack:** Vercel solo lee `packageManager` del `package.json` de la raíz del repositorio ([corepack.ts](https://github.com/vercel/vercel/blob/155eacfa16840e68ae54bc50ee72fc8e16733857/internals/cli-builder-integration/src/corepack.ts) lee `join(repoRootPath, 'package.json')`), y aquí no hay uno; tampoco se crea, para no tener dos fuentes de la versión. Además, Node 26 ya no trae Corepack, y Vercel no documenta si su imagen lo instala.
      - **Qué pasaba sin esto:** el primer despliegue avisó `Could not enable corepack because package.json is missing "packageManager" property` y usó el pnpm 10 de la imagen, que falló con `ERR_PNPM_BROKEN_LOCKFILE … expected a single document in the stream`: el lockfile de pnpm 12 tiene dos documentos YAML. El mismo error sale con pnpm 10.10.0.
-     - **No se define `ENABLE_EXPERIMENTAL_COREPACK`.**
+     - **No se define `ENABLE_EXPERIMENTAL_COREPACK`.** Decisión en el [ADR 0024](adr/0024-pnpm-on-vercel-with-npx.md).
    - **El dominio:** `criter-ia.vercel.app`. Es el `WEB_URL` de `production.env` y el origen de la OAuth App.
    - **Deployment Protection:** Settings > Deployment Protection > Vercel Authentication con **Standard Protection**. Así, los URLs propios de cada despliegue (`criter-ia-<hash>-….vercel.app`) piden una sesión de Vercel, y solo `criter-ia.vercel.app` es público.
    - **CLI:** `vercel link` en la raíz del repositorio liga este mismo proyecto y escribe `.vercel/`, que está ignorado. Lo necesita el script alternativo.
@@ -284,20 +286,21 @@ Dos proyectos: uno de Python (FastAPI) para la API y uno de Next.js para la web.
 
    Con la CLI, el equivalente de Secret es `op read -n "op://CriterIA/<elemento>/<campo>" | vercel env add <VARIABLE> production --sensitive`.
 
-| Variable | Tipo | Valor | Nota |
-| --- | --- | --- | --- |
-| `NEXT_PUBLIC_APP_ENV` | Config | `production` | Activa `upgrade-insecure-requests` en la CSP y las cookies `Secure` |
-| `NEXT_PUBLIC_API_URL` | Config | URL de Cloud Run (`https://criteria-api-<número>.us-central1.run.app`) | Se incrusta en el build y entra en `connect-src`; se conoce tras el primer despliegue de la API |
-| `NEXT_PUBLIC_SENTRY_DSN` | Config | `op://CriterIA/sentry-web/dsn` | Público por diseño |
-| `NEXT_PUBLIC_OFFICE_VIEW` | Config | `false` | La vista oficina llega en F9 |
-| `EMAIL_PROVIDER` | Config | `none` | Sin dominio no hay envío ([ADR 0020](adr/0020-github-first-sign-in-without-email.md)) |
-| `BETTER_AUTH_URL` | Config | `https://criter-ia.vercel.app` | Origen público, sin barra final |
-| `BETTER_AUTH_SECRET` | Secret | `op://CriterIA/better-auth-secret/password`, nuevo, de 48 bytes (`openssl rand -base64 48`) | Firma sesiones y cifra la llave privada del JWKS: cambiarlo invalida las sesiones y obliga a borrar `auth.jwks` |
-| `AUTH_DATABASE_URL` | Secret | `op://CriterIA/neon-web-role/url-pooler` | URL de `web_role` con pooler y `sslmode=require` (`verify-full` pendiente, sección 2) |
-| `GITHUB_CLIENT_ID` | Secret | `op://CriterIA/github-oauth-prod/client-id` | OAuth App de producción |
-| `GITHUB_CLIENT_SECRET` | Secret | `op://CriterIA/github-oauth-prod/client-secret` | OAuth App de producción |
+| Variable                  | Tipo   | Valor                                                                                       | Nota                                                                                                            |
+| ------------------------- | ------ | ------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_APP_ENV`     | Config | `production`                                                                                | Activa `upgrade-insecure-requests` en la CSP y las cookies `Secure`                                             |
+| `NEXT_PUBLIC_API_URL`     | Config | URL de Cloud Run (`https://criteria-api-<número>.us-central1.run.app`)                      | Se incrusta en el build y entra en `connect-src`; se conoce tras el primer despliegue de la API                 |
+| `NEXT_PUBLIC_SENTRY_DSN`  | Config | `op://CriterIA/sentry-web/dsn`                                                              | Público por diseño                                                                                              |
+| `NEXT_PUBLIC_OFFICE_VIEW` | Config | `false`                                                                                     | La vista oficina llega en F9                                                                                    |
+| `EMAIL_PROVIDER`          | Config | `none`                                                                                      | Sin dominio no hay envío ([ADR 0020](adr/0020-github-first-sign-in-without-email.md))                           |
+| `BETTER_AUTH_URL`         | Config | `https://criter-ia.vercel.app`                                                              | Origen público, sin barra final                                                                                 |
+| `BETTER_AUTH_SECRET`      | Secret | `op://CriterIA/better-auth-secret/password`, nuevo, de 48 bytes (`openssl rand -base64 48`) | Firma sesiones y cifra la llave privada del JWKS: cambiarlo invalida las sesiones y obliga a borrar `auth.jwks` |
+| `AUTH_DATABASE_URL`       | Secret | `op://CriterIA/neon-web-role/url-pooler`                                                    | URL de `web_role` con pooler y `sslmode=require` (`verify-full` pendiente, sección 2)                           |
+| `GITHUB_CLIENT_ID`        | Secret | `op://CriterIA/github-oauth-prod/client-id`                                                 | OAuth App de producción                                                                                         |
+| `GITHUB_CLIENT_SECRET`    | Secret | `op://CriterIA/github-oauth-prod/client-secret`                                             | OAuth App de producción                                                                                         |
 
 **No se crean:**
+
 - **`NEXT_PUBLIC_CONTACT_URL`:** sin ella, "Privacidad y datos" enlaza `https://github.com/GDavila97`.
 - **`AUTH_JWT_ISSUER` y `AUTH_JWT_AUDIENCE`:** sin ellas, se usa `BETTER_AUTH_URL`, igual que `AUTH_ISSUER` y `AUTH_AUDIENCE` de la API.
 
@@ -317,8 +320,9 @@ Tú haces `git push`; todo lo demás usa el SHA completo de ese commit (`git rev
    gh run watch
    ```
 
-   El job `verify` comprueba que el SHA esté en `main` y que el CI haya pasado. Después corre el job `migrate`, sin aprobación mientras el repositorio sea privado (sección 3); cuando sea público y el environment tenga revisor, esperará tu aprobación en la pestaña Actions. Corre primero `pnpm auth:migrate` como `web_role` y luego `alembic upgrade head` como `migrator_role`. Las migraciones de Better Auth solo comparan y crean tablas: corren con un secreto aleatorio y no crean llaves del JWKS. Se comprobó que dejan `auth.jwks` vacía.
+   El job `verify` comprueba que el SHA esté en `main` y que el CI haya pasado. Después corre el job `migrate`, que espera tu aprobación en la pestaña Actions (sección 3). Corre primero `pnpm auth:migrate` como `web_role` y luego `alembic upgrade head` como `migrator_role`. Las migraciones de Better Auth solo comparan y crean tablas: corren con un secreto aleatorio y no crean llaves del JWKS. Se comprobó que dejan `auth.jwks` vacía.
    **Control:** el log termina con `alembic current` en la última revisión.
+
 3. **API.**
 
    ```bash
@@ -334,6 +338,7 @@ Tú haces `git push`; todo lo demás usa el SHA completo de ese commit (`git rev
    - **Al final:** consulta `/health` (no `/healthz`, que Cloud Run reserva; ver «Capa gratuita y costos»).
 
    **Control:** `gcloud run services describe criteria-api --region=us-central1 --format='value(metadata.labels.commit-sha)'` devuelve el SHA.
+
 4. **Web.**
    1. Confirma con el control del paso 3 que Cloud Run ya corre ese SHA.
    2. En el panel de Vercel, en el proyecto, Deployments > Create Deployment: pega el SHA completo y crea el despliegue.
@@ -350,6 +355,7 @@ Tú haces `git push`; todo lo demás usa el SHA completo de ese commit (`git rev
    - **Comprobaciones:** las mismas que la API, y además que Cloud Run ya corra ese SHA.
    - **Qué sube:** un `git worktree` desacoplado del SHA, así que no viajan archivos sin commit ni `.env`.
    - **Despliegue:** `vercel deploy --prod`, y Vercel compila con las variables de producción.
+
 5. **Prueba de humo.**
 
    ```bash
@@ -369,6 +375,7 @@ Tú haces `git push`; todo lo demás usa el SHA completo de ese commit (`git rev
 ### Primer despliegue
 
 El primer despliegue sigue el mismo orden, con dos pasos extra:
+
 1. `WEB_URL` ya está en `production.env` con `https://criter-ia.vercel.app`; si el dominio cambia, se cambia ahí con commit y push antes de desplegar la API.
 2. Después de desplegar la API, ya conoces su URL: la pones en `NEXT_PUBLIC_API_URL` de Vercel antes de desplegar la web.
 
@@ -424,6 +431,7 @@ Better Auth lee solo `x-forwarded-for`, y la ruta `/api/auth` conserva su primer
    ```
 
    En el iPhone, abre `https://criter-ia.vercel.app` con datos móviles e intenta entrar con una cuenta inexistente.
+
 3. En el editor SQL de Neon:
 
    ```sql
@@ -459,6 +467,7 @@ SENTRY_DSN="$(op read -n 'op://CriterIA/sentry-web/dsn')" uv run python -c \
 ```
 
 Cada comando imprime el id del evento. **Control:** en Sentry, Issues de cada proyecto muestra el mensaje con ese id y `environment: production`.
+
 - **Qué prueba:** el DSN y la ingesta de cada proyecto.
 - **Qué no prueba:** que el código desplegado reporte; eso lo muestran los errores reales, que llegan con el mismo DSN.
 - **DSN de la web:** se puede usar el SDK de Python con él, porque un DSN identifica al proyecto, no al lenguaje.
@@ -467,30 +476,30 @@ Cada comando imprime el id del evento. **Control:** en Sentry, Issues de cada pr
 
 ### API (Cloud Run)
 
-| Variable | Dónde vive | Nota |
-| --- | --- | --- |
-| `DATABASE_URL` | Secret Manager | `api_role`, URL directa de Neon |
-| `CREDENTIALS_KEYS` | Secret Manager | Llave nueva de producción, 32 bytes aleatorios por versión. Perderla hace ilegibles las claves guardadas |
-| `GROQ_API_KEY` | Secret Manager | Única clave de proveedor en producción |
-| `SENTRY_DSN` | Secret Manager | Proyecto de la API |
-| `WEB_ORIGIN`, `AUTH_JWKS_URL`, `AUTH_ISSUER`, `AUTH_AUDIENCE` | `production.env` (`WEB_URL`) | Origen exacto de la web; el script los deriva |
-| `APP_ENV`, `LOG_LEVEL`, `SENTRY_TRACES_SAMPLE_RATE`, `SERVER_KEY_PROVIDERS`, `AUTH_REQUIRE_VERIFIED_EMAIL`, `CREDENTIALS_ACTIVE_KEY` | `production.env` | `production`, `info`, `0.0`, `groq`, `false` y `1`. Sin `OLLAMA_BASE_URL` |
-| `USER_RUNS_PER_HOUR`, `USER_RUNS_PER_DAY`, `GLOBAL_DAILY_RUNS`, `GLOBAL_DAILY_BUDGET_USD` | `production.env` | 5, 20, 11 y 0.10 (sección 8) |
-| `RUN_TTL_MINUTES`, `SSE_HEARTBEAT_SECONDS`, `MAX_REQUEST_BYTES`, `PROVIDER_TIMEOUTS`, `DATABASE_POOL_SIZE` | — | Valores por defecto |
-| `MODEL_BACKEND` | — | Siempre `real`; `fake` solo arranca con `APP_ENV=test` |
+| Variable                                                                                                                             | Dónde vive                   | Nota                                                                                                     |
+| ------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`                                                                                                                       | Secret Manager               | `api_role`, URL directa de Neon                                                                          |
+| `CREDENTIALS_KEYS`                                                                                                                   | Secret Manager               | Llave nueva de producción, 32 bytes aleatorios por versión. Perderla hace ilegibles las claves guardadas |
+| `GROQ_API_KEY`                                                                                                                       | Secret Manager               | Única clave de proveedor en producción                                                                   |
+| `SENTRY_DSN`                                                                                                                         | Secret Manager               | Proyecto de la API                                                                                       |
+| `WEB_ORIGIN`, `AUTH_JWKS_URL`, `AUTH_ISSUER`, `AUTH_AUDIENCE`                                                                        | `production.env` (`WEB_URL`) | Origen exacto de la web; el script los deriva                                                            |
+| `APP_ENV`, `LOG_LEVEL`, `SENTRY_TRACES_SAMPLE_RATE`, `SERVER_KEY_PROVIDERS`, `AUTH_REQUIRE_VERIFIED_EMAIL`, `CREDENTIALS_ACTIVE_KEY` | `production.env`             | `production`, `info`, `0.0`, `groq`, `false` y `1`. Sin `OLLAMA_BASE_URL`                                |
+| `USER_RUNS_PER_HOUR`, `USER_RUNS_PER_DAY`, `GLOBAL_DAILY_RUNS`, `GLOBAL_DAILY_BUDGET_USD`                                            | `production.env`             | 5, 20, 11 y 0.10 (sección 8)                                                                             |
+| `RUN_TTL_MINUTES`, `SSE_HEARTBEAT_SECONDS`, `MAX_REQUEST_BYTES`, `PROVIDER_TIMEOUTS`, `DATABASE_POOL_SIZE`                           | —                            | Valores por defecto                                                                                      |
+| `MODEL_BACKEND`                                                                                                                      | —                            | Siempre `real`; `fake` solo arranca con `APP_ENV=test`                                                   |
 
 ### GitHub (environment `production`)
 
-| Secreto | Nota |
-| --- | --- |
-| `MIGRATION_DATABASE_URL` | `migrator_role`, URL directa |
-| `AUTH_MIGRATION_DATABASE_URL` | `web_role`, URL directa |
+| Secreto                       | Nota                         |
+| ----------------------------- | ---------------------------- |
+| `MIGRATION_DATABASE_URL`      | `migrator_role`, URL directa |
+| `AUTH_MIGRATION_DATABASE_URL` | `web_role`, URL directa      |
 
 ### Solo en la Mac
 
-| Variable | Nota |
-| --- | --- |
-| `GCP_PROJECT_ID` | Para los dos scripts de despliegue |
+| Variable            | Nota                                                       |
+| ------------------- | ---------------------------------------------------------- |
+| `GCP_PROJECT_ID`    | Para los dos scripts de despliegue                         |
 | `EVAL_DATABASE_URL` | `eval_writer`, URL directa; solo al publicar la evaluación |
 
 ## Rotación de la llave de las claves
@@ -504,6 +513,7 @@ Cada comando imprime el id del evento. **Control:** en Sentry, Issues de cada pr
 El orden importa: primero las de Better Auth, que crean `auth."user"`, y después las de la API, porque la migración 0004 agrega llaves foráneas hacia esa tabla. Las tablas de `auth` quedan a nombre de `web_role`, y los privilegios por defecto de `roles.sql` dan a `migrator_role` solo `REFERENCES` sobre ellas, nunca lectura.
 
 Qué hace cada migración de la API:
+
 1. Crea las tablas de `app`.
 2. Aplica las migraciones del checkpointer de LangGraph en `graph`.
 3. Agrega `app.run.settled`, que evita ajustar dos veces el cupo de una corrida.

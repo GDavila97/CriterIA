@@ -1,67 +1,69 @@
 # Eventos de una corrida
 
+Una corrida es lo que la interfaz llama _análisis_.
+
 Los eventos son modelos Pydantic (`services/api/src/criteria/domain/events.py`) que forman una unión discriminada por `type` ([ADR 0011](adr/0011-sse-typed-events.md)). La API los envía por SSE ([api.md](api.md#stream-sse)) y de ellos salen los tipos TypeScript de la web; la CLI los imprime (`--json` da un evento por línea).
 
 ## Campos comunes
 
-| Campo | Tipo | Descripción |
-| --- | --- | --- |
-| `type` | texto | Discriminador del evento |
-| `run_id` | UUID | Corrida a la que pertenece |
-| `seq` | entero ≥ 1 | Secuencia sin huecos dentro de la corrida; la asigna el `EventSink` y continúa tras la pausa humana |
-| `ts` | fecha y hora con zona | Momento de emisión, tomado del `Clock` |
-| `agent` | `analista`, `qa`, `revisor`, `evaluador` o `sistema` | Quién emite el evento |
+| Campo    | Tipo                                                 | Descripción                                                                                         |
+| -------- | ---------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `type`   | texto                                                | Discriminador del evento                                                                            |
+| `run_id` | UUID                                                 | Corrida a la que pertenece                                                                          |
+| `seq`    | entero ≥ 1                                           | Secuencia sin huecos dentro de la corrida; la asigna el `EventSink` y continúa tras la pausa humana |
+| `ts`     | fecha y hora con zona                                | Momento de emisión, tomado del `Clock`                                                              |
+| `agent`  | `analista`, `qa`, `revisor`, `evaluador` o `sistema` | Quién emite el evento                                                                               |
 
 ## Tipos de evento
 
-| `type` | `agent` | Campos propios |
-| --- | --- | --- |
-| `corrida_inicia` | `sistema` | `proveedor`, `modelos` (`generacion`, `juez`, como `proveedor:modelo`), `version_prompts` (agentes, `vN`), `version_juez` (Evaluador, `vN`), `juez_mismo_proveedor` (el juez es del mismo proveedor que la generación), `experimental`, `max_rondas` |
-| `agente_inicia` | el agente | `ronda` |
-| `agente_progreso` | el agente | `mensaje` (máximo 80 caracteres) |
-| `agente_entrega` | el agente | `ronda`, `artefactos`, `uso` |
-| `en_espera_humano` | `analista` | `solicitud` (`aprobar_historias`), `historias` |
-| `humano_responde` | `analista` | `decision` (`aprobado`, `editado` u `otra_version`), `cambios` (`agregadas`, `modificadas`, `eliminadas`: listas de ids; vacías con `otra_version`), `historias` (las aprobadas, con las que trabaja QA; `null` con `otra_version`) |
-| `revisor_observa` | `revisor` | `ronda`, `observaciones`, `se_corrige` (falso cuando ya no quedan rondas) |
-| `agente_error` | el agente | `codigo`, `mensaje` (seguro, máximo 200 caracteres), `respaldo_sugerido`, `uso` (lo que la llamada fallida alcanzó a gastar; `null` en eventos anteriores a F5) |
-| `corrida_fin` | `sistema` | `estado` (`completada` o `error`), `puntajes`, `totales`, `respaldo_sugerido`, `codigo` y `mensaje` (solo con `error_interno`; si no, `null`) |
+| `type`             | `agent`    | Campos propios                                                                                                                                                                                                                                       |
+| ------------------ | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `corrida_inicia`   | `sistema`  | `proveedor`, `modelos` (`generacion`, `juez`, como `proveedor:modelo`), `version_prompts` (agentes, `vN`), `version_juez` (Evaluador, `vN`), `juez_mismo_proveedor` (el juez es del mismo proveedor que la generación), `experimental`, `max_rondas` |
+| `agente_inicia`    | el agente  | `ronda`                                                                                                                                                                                                                                              |
+| `agente_progreso`  | el agente  | `mensaje` (máximo 80 caracteres)                                                                                                                                                                                                                     |
+| `agente_entrega`   | el agente  | `ronda`, `artefactos`, `uso`                                                                                                                                                                                                                         |
+| `en_espera_humano` | `analista` | `solicitud` (`aprobar_historias`), `historias`                                                                                                                                                                                                       |
+| `humano_responde`  | `analista` | `decision` (`aprobado`, `editado` u `otra_version`), `cambios` (`agregadas`, `modificadas`, `eliminadas`: listas de ids; vacías con `otra_version`), `historias` (las aprobadas, con las que trabaja QA; `null` con `otra_version`)                  |
+| `revisor_observa`  | `revisor`  | `ronda`, `observaciones`, `se_corrige` (falso cuando ya no quedan rondas)                                                                                                                                                                            |
+| `agente_error`     | el agente  | `codigo`, `mensaje` (seguro, máximo 200 caracteres), `respaldo_sugerido`, `uso` (lo que la llamada fallida alcanzó a gastar; `null` en eventos anteriores a F5)                                                                                      |
+| `corrida_fin`      | `sistema`  | `estado` (`completada` o `error`), `puntajes`, `totales`, `respaldo_sugerido`, `codigo` y `mensaje` (solo con `error_interno`; si no, `null`)                                                                                                        |
 
 ### `artefactos`
 
 Unión discriminada por `tipo`, según el agente que entrega:
 
-| `tipo` | Agente | Contenido |
-| --- | --- | --- |
-| `historias` | Analista | `historias` |
-| `pruebas` | QA | `criterios`, `casos` (cada caso con `origen`: `qa` o `revisor`) |
-| `revision` | Revisor | `veredicto` (`aprobado`, `observaciones`) |
-| `puntajes` | Evaluador | `puntajes` |
+| `tipo`      | Agente    | Contenido                                                       |
+| ----------- | --------- | --------------------------------------------------------------- |
+| `historias` | Analista  | `historias`                                                     |
+| `pruebas`   | QA        | `criterios`, `casos` (cada caso con `origen`: `qa` o `revisor`) |
+| `revision`  | Revisor   | `veredicto` (`aprobado`, `observaciones`)                       |
+| `puntajes`  | Evaluador | `puntajes`                                                      |
 
 ### `uso` y `totales`
 
-| Campo | Descripción |
-| --- | --- |
-| `tokens_entrada`, `tokens_salida` | Tokens reportados por el proveedor |
-| `latencia_ms` | Tiempo de la llamada al agente, incluido el reintento |
-| `costo_usd` | Costo con los precios de `config/models.toml`; `null` si falta el precio. En `totales` es `null` si falta en cualquier llamada |
-| `reintentos` | Solo en `uso`: peticiones al modelo menos una |
+| Campo                             | Descripción                                                                                                                    |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `tokens_entrada`, `tokens_salida` | Tokens reportados por el proveedor                                                                                             |
+| `latencia_ms`                     | Tiempo de la llamada al agente, incluido el reintento                                                                          |
+| `costo_usd`                       | Costo con los precios de `config/models.toml`; `null` si falta el precio. En `totales` es `null` si falta en cualquier llamada |
+| `reintentos`                      | Solo en `uso`: peticiones al modelo menos una                                                                                  |
 
 ### Códigos de `agente_error`
 
-| Código | Cuándo |
-| --- | --- |
-| `salida_invalida` | La salida no cumplió el esquema ni con el reintento. Incluye el `json_validate_failed` de Groq (el servidor rechaza una salida nativa que no cumple el esquema), que también tiene un reintento |
-| `clave_invalida` | El proveedor rechazó la clave (401 o 403) |
-| `sin_saldo` | La cuenta no tiene saldo o cuota (402, el `insufficient_quota` que OpenAI envía con un 429, o el `blocked_api_access` de Groq con la clave del usuario) |
-| `cupo_gratuito_agotado` | Groq respondió `blocked_api_access` (la organización llegó a su límite de gasto) con la clave del servidor: se agotó el cupo gratuito de CriterIA |
-| `limite_proveedor` | El proveedor limitó la frecuencia de peticiones (429) |
-| `proveedor_no_disponible` | Error del servidor del proveedor (5xx), de conexión o tiempo agotado |
-| `destino_no_permitido` | La URL del usuario no pasó la protección SSRF o respondió demasiado |
-| `error_interno` | Cualquier otro error |
+| Código                    | Cuándo                                                                                                                                                                                          |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `salida_invalida`         | La salida no cumplió el esquema ni con el reintento. Incluye el `json_validate_failed` de Groq (el servidor rechaza una salida nativa que no cumple el esquema), que también tiene un reintento |
+| `clave_invalida`          | El proveedor rechazó la clave (401 o 403)                                                                                                                                                       |
+| `sin_saldo`               | La cuenta no tiene saldo o cuota (402, el `insufficient_quota` que OpenAI envía con un 429, o el `blocked_api_access` de Groq con la clave del usuario)                                         |
+| `cupo_gratuito_agotado`   | Groq respondió `blocked_api_access` (la organización llegó a su límite de gasto) con la clave del servidor: se agotó el cupo gratuito de CriterIA                                               |
+| `limite_proveedor`        | El proveedor limitó la frecuencia de peticiones (429)                                                                                                                                           |
+| `proveedor_no_disponible` | Error del servidor del proveedor (5xx), de conexión o tiempo agotado                                                                                                                            |
+| `destino_no_permitido`    | La URL del usuario no pasó la protección SSRF o respondió demasiado                                                                                                                             |
+| `error_interno`           | Cualquier otro error                                                                                                                                                                            |
 
 ## Secuencias típicas
 
-Flujo feliz: `corrida_inicia` → (`agente_inicia`, `agente_progreso`, `agente_entrega`) del Analista → `en_espera_humano` → *pausa* → `humano_responde` → QA → Revisor → Evaluador → `corrida_fin`.
+Flujo feliz: `corrida_inicia` → (`agente_inicia`, `agente_progreso`, `agente_entrega`) del Analista → `en_espera_humano` → _pausa_ → `humano_responde` → QA → Revisor → Evaluador → `corrida_fin`.
 
 Con otra versión: tras `en_espera_humano`, `humano_responde` con `decision: "otra_version"`, otra vez `agente_inicia`, `agente_progreso` y `agente_entrega` del Analista (ronda 0) y un nuevo `en_espera_humano`. Puede pasar dos veces por corrida.
 

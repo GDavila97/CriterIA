@@ -10,11 +10,11 @@ CriterIA convierte un requerimiento en historias de usuario, criterios de acepta
 - **Juez.** `claude-haiku-5-5`, con una rúbrica de 1 a 5 en claridad, verificabilidad, completitud y consistencia, y severo por instrucción.
 - **Validación.** Una persona calificó a ciegas 8 corridas (32 pares criterio por corrida). Un emparejador automático decide qué problemas sembrados detectó el Revisor, y la persona revisó 10 de sus decisiones.
 
-| Modelo | Modo de salida | Tope de tokens | Dónde corre |
-| --- | --- | --- | --- |
-| Anthropic · Claude Haiku 5.5 * | `tool` | 16,384 | API |
-| Groq · GPT-OSS 20B | `native` | 16,384 | API; es el modelo del modo gratuito |
-| Ollama · Llama 3.1 8B | `native` | 8,192 | RTX 4060 de 8 GB, tiempo límite de 180 s |
+| Modelo                         | Modo de salida | Tope de tokens | Dónde corre                              |
+| ------------------------------ | -------------- | -------------- | ---------------------------------------- |
+| Anthropic · Claude Haiku 5.5 * | `tool`         | 16,384         | API                                      |
+| Groq · GPT-OSS 20B             | `native`       | 16,384         | API; es el modelo del modo gratuito      |
+| Ollama · Llama 3.1 8B          | `native`       | 8,192          | RTX 4060 de 8 GB, tiempo límite de 180 s |
 
 \* El juez es del mismo proveedor que este modelo.
 
@@ -22,19 +22,19 @@ CriterIA convierte un requerimiento en historias de usuario, criterios de acepta
 
 Son las métricas que no dependen del juez.
 
-| Modelo | Problemas detectados | Completas | Válidas a la primera | Latencia p50 | Latencia p95 | Costo por corrida (USD) |
-| --- | --- | --- | --- | --- | --- | --- |
-| Haiku 5.5 * | 13 de 25 (52%) | 15 de 15 | 97% | 148 s | 207 s | 0.0296 |
-| GPT-OSS 20B | 8 de 25 (32%) | 14 de 15 | 96% | 33 s | 61 s | 0.0089 |
-| Llama 3.1 8B | 1 de 15 (7%) † | 11 de 15 | 90% | 329 s | 476 s | 0.0015 (solo juez) |
+| Modelo       | Problemas detectados | Completas | Válidas a la primera | Latencia p50 | Latencia p95 | Costo por corrida (USD) |
+| ------------ | -------------------- | --------- | -------------------- | ------------ | ------------ | ----------------------- |
+| Haiku 5.5 *  | 13 de 25 (52%)       | 15 de 15  | 97%                  | 148 s        | 207 s        | 0.0296                  |
+| GPT-OSS 20B  | 8 de 25 (32%)        | 14 de 15  | 96%                  | 33 s         | 61 s         | 0.0089                  |
+| Llama 3.1 8B | 1 de 15 (7%) †       | 11 de 15  | 90%                  | 329 s        | 476 s        | 0.0015 (solo juez)      |
 
 - **Detección por tipo de problema:**
 
-  | Tipo | Haiku | GPT-OSS |
-  | --- | --- | --- |
-  | Ambigüedades | 5 de 7 | 1 de 7 |
-  | Inconsistencias | 4 de 6 | 4 de 6 |
-  | Faltantes | 4 de 12 | 3 de 12 |
+  | Tipo            | Haiku   | GPT-OSS |
+  | --------------- | ------- | ------- |
+  | Ambigüedades    | 5 de 7  | 1 de 7  |
+  | Inconsistencias | 4 de 6  | 4 de 6  |
+  | Faltantes       | 4 de 12 | 3 de 12 |
 
 - **Problemas que nadie detectó:** 9 de 25, y 7 de ellos son faltantes.
 - **Corridas incompletas de Llama:** las 4 son tiempos agotados.
@@ -45,25 +45,26 @@ Son las métricas que no dependen del juez.
 
 ## Puntajes del juez (secundarios)
 
-| Modelo | Global (todas) | Global (11 comunes) | Claridad | Verificabilidad | Completitud | Consistencia |
-| --- | --- | --- | --- | --- | --- | --- |
-| Haiku 5.5 * | 2.73 | 2.70 | 3.00 | 2.87 | 2.47 | 2.60 |
-| GPT-OSS 20B | 2.82 | 2.82 | 3.07 | 3.07 | 2.50 | 2.64 |
-| Llama 3.1 8B | 2.05 | 2.05 | 2.18 | 2.18 | 2.00 | 1.82 |
+| Modelo       | Global (todas) | Global (11 comunes) | Claridad | Verificabilidad | Completitud | Consistencia |
+| ------------ | -------------- | ------------------- | -------- | --------------- | ----------- | ------------ |
+| Haiku 5.5 *  | 2.73           | 2.70                | 3.00     | 2.87            | 2.47        | 2.60         |
+| GPT-OSS 20B  | 2.82           | 2.82                | 3.07     | 3.07            | 2.50        | 2.64         |
+| Llama 3.1 8B | 2.05           | 2.05                | 2.18     | 2.18            | 2.00        | 1.82         |
 
 ![Puntaje medio del juez por criterio y modelo, de 1 a 5](criterios-v1.svg)
 
 ## ¿Cuánto se puede confiar en el juez?
 
-| Medida | Valor (IC 95 %) |
-| --- | --- |
-| Juez contra persona: kappa ponderada (32 pares) | -0.02 (-0.08 a 0.05) |
-| Juez contra persona: Spearman | -0.12 (-0.46 a 0.22) |
-| Acuerdo exacto / a ±1 punto | 9% / 38% |
-| Juez menos persona, en promedio | -1.78 puntos (-2.09 a -1.47) |
-| Juez contra sí mismo al recalificar 10 corridas (kappa / exacto) | 0.74 / 72% |
+| Medida                                                           | Valor (IC 95 %)              |
+| ---------------------------------------------------------------- | ---------------------------- |
+| Juez contra persona: kappa ponderada (32 pares)                  | -0.02 (-0.08 a 0.05)         |
+| Juez contra persona: Spearman                                    | -0.12 (-0.46 a 0.22)         |
+| Acuerdo exacto / a ±1 punto                                      | 9% / 38%                     |
+| Juez menos persona, en promedio                                  | -1.78 puntos (-2.09 a -1.47) |
+| Juez contra sí mismo al recalificar 10 corridas (kappa / exacto) | 0.74 / 72%                   |
 
 **Consistente pero no validado.**
+
 - **Consistente:** el juez repite sus puntajes con bastante estabilidad.
 - **No validado:** contra la persona no hay acuerdo a nivel de corrida.
 - **Distribuciones:**
@@ -75,10 +76,10 @@ Son las métricas que no dependen del juez.
 - **Cómo leer los puntajes:** las diferencias se leen con cautela, y la de Haiku contra GPT-OSS es menor que la variación del juez.
 
 | Por modelo en la muestra (descriptivo) | Corridas | Juez | Persona |
-| --- | --- | --- | --- |
-| Haiku 5.5 * | 3 | 2.83 | 4.58 |
-| GPT-OSS 20B | 3 | 2.75 | 4.25 |
-| Llama 3.1 8B | 2 | 2.25 | 4.50 |
+| -------------------------------------- | -------- | ---- | ------- |
+| Haiku 5.5 *                            | 3        | 2.83 | 4.58    |
+| GPT-OSS 20B                            | 3        | 2.75 | 4.25    |
+| Llama 3.1 8B                           | 2        | 2.25 | 4.50    |
 
 - **El orden coincide solo en el primer lugar.** El juez pone a Llama al final, y la persona lo pone segundo.
 - **No es concluyente.** Con 2 o 3 corridas por modelo y diferencias de décimas, esto no ordena los modelos.
@@ -101,6 +102,7 @@ Son las métricas que no dependen del juez.
 ## Siguiente versión
 
 La v2 cambiará solo los prompts de los agentes y se comparará contra v1 únicamente con Haiku y GPT-OSS 20B, de forma pareada (Wilcoxon). El método cambia en tres puntos:
+
 - **Rúbrica:** con anclas por nivel, la misma para todos los modelos, y un juez calibrado con ellas.
 - **Juez:** si cambia, se recalifican también los artefactos guardados de v1, para comparar con el mismo juez.
 - **Calificación humana:** se hace en una página HTML por corrida, con al menos dos calificadores.

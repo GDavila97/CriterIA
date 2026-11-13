@@ -4,12 +4,12 @@ CriterIA usa cuatro agentes de Pydantic AI ([ADR 0004](adr/0004-pydantic-ai-agen
 
 ## Los agentes
 
-| Agente | Entrada | Salida (`output_type`) | Prompt |
-| --- | --- | --- | --- |
-| **Analista** | `<requerimiento>`; en una corrección, también `<historias>` y `<observaciones>` dirigidas a él; si la persona pide otra versión, `<historias>` previas y, si escribió una, `<nota_usuario>` | `Historias`: de 1 a 12 `HistoriaUsuario` (`HU-n`, como / quiero / para, prioridad, supuestos) | `prompts/v1/analista.md` |
-| **QA** | `<historias>` aprobadas; en una corrección, también `<entrega_previa>` y `<observaciones>` | `EntregaQA`: criterios (`CA-n`) y casos de prueba (`CP-nn`) con pasos, resultado esperado y escenario Gherkin | `prompts/v1/qa.md` |
-| **Revisor** | `<requerimiento>`, `<historias>`, `<entrega>` | `VeredictoRevisor`: `aprobado` y hasta 10 `Observacion` (tipo, destino, referencias, descripción, sugerencia) | `prompts/v1/revisor.md` |
-| **Evaluador** | `<requerimiento>`, `<historias>`, `<entrega>`, `<observaciones_pendientes>` | `Evaluacion`: un `Puntaje` de 1 a 5 por criterio (claridad, verificabilidad, completitud, consistencia) con justificación de hasta 280 caracteres | `prompts/juez/v1/evaluador.md` |
+| Agente        | Entrada                                                                                                                                                                                     | Salida (`output_type`)                                                                                                                            | Prompt                         |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ |
+| **Analista**  | `<requerimiento>`; en una corrección, también `<historias>` y `<observaciones>` dirigidas a él; si la persona pide otra versión, `<historias>` previas y, si escribió una, `<nota_usuario>` | `Historias`: de 1 a 12 `HistoriaUsuario` (`HU-n`, como / quiero / para, prioridad, supuestos)                                                     | `prompts/v1/analista.md`       |
+| **QA**        | `<historias>` aprobadas; en una corrección, también `<entrega_previa>` y `<observaciones>`                                                                                                  | `EntregaQA`: criterios (`CA-n`) y casos de prueba (`CP-nn`) con pasos, resultado esperado y escenario Gherkin                                     | `prompts/v1/qa.md`             |
+| **Revisor**   | `<requerimiento>`, `<historias>`, `<entrega>`                                                                                                                                               | `VeredictoRevisor`: `aprobado` y hasta 10 `Observacion` (tipo, destino, referencias, descripción, sugerencia)                                     | `prompts/v1/revisor.md`        |
+| **Evaluador** | `<requerimiento>`, `<historias>`, `<entrega>`, `<observaciones_pendientes>`                                                                                                                 | `Evaluacion`: un `Puntaje` de 1 a 5 por criterio (claridad, verificabilidad, completitud, consistencia) con justificación de hasta 280 caracteres | `prompts/juez/v1/evaluador.md` |
 
 El Analista, QA y el Revisor usan el modelo de generación; el Evaluador usa el modelo del juez, que puede ser de otro proveedor.
 

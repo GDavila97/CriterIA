@@ -2,6 +2,8 @@
 
 Contrato de la API de CriterIA desde F3. Los cuerpos y los eventos están definidos en Pydantic y se exportan como JSON Schema a [services/api/contract/schema.json](../services/api/contract/schema.json); la web genera sus tipos desde ese archivo con `pnpm gen:api` (ver [Contrato](#contrato)).
 
+En la API, cada ejecución del flujo de agentes es una _corrida_ (`run`); la interfaz la llama _análisis_ ([architecture.md](architecture.md)).
+
 Fuera de producción, el esquema OpenAPI está en `/openapi.json` y la documentación interactiva en `/docs`.
 
 ## Autenticación
@@ -14,23 +16,23 @@ Fuera de producción, el esquema OpenAPI está en `/openapi.json` y la documenta
 
 ## Endpoints
 
-| Método y ruta | Auth | Respuesta | Qué hace |
-| --- | --- | --- | --- |
-| `GET /health` | — | `200 HealthBody` | Estado y versión; no toca la base. No es `/healthz` porque Cloud Run reserva rutas que terminan en `z` ([deploy.md](deploy.md)) |
-| `POST /runs` | verificado | `201 RunCreatedBody` | Valida, resuelve proveedor, modelo y clave, reserva el cupo y guarda la corrida. No llama a ningún modelo |
-| `GET /runs/{id}/stream` | verificado | `200 text/event-stream` | Ejecuta la corrida desde su último checkpoint y emite los eventos hasta la pausa humana o el final ([ADR 0018](adr/0018-run-lifecycle-bound-to-the-stream.md)) |
-| `POST /runs/{id}/approval` | verificado | `204` | Guarda la respuesta humana (`RespuestaHumana`); el siguiente stream reanuda con ella |
-| `PUT /me/credentials/{provider}` | verificado | `200 CredentialBody` | Valida la clave con el proveedor y la guarda cifrada |
-| `GET /me/credentials` | sesión | `200 CredentialBody[]` | Proveedores con clave propia, con sus últimos 4 caracteres |
-| `DELETE /me/credentials/{provider}` | sesión | `204` | Borra la clave; `404` si no había |
-| `GET /me/settings` / `PUT /me/settings` | sesión | `200 SettingsBody` | Historial activado, proveedor, nivel y juez por defecto |
-| `GET /catalog` | sesión | `200 CatalogBody` | Proveedores, disponibilidad y origen de la clave, niveles con modelo, nombre legible (`display_name`) y costo estimado, nombre legible de cada modelo (`display_names`), costo de la generación por modelo (`costos_generacion`) y del Evaluador en el nivel económico (`costo_juez_usd`), proveedor y juez por defecto |
-| `GET /agents` | sesión | `200 AgentsBody` | Prompts de sistema de los cuatro agentes con su versión (solo lectura) y los rangos de los parámetros por agente |
-| `GET /me/usage` | sesión | `200 UsageBody` | Corridas iniciadas en la última hora y en el día, con sus límites |
-| `GET /me/runs` | sesión | `200 HistorySummaryBody[]` | Historial guardado (solo si `save_history` estaba activo al terminar), con el nombre legible del modelo (`model_display_name`) |
-| `GET /me/runs/{id}` | sesión | `200 HistoryItemBody` | Una corrida guardada con artefactos, puntajes, versiones, totales y nombres legibles del modelo y del juez (`model_display_name`, `judge_display_name`) |
-| `DELETE /me/runs` | sesión | `200 HistoryDeletedBody` | Borra todo el historial del usuario |
-| `GET /evaluation` | — | `200 EvaluationBody` | Lotes de evaluación agregados (validez, latencia p50 y p95, costo medio, nombre legible del modelo); `Cache-Control: public, max-age=60` |
+| Método y ruta                           | Auth       | Respuesta                  | Qué hace                                                                                                                                                                                                                                                                                                                |
+| --------------------------------------- | ---------- | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /health`                           | —          | `200 HealthBody`           | Estado y versión; no toca la base. No es `/healthz` porque Cloud Run reserva rutas que terminan en `z` ([deploy.md](deploy.md))                                                                                                                                                                                         |
+| `POST /runs`                            | verificado | `201 RunCreatedBody`       | Valida, resuelve proveedor, modelo y clave, reserva el cupo y guarda la corrida. No llama a ningún modelo                                                                                                                                                                                                               |
+| `GET /runs/{id}/stream`                 | verificado | `200 text/event-stream`    | Ejecuta la corrida desde su último checkpoint y emite los eventos hasta la pausa humana o el final ([ADR 0018](adr/0018-run-lifecycle-bound-to-the-stream.md))                                                                                                                                                          |
+| `POST /runs/{id}/approval`              | verificado | `204`                      | Guarda la respuesta humana (`RespuestaHumana`); el siguiente stream reanuda con ella                                                                                                                                                                                                                                    |
+| `PUT /me/credentials/{provider}`        | verificado | `200 CredentialBody`       | Valida la clave con el proveedor y la guarda cifrada                                                                                                                                                                                                                                                                    |
+| `GET /me/credentials`                   | sesión     | `200 CredentialBody[]`     | Proveedores con clave propia, con sus últimos 4 caracteres                                                                                                                                                                                                                                                              |
+| `DELETE /me/credentials/{provider}`     | sesión     | `204`                      | Borra la clave; `404` si no había                                                                                                                                                                                                                                                                                       |
+| `GET /me/settings` / `PUT /me/settings` | sesión     | `200 SettingsBody`         | Historial activado, proveedor, nivel y juez por defecto                                                                                                                                                                                                                                                                 |
+| `GET /catalog`                          | sesión     | `200 CatalogBody`          | Proveedores, disponibilidad y origen de la clave, niveles con modelo, nombre legible (`display_name`) y costo estimado, nombre legible de cada modelo (`display_names`), costo de la generación por modelo (`costos_generacion`) y del Evaluador en el nivel económico (`costo_juez_usd`), proveedor y juez por defecto |
+| `GET /agents`                           | sesión     | `200 AgentsBody`           | Prompts de sistema de los cuatro agentes con su versión (solo lectura) y los rangos de los parámetros por agente                                                                                                                                                                                                        |
+| `GET /me/usage`                         | sesión     | `200 UsageBody`            | Corridas iniciadas en la última hora y en el día, con sus límites                                                                                                                                                                                                                                                       |
+| `GET /me/runs`                          | sesión     | `200 HistorySummaryBody[]` | Historial guardado (solo si `save_history` estaba activo al terminar), con el nombre legible del modelo (`model_display_name`)                                                                                                                                                                                          |
+| `GET /me/runs/{id}`                     | sesión     | `200 HistoryItemBody`      | Una corrida guardada con artefactos, puntajes, versiones, totales y nombres legibles del modelo y del juez (`model_display_name`, `judge_display_name`)                                                                                                                                                                 |
+| `DELETE /me/runs`                       | sesión     | `200 HistoryDeletedBody`   | Borra todo el historial del usuario                                                                                                                                                                                                                                                                                     |
+| `GET /evaluation`                       | —          | `200 EvaluationBody`       | Lotes de evaluación agregados (validez, latencia p50 y p95, costo medio, nombre legible del modelo); `Cache-Control: public, max-age=60`                                                                                                                                                                                |
 
 "Sesión" es un JWT válido; "verificado" exige además el correo verificado. Una corrida o una clave de otro usuario responde `404`, igual que una inexistente.
 
@@ -98,12 +100,12 @@ Una corrida sin actividad durante `RUN_TTL_MINUTES` pasa a `fallida` al crear la
 
 ## Límites
 
-| Límite | Variable | Por defecto | Código |
-| --- | --- | --- | --- |
-| Corridas por usuario en la última hora | `USER_RUNS_PER_HOUR` | 5 | `429 limite_hora` |
-| Corridas por usuario en el día (UTC) | `USER_RUNS_PER_DAY` | 20 | `429 limite_dia` |
-| Corridas diarias con claves del servidor | `GLOBAL_DAILY_RUNS` | 25 (11 en producción) | `429 cupo_gratuito_agotado` |
-| Dólares diarios con claves del servidor | `GLOBAL_DAILY_BUDGET_USD` | 0.09 (0.10 en producción) | `429 cupo_gratuito_agotado` |
+| Límite                                   | Variable                  | Por defecto               | Código                      |
+| ---------------------------------------- | ------------------------- | ------------------------- | --------------------------- |
+| Corridas por usuario en la última hora   | `USER_RUNS_PER_HOUR`      | 5                         | `429 limite_hora`           |
+| Corridas por usuario en el día (UTC)     | `USER_RUNS_PER_DAY`       | 20                        | `429 limite_dia`            |
+| Corridas diarias con claves del servidor | `GLOBAL_DAILY_RUNS`       | 25 (11 en producción)     | `429 cupo_gratuito_agotado` |
+| Dólares diarios con claves del servidor  | `GLOBAL_DAILY_BUDGET_USD` | 0.09 (0.10 en producción) | `429 cupo_gratuito_agotado` |
 
 Los límites por usuario aplican con o sin clave propia. El cupo global solo cuenta corridas en las que alguna parte usa la clave del servidor ([ADR 0019](adr/0019-groq-developer-for-the-free-mode.md)). La reserva es atómica: las corridas de un usuario se serializan con un advisory lock y el cupo global se toma con un `UPDATE` condicional, de modo que dos peticiones simultáneas nunca superan el tope. Al terminar, el costo reservado se sustituye por el real.
 
@@ -111,23 +113,23 @@ Los límites por usuario aplican con o sin clave propia. El cupo global solo cue
 
 Todas las respuestas de error tienen la forma `{"code": "...", "message": "..."}`, sin detalles de validación ni eco de lo enviado.
 
-| Código | HTTP | Cuándo |
-| --- | --- | --- |
-| `no_autenticado` | 401 | Falta el token o no es válido |
-| `correo_no_verificado` | 403 | El claim de correo verificado no es `true` |
-| `no_encontrado` | 404 | No existe o es de otro usuario; también rutas desconocidas |
-| `metodo_no_permitido` | 405 | Método no soportado en la ruta |
-| `estado_invalido` | 409 | La corrida no está en un estado que permita la acción |
-| `stream_activo` | 409 | Ya hay un stream abierto para la corrida |
-| `versiones_agotadas` | 409 | Ya se pidieron dos versiones nuevas de las historias en la corrida |
-| `cuerpo_demasiado_grande` | 413 | El cuerpo supera `MAX_REQUEST_BYTES` |
-| `entrada_invalida` | 422 | El cuerpo no cumple el esquema o la regla de negocio |
-| `clave_requerida` | 422 | El proveedor necesita la clave del usuario |
-| `proveedor_no_permitido` | 422 | Proveedor o modelo fuera del catálogo |
-| `destino_no_permitido` | 422 | `base_url` no es `https` o apunta a una dirección no pública |
-| `clave_invalida` / `clave_no_verificable` | 422 | La validación de la clave falló |
-| `limite_hora`, `limite_dia`, `cupo_gratuito_agotado`, `limite_validaciones` | 429 | Límites de uso |
-| `error_interno` | 500 | Error no previsto; el log registra solo su tipo y se reporta a Sentry sin el mensaje. Sale con las cabeceras CORS, así que la web ve el error real y no un falso error de CORS |
+| Código                                                                      | HTTP | Cuándo                                                                                                                                                                         |
+| --------------------------------------------------------------------------- | ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `no_autenticado`                                                            | 401  | Falta el token o no es válido                                                                                                                                                  |
+| `correo_no_verificado`                                                      | 403  | El claim de correo verificado no es `true`                                                                                                                                     |
+| `no_encontrado`                                                             | 404  | No existe o es de otro usuario; también rutas desconocidas                                                                                                                     |
+| `metodo_no_permitido`                                                       | 405  | Método no soportado en la ruta                                                                                                                                                 |
+| `estado_invalido`                                                           | 409  | La corrida no está en un estado que permita la acción                                                                                                                          |
+| `stream_activo`                                                             | 409  | Ya hay un stream abierto para la corrida                                                                                                                                       |
+| `versiones_agotadas`                                                        | 409  | Ya se pidieron dos versiones nuevas de las historias en la corrida                                                                                                             |
+| `cuerpo_demasiado_grande`                                                   | 413  | El cuerpo supera `MAX_REQUEST_BYTES`                                                                                                                                           |
+| `entrada_invalida`                                                          | 422  | El cuerpo no cumple el esquema o la regla de negocio                                                                                                                           |
+| `clave_requerida`                                                           | 422  | El proveedor necesita la clave del usuario                                                                                                                                     |
+| `proveedor_no_permitido`                                                    | 422  | Proveedor o modelo fuera del catálogo                                                                                                                                          |
+| `destino_no_permitido`                                                      | 422  | `base_url` no es `https` o apunta a una dirección no pública                                                                                                                   |
+| `clave_invalida` / `clave_no_verificable`                                   | 422  | La validación de la clave falló                                                                                                                                                |
+| `limite_hora`, `limite_dia`, `cupo_gratuito_agotado`, `limite_validaciones` | 429  | Límites de uso                                                                                                                                                                 |
+| `error_interno`                                                             | 500  | Error no previsto; el log registra solo su tipo y se reporta a Sentry sin el mensaje. Sale con las cabeceras CORS, así que la web ve el error real y no un falso error de CORS |
 
 Los fallos de los agentes durante el stream no son errores HTTP: llegan como eventos `agente_error` y `corrida_fin` con `estado: "error"`.
 
