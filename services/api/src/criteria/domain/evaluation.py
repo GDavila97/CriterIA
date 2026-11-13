@@ -196,7 +196,7 @@ class MatchCheck(Esquema):
 
 
 class HumanSession(Esquema):
-    """Gus's blind scores and checks of the matcher, kept next to the batches."""
+    """The human rater's blind scores and checks of the matcher, kept next to the batches."""
 
     semilla: int
     muestra: list[tuple[UUID, CaseId]] = Field(default_factory=list)

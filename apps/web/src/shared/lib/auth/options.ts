@@ -93,7 +93,7 @@ export function buildAuthOptions({
       window: 60,
       max: 100,
       customRules: {
-        // Wide on purpose: a whole classroom at Cimat shares one public IP.
+        // Wide on purpose: a whole classroom can share one public IP.
         '/sign-up/email': { window: 60 * 60, max: 20 },
         '/sign-in/email': { window: 15 * 60, max: 30 },
         '/request-password-reset': { window: 60 * 60, max: 5 },

@@ -31,15 +31,15 @@ describe('Header', () => {
     const clear = vi.spyOn(apiToken, 'clear');
     render(
       <Header
-        user={{ name: 'Gustavo Ávila', email: 'gus@example.test' }}
+        user={{ name: 'Luis Peña', email: 'luis@example.test' }}
         actions={<span>Vista</span>}
       />,
     );
 
     expect(screen.getByRole('link', { name: 'Historial' })).toHaveAttribute('aria-current', 'page');
     expect(screen.getByText('Vista')).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: 'Cuenta de Gustavo Ávila' }));
-    expect(screen.getByText('gus@example.test')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Cuenta de Luis Peña' }));
+    expect(screen.getByText('luis@example.test')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Cerrar sesión' }));
 
     expect(authClient.signOut).toHaveBeenCalled();
@@ -77,7 +77,7 @@ describe('Header', () => {
   });
 
   it('builds initials from names or the email', () => {
-    expect(initials('Gustavo Ávila', 'x')).toBe('GÁ');
+    expect(initials('Ángela Núñez', 'x')).toBe('ÁN');
     expect(initials('ana', 'x')).toBe('AN');
     expect(initials('  ', 'zoe@x.mx')).toBe('ZO');
   });
