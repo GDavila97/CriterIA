@@ -52,3 +52,13 @@
   justify-content: flex-end;
   gap: var(--space-8);
 }
+
+@media (max-width: 480px) {
+  .actions {
+    flex-direction: column;
+  }
+
+  .actions > * {
+    width: 100%;
+  }
+}
