@@ -32,6 +32,17 @@ jobs:
       # The release scripts run by hand against production; the runner image ships shellcheck.
       - name: Shellcheck
         run: shellcheck -x scripts/*.sh scripts/lib/*.sh services/api/scripts/*.sh apps/web/scripts/*.sh
+      # Vercel only reads packageManager at the repository root, so vercel.json pins pnpm itself.
+      - name: Vercel uses the pnpm of packageManager
+        run: |
+          expected="npx --yes $(jq -r .packageManager apps/web/package.json) "
+          for command in installCommand buildCommand; do
+            actual=$(jq -r ".$command" apps/web/vercel.json)
+            if [[ $actual != "$expected"* ]]; then
+              echo "::error file=apps/web/vercel.json::$command must start with '$expected'"
+              exit 1
+            fi
+          done
 
   api:
     name: API
