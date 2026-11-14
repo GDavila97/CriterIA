@@ -73,6 +73,9 @@ export const apiEnv = {
   GROQ_API_KEY: 'unused-with-fake-models',
   USER_RUNS_PER_HOUR: '100',
   USER_RUNS_PER_DAY: '200',
+  // The whole suite shares the server key's daily quota; production keeps its own limits.
+  GLOBAL_DAILY_RUNS: '1000',
+  GLOBAL_DAILY_BUDGET_USD: '10',
   SSE_HEARTBEAT_SECONDS: '1',
 };
 
