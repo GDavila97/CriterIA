@@ -68,4 +68,16 @@ describe('Ficha', () => {
     expect(screen.queryByTestId('ficha-glasses')).not.toBeInTheDocument();
     expect(screen.queryByTestId('ficha-papers')).not.toBeInTheDocument();
   });
+
+  it('turns the body to face left and keeps the badge icon upright', () => {
+    const { rerender } = render(<Ficha {...colors} size={48} rol="lupa" />);
+    expect(screen.queryByTestId('ficha-left')).not.toBeInTheDocument();
+
+    rerender(<Ficha {...colors} size={48} rol="lupa" mirar="izquierda" />);
+
+    expect(screen.getByTestId('ficha-left')).toHaveAttribute('transform', 'matrix(-1 0 0 1 64 0)');
+    const badge = screen.getByTestId('ficha-badge');
+    expect(badge.querySelector('[transform*="matrix"]')).toBeNull();
+    expect(badge.querySelector('circle')).toHaveAttribute('cx', '12');
+  });
 });

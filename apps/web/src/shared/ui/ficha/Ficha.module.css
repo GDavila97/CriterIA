@@ -8,6 +8,8 @@
   transform-box: fill-box;
   transform-origin: center;
   animation: blink 6s infinite;
+  /* Set by a parent so several Fichas do not blink in unison. */
+  animation-delay: var(--ficha-desfase, 0s);
 }
 
 .walking .leg {
@@ -52,21 +54,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .eyes,
+  .working,
   .walking .leg {
-    animation: step 0.44s ease-in-out infinite alternate;
-  }
-
-  .walking .leg + .leg {
-    animation-delay: -0.22s;
-  }
-
-  @keyframes step {
-    to {
-      transform: translateY(-3px);
-    }
-  }
-
-  .working {
     animation: none;
   }
 }

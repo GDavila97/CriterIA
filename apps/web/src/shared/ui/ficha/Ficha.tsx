@@ -21,6 +21,8 @@ export interface FichaProps {
   papeles?: boolean;
   /** Moves the legs; whoever places the Ficha moves it. Needs `patas`. */
   andar?: boolean;
+  /** Turns the body to face left; the role badge keeps its icon readable. */
+  mirar?: 'izquierda' | 'derecha';
 }
 
 export function Ficha({
@@ -34,7 +36,9 @@ export function Ficha({
   lentes = false,
   papeles = false,
   andar = false,
+  mirar = 'derecha',
 }: FichaProps) {
+  const left = mirar === 'izquierda';
   const showPapers = papeles && size >= PAPERS_MIN_SIZE;
   const a11y = title ? { role: 'img', 'aria-label': title } : { 'aria-hidden': true };
   const height = patas ? 72 : 64;
@@ -52,73 +56,81 @@ export function Ficha({
         className={trabajando ? styles.working : undefined}
         data-testid={trabajando ? 'ficha-working' : undefined}
       >
-        {patas && (
-          <g
-            fill={shadow}
-            className={andar ? styles.walking : undefined}
-            data-testid={andar ? 'ficha-walking' : 'ficha-legs'}
-          >
-            <rect x="19" y="56" width="7" height="14" rx="3.5" className={styles.leg} />
-            <rect x="38" y="56" width="7" height="14" rx="3.5" className={styles.leg} />
-          </g>
-        )}
-        <path d="M14 6h30l14 14v30a8 8 0 0 1-8 8H14a8 8 0 0 1-8-8V14a8 8 0 0 1 8-8Z" fill={color} />
-        <path d="M44 6v10a4 4 0 0 0 4 4h10Z" fill={shadow} />
-        <g className={styles.eyes}>
-          <rect x="21" y="23" width="6" height="11" rx="3" fill="var(--color-ficha-ink)" />
-          <rect x="37" y="23" width="6" height="11" rx="3" fill="var(--color-ficha-ink)" />
-          <circle cx="25" cy="26" r="1.2" fill="#fff" />
-          <circle cx="41" cy="26" r="1.2" fill="#fff" />
-        </g>
-        {size >= SMILE_MIN_SIZE && (
-          <path
-            d="M27 39.5q5 4 10 0"
-            fill="none"
-            stroke="var(--color-ficha-ink)"
-            strokeWidth="2.2"
-            strokeLinecap="round"
-            data-testid="ficha-smile"
-          />
-        )}
-        {lentes && size >= GLASSES_MIN_SIZE && (
-          <g
-            fill="rgba(255,255,255,0.18)"
-            stroke="var(--color-ficha-ink)"
-            strokeWidth="2"
-            data-testid="ficha-glasses"
-          >
-            <circle cx="24" cy="28.5" r="6.5" />
-            <circle cx="40" cy="28.5" r="6.5" />
-            <path d="M30.5 28.5h3" fill="none" />
-          </g>
-        )}
-        {size >= TEXT_LINES_MIN_SIZE && !showPapers && (
-          <g fill="#fff" opacity="0.6" data-testid="ficha-lines">
-            <rect x="17" y="46" width="30" height="2.6" rx="1.3" />
-            <rect x="17" y="51" width="19" height="2.6" rx="1.3" />
-          </g>
-        )}
-        {showPapers && (
-          <g stroke="#c9cfd9" strokeWidth="0.8" data-testid="ficha-papers">
-            <rect
-              x="2"
-              y="37"
-              width="24"
-              height="18"
-              rx="2"
-              fill="#f4f6fa"
-              transform="rotate(-14 14 46)"
-            />
-            <g transform="rotate(-6 13 47)">
-              <rect x="1" y="38" width="24" height="18" rx="2" fill="#fff" />
-              <path d="M5 43h15M5 47h11M5 51h13" strokeWidth="1.6" strokeLinecap="round" />
+        <g
+          transform={left ? 'matrix(-1 0 0 1 64 0)' : undefined}
+          data-testid={left ? 'ficha-left' : undefined}
+        >
+          {patas && (
+            <g
+              fill={shadow}
+              className={andar ? styles.walking : undefined}
+              data-testid={andar ? 'ficha-walking' : 'ficha-legs'}
+            >
+              <rect x="19" y="56" width="7" height="14" rx="3.5" className={styles.leg} />
+              <rect x="38" y="56" width="7" height="14" rx="3.5" className={styles.leg} />
             </g>
+          )}
+          <path
+            d="M14 6h30l14 14v30a8 8 0 0 1-8 8H14a8 8 0 0 1-8-8V14a8 8 0 0 1 8-8Z"
+            fill={color}
+          />
+          <path d="M44 6v10a4 4 0 0 0 4 4h10Z" fill={shadow} />
+          <g className={styles.eyes}>
+            <rect x="21" y="23" width="6" height="11" rx="3" fill="var(--color-ficha-ink)" />
+            <rect x="37" y="23" width="6" height="11" rx="3" fill="var(--color-ficha-ink)" />
+            <circle cx="25" cy="26" r="1.2" fill="#fff" />
+            <circle cx="41" cy="26" r="1.2" fill="#fff" />
           </g>
-        )}
+          {size >= SMILE_MIN_SIZE && (
+            <path
+              d="M27 39.5q5 4 10 0"
+              fill="none"
+              stroke="var(--color-ficha-ink)"
+              strokeWidth="2.2"
+              strokeLinecap="round"
+              data-testid="ficha-smile"
+            />
+          )}
+          {lentes && size >= GLASSES_MIN_SIZE && (
+            <g
+              fill="rgba(255,255,255,0.18)"
+              stroke="var(--color-ficha-ink)"
+              strokeWidth="2"
+              data-testid="ficha-glasses"
+            >
+              <circle cx="24" cy="28.5" r="6.5" />
+              <circle cx="40" cy="28.5" r="6.5" />
+              <path d="M30.5 28.5h3" fill="none" />
+            </g>
+          )}
+          {size >= TEXT_LINES_MIN_SIZE && !showPapers && (
+            <g fill="#fff" opacity="0.6" data-testid="ficha-lines">
+              <rect x="17" y="46" width="30" height="2.6" rx="1.3" />
+              <rect x="17" y="51" width="19" height="2.6" rx="1.3" />
+            </g>
+          )}
+          {showPapers && (
+            <g stroke="#c9cfd9" strokeWidth="0.8" data-testid="ficha-papers">
+              <rect
+                x="2"
+                y="37"
+                width="24"
+                height="18"
+                rx="2"
+                fill="#f4f6fa"
+                transform="rotate(-14 14 46)"
+              />
+              <g transform="rotate(-6 13 47)">
+                <rect x="1" y="38" width="24" height="18" rx="2" fill="#fff" />
+                <path d="M5 43h15M5 47h11M5 51h13" strokeWidth="1.6" strokeLinecap="round" />
+              </g>
+            </g>
+          )}
+        </g>
         {rol && (
           <g data-testid="ficha-badge">
-            <circle cx="52" cy="52" r="11" fill="#fff" />
-            <g transform="translate(45 45) scale(0.58)" color={color}>
+            <circle cx={left ? 12 : 52} cy="52" r="11" fill="#fff" />
+            <g transform={`translate(${left ? 5 : 45} 45) scale(0.58)`} color={color}>
               <Icon name={rol} size={24} />
             </g>
           </g>
