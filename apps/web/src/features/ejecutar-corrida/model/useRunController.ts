@@ -117,7 +117,20 @@ export function useRunController(deps: RunControllerDeps = defaults) {
     };
   }, [follow]);
 
-  return { state, created, requerimiento, error, connection, lastBeat, busy, start, respond };
+  const dismissError = useCallback(() => setError(null), []);
+
+  return {
+    state,
+    created,
+    requerimiento,
+    error,
+    connection,
+    lastBeat,
+    busy,
+    start,
+    respond,
+    dismissError,
+  };
 }
 
 export type RunController = ReturnType<typeof useRunController>;
