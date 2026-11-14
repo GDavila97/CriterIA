@@ -2,7 +2,7 @@ import { initialRunState, runReducer, type RunState } from '@/entities/corrida';
 import type { Evento } from '@/shared/api';
 import { delivers, eventsFrom, fullRun, historia, inicia } from '@/shared/lib/testing';
 
-import { BOARD_SPOT, WORK_SPOTS } from './layout';
+import { BOARD, WORK } from './places';
 import { projectOffice } from './projection';
 
 type Body = Parameters<typeof eventsFrom>[number];
@@ -18,11 +18,12 @@ const reduce = (events: Evento[]): RunState =>
   events.reduce((s, evento) => runReducer(s, { type: 'evento', evento }), initialRunState('r'));
 
 describe('projectOffice', () => {
-  it('rests everyone in the break room before any analysis', () => {
+  it('leaves everyone to their routine before any analysis', () => {
     const office = projectOffice(initialRunState(), 'Ana Pérez');
 
     expect(office.momento).toBe('inactivo');
-    expect(Object.values(office.agentes).every((a) => a.zona === 'descanso' && a.libre)).toBe(true);
+    expect(Object.values(office.agentes).every((a) => a.lugar === null && a.libre)).toBe(true);
+    expect(office.celebrar).toBe(false);
     expect(office.contadores).toEqual({
       historias: '—',
       casos: '—',
@@ -41,18 +42,13 @@ describe('projectOffice', () => {
 
     expect(office.momento).toBe('durante');
     expect(office.agentes.analista).toMatchObject({
-      zona: 'escritorios',
-      punto: WORK_SPOTS.analista,
+      lugar: WORK.analista.id,
       trabajando: true,
       libre: false,
       actividad: 'redactando historias de usuario',
       globo: { texto: 'Redactando historias', tono: 'normal' },
     });
-    expect(office.agentes.qa).toMatchObject({
-      zona: 'descanso',
-      libre: true,
-      actividad: 'en espera',
-    });
+    expect(office.agentes.qa).toMatchObject({ lugar: null, libre: true, actividad: 'en espera' });
     expect(office.ultimoEvento).toBe('Analista empezó');
   });
 
@@ -81,7 +77,7 @@ describe('projectOffice', () => {
     ];
     const asked = projectOffice(reduce(eventsFrom(...base)));
     expect(asked.agentes.revisor).toMatchObject({
-      zona: 'juntas',
+      lugar: WORK.revisor.id,
       trabajando: false,
       globo: { texto: 'Pide corrección a QA' },
     });
@@ -103,8 +99,8 @@ describe('projectOffice', () => {
 
     expect(office.momento).toBe('tu_turno');
     expect(office.agentes.analista).toMatchObject({
-      zona: 'tablero',
-      punto: BOARD_SPOT,
+      lugar: BOARD.id,
+      libre: false,
       papeles: true,
       globo: { texto: 'Ana, necesito tu ayuda', tono: 'turno' },
     });
@@ -115,16 +111,13 @@ describe('projectOffice', () => {
     );
   });
 
-  it('sends everyone to rest at the end, with the Evaluator saying the analysis is ready', () => {
+  it('sets everyone free to celebrate at the end, with the Evaluator saying the analysis is ready', () => {
     const office = projectOffice(reduce(fullRun()));
 
     expect(office.momento).toBe('terminado');
-    expect(Object.values(office.agentes).every((a) => a.zona === 'descanso')).toBe(true);
-    expect(office.agentes.evaluador).toMatchObject({
-      libre: false,
-      globo: { texto: 'Análisis listo' },
-    });
-    expect(office.agentes.qa.libre).toBe(true);
+    expect(office.celebrar).toBe(true);
+    expect(Object.values(office.agentes).every((a) => a.libre && a.lugar === null)).toBe(true);
+    expect(office.agentes.evaluador).toMatchObject({ globo: { texto: 'Análisis listo' } });
     expect(office.contadores).toMatchObject({ casos: '2 +1', puntaje: '4.0' });
     expect(office.anuncio).toBe('Análisis terminado.');
   });
@@ -143,7 +136,8 @@ describe('projectOffice', () => {
     const office = projectOffice(state);
 
     expect(office.agentes.qa).toMatchObject({
-      zona: 'escritorios',
+      lugar: WORK.qa.id,
+      libre: false,
       globo: { texto: 'No pude terminar', tono: 'error' },
     });
   });

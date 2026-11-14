@@ -1,6 +1,6 @@
 import { AGENT_IDS, AGENTS, promedio, type AgentId, type RunState } from '@/entities/corrida';
 
-import { BOARD_SPOT, HOME_REST, REST_SPOTS, WORK_SPOTS, type Point3, type Zona } from './layout';
+import { BOARD, WORK } from './places';
 
 export type Momento = 'inactivo' | 'durante' | 'tu_turno' | 'terminado' | 'detenido';
 
@@ -12,9 +12,9 @@ export interface Globo {
 export interface AgentPlan {
   /** For the button's label: "QA: escribiendo casos de prueba, abrir panel". */
   actividad: string;
-  zona: Zona;
-  punto: Point3;
-  /** Free agents may wander around the break room and chat. */
+  /** The place it must stand on, such as its work or the board; null leaves it to its routine. */
+  lugar: string | null;
+  /** Free agents follow their own routine around the office. */
   libre: boolean;
   trabajando: boolean;
   papeles: boolean;
@@ -35,15 +35,14 @@ export interface OfficeSnapshot {
   ultimoEvento: string;
   /** What the live region says; only the moments that need the person. */
   anuncio: string | null;
+  /** The analysis just ended: the team gathers in the break room before going back to routine. */
+  celebrar: boolean;
 }
 
-const rest = (id: AgentId): Point3 => REST_SPOTS[HOME_REST[id]]!;
-
-function free(id: AgentId, actividad: string, globo: Globo | null = null): AgentPlan {
+function free(actividad: string, globo: Globo | null = null): AgentPlan {
   return {
     actividad,
-    zona: 'descanso',
-    punto: rest(id),
+    lugar: null,
     libre: true,
     trabajando: false,
     papeles: false,
@@ -54,8 +53,7 @@ function free(id: AgentId, actividad: string, globo: Globo | null = null): Agent
 function atWork(id: AgentId, actividad: string, texto: string): AgentPlan {
   return {
     actividad,
-    zona: id === 'revisor' || id === 'evaluador' ? 'juntas' : 'escritorios',
-    punto: WORK_SPOTS[id],
+    lugar: WORK[id].id,
     libre: false,
     trabajando: true,
     papeles: false,
@@ -137,7 +135,7 @@ function during(state: RunState, id: AgentId): AgentPlan {
       };
     }
   }
-  return free(id, agente.estado === 'pendiente' ? 'en espera' : 'terminó su parte');
+  return free(agente.estado === 'pendiente' ? 'en espera' : 'terminó su parte');
 }
 
 function firstName(name: string | null): string | null {
@@ -192,15 +190,14 @@ export function projectOffice(state: RunState, name: string | null = null): Offi
     AGENT_IDS.map((id): [AgentId, AgentPlan] => {
       switch (momento) {
         case 'inactivo':
-          return [id, free(id, 'en espera')];
+          return [id, free('en su rutina')];
         case 'tu_turno':
           if (id === 'analista') {
             return [
               id,
               {
                 actividad: 'espera tu revisión de las historias',
-                zona: 'tablero',
-                punto: BOARD_SPOT,
+                lugar: BOARD.id,
                 libre: false,
                 trabajando: false,
                 papeles: true,
@@ -211,17 +208,14 @@ export function projectOffice(state: RunState, name: string | null = null): Offi
               },
             ];
           }
-          return [id, free(id, 'en espera')];
+          return [id, free('en espera')];
         case 'terminado':
+          // The Evaluator's line shows while the team celebrates; the view decides when.
           return [
             id,
             id === 'evaluador'
-              ? {
-                  ...free(id, 'análisis listo'),
-                  libre: false,
-                  globo: { texto: 'Análisis listo', tono: 'normal' },
-                }
-              : free(id, 'descansando'),
+              ? free('análisis listo', { texto: 'Análisis listo', tono: 'normal' })
+              : free('celebrando'),
           ];
         case 'detenido':
         case 'durante':
@@ -236,5 +230,6 @@ export function projectOffice(state: RunState, name: string | null = null): Offi
     contadores: counters(state, momento),
     ultimoEvento: state.registro.at(-1)?.texto ?? 'Escribe un requerimiento y ejecuta el análisis.',
     anuncio: ANNOUNCEMENTS[momento] ?? null,
+    celebrar: momento === 'terminado',
   };
 }

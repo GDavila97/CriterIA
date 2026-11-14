@@ -1,5 +1,3 @@
-import type { AgentId } from '@/entities/corrida';
-
 /** Isometric floor coordinates, in tiles; z is height. The scene is drawn from these once. */
 type Point3 = readonly [x: number, y: number, z: number];
 
@@ -106,30 +104,6 @@ export const ZONE_LABELS: Record<Zona, { label: string; at: Point3 }> = {
   descanso: { label: 'Sala de descanso', at: [9.0, 9.9, 0] },
   tablero: { label: 'Tablero', at: [6.5, -0.3, 2.35] },
 };
-
-/** Where each agent stands for each kind of work. */
-export const WORK_SPOTS: Record<AgentId, Point3> = {
-  analista: [1.9, 2.9, 0],
-  qa: [4.9, 2.9, 0],
-  revisor: [11, 3.8, 0],
-  evaluador: [12.4, 3.6, 0],
-};
-
-export const BOARD_SPOT: Point3 = [6.6, 1.1, 0];
-
-/**
- * Points in the break room, far enough apart on screen that two agents never overlap there.
- * The first four are each agent's usual place; the fifth leaves room to move.
- */
-export const REST_SPOTS: readonly Point3[] = [
-  [9.2, 5.8, 0],
-  [11.2, 5.8, 0],
-  [13.2, 7.8, 0],
-  [13.0, 9.4, 0],
-  [10.6, 8.0, 0],
-];
-
-export const HOME_REST: Record<AgentId, number> = { analista: 0, qa: 1, revisor: 2, evaluador: 3 };
 
 const corners = SCENE.flatMap((s) => s.points.split(' ').map((p) => p.split(',').map(Number)));
 const PAD = 24;
