@@ -8,4 +8,4 @@
 
 **Alternativas:** estructura por tipo de archivo (se desordena al crecer); solo App Router sin capas (mezcla lógica y presentación).
 
-**Consecuencias:** la oficina se agrega en F9 sin tocar la lógica de la corrida. Regla de importación entre capas verificada con ESLint.
+**Consecuencias:** la oficina se agregó como widget sin tocar la lógica de la corrida ([0025](0025-office-view-as-a-projection.md)). Regla de importación entre capas verificada con ESLint.

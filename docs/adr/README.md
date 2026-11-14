@@ -15,7 +15,7 @@ Cada ADR sigue el formato Estado, Contexto, Decisión, Alternativas y Consecuenc
 | [0009](0009-cloud-run-and-vercel.md)               | Despliegue: Cloud Run para la API y Vercel para la web                        | Aceptada, concretada por 0022      |
 | [0010](0010-python-environment-uv.md)              | Entorno Python con uv                                                         | Aceptada                           |
 | [0011](0011-sse-typed-events.md)                   | Streaming con SSE y eventos tipados                                           | Aceptada                           |
-| [0012](0012-office-view-react-three-fiber.md)      | Vista oficina con React Three Fiber                                           | Aceptada                           |
+| [0012](0012-office-view-react-three-fiber.md)      | Vista oficina con React Three Fiber                                           | Sustituida por 0025                |
 | [0013](0013-nextjs-routes-outside-src.md)          | Rutas de Next.js fuera de `src/`                                              | Aceptada                           |
 | [0014](0014-nonce-based-csp.md)                    | CSP estricta con nonce en `proxy.ts`                                          | Aceptada                           |
 | [0015](0015-frozen-judge-prompt.md)                | Juez con versión propia y congelado                                           | Aceptada                           |
@@ -28,3 +28,4 @@ Cada ADR sigue el formato Estado, Contexto, Decisión, Alternativas y Consecuenc
 | [0022](0022-production-deployment.md)              | Despliegue de producción: imagen local, pooler para la web y Cloud Run medido | Aceptada, complementada por 0024   |
 | [0023](0023-connections-closed-by-neon.md)         | Conexiones que Neon cierra al suspender el cómputo                            | Aceptada                           |
 | [0024](0024-pnpm-on-vercel-with-npx.md)            | pnpm fijado con npx en Vercel                                                 | Aceptada                           |
+| [0025](0025-office-view-as-a-projection.md)        | Vista oficina como proyección del estado, en SVG y DOM                        | Aceptada                           |

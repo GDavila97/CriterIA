@@ -45,6 +45,26 @@ Reglas:
 - Los paneles y diálogos (`useModal`) se cierran con Esc, con la X o con un clic en la capa de fondo, bloquean el desplazamiento de la página y devuelven el foco al control que los abrió.
 - Con `prefers-reduced-motion: reduce`, los tokens de distancia valen cero y la escala vale 1: las entradas quedan en un fundido, el panel aparece sin deslizarse, y los bucles (pulso de los esqueletos, parpadeo y balanceo de la Ficha) se detienen.
 
+## Vista oficina
+
+- **Escena:** un SVG isométrico estático (escritorios, sala de juntas, tablero y sala de descanso), con `aria-hidden`. En modo oscuro se atenúa con un filtro.
+- **Agentes:** la Ficha a 44 px con patas, dentro de un botón con su nombre. Los globos van fuera del botón, con `aria-hidden`, porque el `aria-label` ya dice la actividad.
+- **Caminar:** cada agente vive en una capa del tamaño de la escena que se traslada con `transform`, con una duración proporcional a la distancia. La Ficha anda (`andar`) solo mientras dura el traslado.
+- **Vida libre:** cada 2.5 a 6 s, un agente libre camina a un punto vacío de la sala de descanso o dice una frase de la lista fija durante 2.6 s. Los cinco puntos están calculados para que dos agentes nunca se encimen a 1440 px.
+- **Tu turno:** globo ámbar (`--color-turn`) con un anillo que crece y se desvanece. El rojo sigue reservado para errores.
+- **Pausa y movimiento reducido:** con la pestaña oculta, las animaciones se pausan y no se programan pasos. Con `prefers-reduced-motion`, los agentes aparecen en su zona sin caminar, nadie deambula y el anillo no pulsa.
+
+## Capa de espera
+
+La Ficha del Evaluador, con lentes y papeles, camina de un lado a otro mientras se prepara el análisis. Con movimiento reducido se queda quieta y solo cambia el texto. El texto vive en una región `role="status"` con `aria-live="polite"` que existe aunque esté vacía, para que el primer mensaje se anuncie. Al fallar, el foco va a Reintentar; cuando el análisis sí se creó, va a Cancelar, para que un segundo análisis nunca quede a una tecla.
+
+## Diálogos
+
+- **Botones:** de izquierda a derecha, primero la salida (secundario con borde) y después las acciones que avanzan. Descargar usa la variante suave (`soft`, azul tenue con icono) y "Descartar y continuar" la destructiva (`destructive`, rojo sólido).
+- **A 480 px o menos:** los botones se apilan a todo el ancho, con la acción decisiva arriba y la salida al final (`column-reverse`).
+- **Límite de uso:** `alertdialog` con un reloj en un círculo ámbar, "Ver historial" (o "Modelos y claves" para el cupo gratuito) y "Entendido".
+- **Resultado terminado:** "Descargar" es un menú (Markdown y JSON) que se cierra con Esc, con un clic fuera o al elegir, y devuelve el foco al botón. "Nuevo análisis" limpia el formulario y el resultado, y pregunta antes si el resultado no está guardado.
+
 ## Listas largas en la vista del análisis
 
 La página no crece sin límite:

@@ -294,13 +294,15 @@ Dos proyectos: uno de Python (FastAPI) para la API y uno de Next.js para la web.
 | `NEXT_PUBLIC_APP_ENV`     | Config | `production`                                                                                | Activa `upgrade-insecure-requests` en la CSP y las cookies `Secure`                                             |
 | `NEXT_PUBLIC_API_URL`     | Config | URL de Cloud Run (`https://criteria-api-<número>.us-central1.run.app`)                      | Se incrusta en el build y entra en `connect-src`; se conoce tras el primer despliegue de la API                 |
 | `NEXT_PUBLIC_SENTRY_DSN`  | Config | `op://CriterIA/sentry-web/dsn`                                                              | Público por diseño                                                                                              |
-| `NEXT_PUBLIC_OFFICE_VIEW` | Config | `false`                                                                                     | La vista oficina llega en F9                                                                                    |
+| `NEXT_PUBLIC_OFFICE_VIEW` | Config | `true`                                                                                      | Ofrece la vista oficina desde 768 px. Se lee al compilar: cambiarla exige un despliegue nuevo de la web         |
 | `EMAIL_PROVIDER`          | Config | `none`                                                                                      | Sin dominio no hay envío ([ADR 0020](adr/0020-github-first-sign-in-without-email.md))                           |
 | `BETTER_AUTH_URL`         | Config | `https://criter-ia.vercel.app`                                                              | Origen público, sin barra final                                                                                 |
 | `BETTER_AUTH_SECRET`      | Secret | `op://CriterIA/better-auth-secret/password`, nuevo, de 48 bytes (`openssl rand -base64 48`) | Firma sesiones y cifra la llave privada del JWKS: cambiarlo invalida las sesiones y obliga a borrar `auth.jwks` |
 | `AUTH_DATABASE_URL`       | Secret | `op://CriterIA/neon-web-role/url-pooler`                                                    | URL de `web_role` con pooler y `sslmode=require` (`verify-full` pendiente, sección 2)                           |
 | `GITHUB_CLIENT_ID`        | Secret | `op://CriterIA/github-oauth-prod/client-id`                                                 | OAuth App de producción                                                                                         |
 | `GITHUB_CLIENT_SECRET`    | Secret | `op://CriterIA/github-oauth-prod/client-secret`                                             | OAuth App de producción                                                                                         |
+
+**Vista oficina:** `NEXT_PUBLIC_OFFICE_VIEW` se incrusta en el build, como toda variable `NEXT_PUBLIC_*`. Antes del primer despliegue que la incluye, cámbiala a `true` en Production y después crea el despliegue del SHA; cambiarla sin desplegar no tiene efecto ([ADR 0025](adr/0025-office-view-as-a-projection.md)).
 
 **No se crean:**
 

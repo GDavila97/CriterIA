@@ -155,7 +155,7 @@ apps/web/
     app/         layout raíz, fuentes y estilos globales
     pages/       home, run, history, history-detail, evaluation, settings, privacy, recovery;
                  cada una con su componente de ruta en el servidor (sesión y redirecciones)
-    widgets/     encabezado, vista-clasica, panel-agente, tablero-evaluacion
+    widgets/     encabezado, vista-clasica, vista-oficina, panel-agente, tablero-evaluacion
     features/    autenticacion, ejecutar-corrida, aprobar-historias, exportar, cambiar-vista,
                  gestionar-claves, controles-datos
     entities/    corrida (agentes, reductor de eventos a estado y textos derivados)
@@ -174,7 +174,11 @@ Reglas, verificadas con `eslint-plugin-boundaries`:
 - Nada en `src/` importa desde `app/` (las rutas de Next.js).
 - El alias `@/` apunta a `src/`.
 
-Las dos vistas de la corrida (clásica y, en F9, oficina) son widgets sobre la misma entidad `corrida`: `runReducer` es una función pura que reduce los eventos SSE a estado (descarta los `seq` repetidos tras una reconexión) y ninguna vista interpreta eventos por su cuenta. El control de vista y `?vista=` ya existen, pero quedan ocultos con `NEXT_PUBLIC_OFFICE_VIEW=false`.
+Las dos vistas del análisis, clásica y oficina, son widgets sobre la misma entidad `corrida`: `runReducer` es una función pura que reduce los eventos SSE a estado (descarta los `seq` repetidos tras una reconexión) y ninguna vista interpreta eventos por su cuenta.
+
+- **Oficina** (`widgets/vista-oficina`, [ADR 0025](adr/0025-office-view-as-a-projection.md)): `projectOffice` proyecta el estado en la actividad, la zona y el globo de cada agente; la escena es un SVG estático y los agentes son botones encima. Reemplaza solo el flujo de agentes y el registro: `ClassicView` recibe la oficina en su espacio `stage`, y artefactos y rúbrica siguen debajo, iguales.
+- **Carga:** la página la importa con `next/dynamic` solo al elegirla, así que no pesa en la vista clásica.
+- **Interruptor:** `useView` (`features/cambiar-vista`) lo muestra con `NEXT_PUBLIC_OFFICE_VIEW=true` y 768 px o más. Por debajo, `?vista=oficina` cae a la clásica. La elección se recuerda en `localStorage`, y el primer render es siempre la clásica, para que la hidratación coincida.
 
 El análisis en pantalla vive en `runSession` (`entities/corrida/model/session.ts`), un almacén del módulo leído con `useSyncExternalStore`:
 
@@ -182,6 +186,15 @@ El análisis en pantalla vive en `runSession` (`entities/corrida/model/session.t
 - **Reconexión:** al volver a "Nuevo análisis", si seguía en curso o en espera de aprobación, el controlador se reconecta con `Last-Event-ID` ([ADR 0018](adr/0018-run-lifecycle-bound-to-the-stream.md)).
 - **Avisos:** `features/exportar` pregunta antes de iniciar otro análisis o cerrar sesión, y registra `beforeunload`, solo cuando el análisis se perdería de verdad: sigue vivo o terminó sin historial.
 - **Al cerrar sesión:** el almacén se vacía.
+
+Al crear un análisis, `useRunController` guía la capa de espera (`WaitOverlay`):
+
+- **Umbral:** si el `POST /runs` o la apertura del stream tardan más de 1.5 s, aparece "Estamos preparando todo…"; al abrir el stream, "¡Todo listo!" por 700 ms. Si responde antes, no aparece nada.
+- **Sin respuesta:** a los 30 s, o con un error de red, aparece "No logramos conectar" con Cancelar y Reintentar, y la página detrás queda `inert`.
+- **Sin duplicados:** la API no tiene idempotencia, así que antes de repetir el POST se compara `GET /me/usage` con el uso que la página conocía. Si el contador subió, el primer POST sí llegó: no se crea otro, y la persona elige entre Cancelar e "Iniciar otro". Si el POST ya respondió y solo falló el stream, Reintentar reabre el mismo análisis.
+- **Precalentar:** la página ya pide catálogo, ajustes, uso y agentes al abrirse, y "Nuevo análisis" vuelve a pedir los ajustes; eso despierta Cloud Run y Neon mientras la persona escribe.
+
+Los límites de uso (`limite_hora`, `limite_dia`, `cupo_gratuito_agotado`) se explican en un diálogo y no en un aviso. La API no dice cuándo se libera el cupo, y la web no lo calcula.
 
 Los paneles y diálogos usan `useModal` (`shared/ui/dialog`) sobre `<dialog>` nativo:
 

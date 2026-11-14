@@ -1,6 +1,6 @@
 # 0012. Vista oficina con React Three Fiber
 
-**Estado:** aceptada.
+**Estado:** sustituida por la [0025](0025-office-view-as-a-projection.md) (proyección del estado en SVG y DOM, sin Three.js).
 
 **Contexto:** se quiere una capa visual opcional con los agentes trabajando en una oficina isométrica, sin afectar la vista clásica ni el rendimiento.
 

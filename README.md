@@ -35,6 +35,14 @@ El panel de cada agente muestra su prompt de sistema, el modelo y sus parámetro
 
 ![Resultado con las pestañas de artefactos y el panel del agente Revisor](docs/media/panel-agente-animado.webp)
 
+### Vista oficina
+
+Desde 768 px, el mismo análisis se puede ver como una oficina: los agentes caminan a la zona de lo que hacen (escritorios, sala de juntas, tablero), el Analista te llama al tablero cuando las historias esperan tu revisión y, al terminar, todos van a la sala de descanso. Es otra forma de ver el mismo estado que la vista clásica, sin eventos propios; con movimiento reducido nadie camina ([ADR 0025](docs/adr/0025-office-view-as-a-projection.md)).
+
+![Vista oficina: la espera mientras despierta la API, la pausa para revisar las historias y el final en la sala de descanso](docs/media/oficina-animado.webp)
+
+Si la API tarda más de 1.5 s en abrir un análisis, el Evaluador avisa que se está preparando todo. Si no hay respuesta, Reintentar nunca crea un segundo análisis por error.
+
 ### Proveedores y claves
 
 - **Modo gratuito.** Por defecto, los análisis corren en Groq (GPT-OSS 20B) con la clave del servidor, con un límite por persona (5 por hora y 20 por día) y un tope global diario en análisis y en dólares ([ADR 0019](docs/adr/0019-groq-developer-for-the-free-mode.md)).
@@ -145,13 +153,13 @@ Detalle en [architecture.md](docs/architecture.md), endpoints en [api.md](docs/a
   - **De punta a punta:** Playwright contra la API real con modelos simulados, Postgres y Mailpit; flujos completos y pantallas en escritorio y 390 px, claro y oscuro, con axe y sin violaciones de CSP.
   - **Imagen de la API:** build, migraciones desde la imagen y prueba de humo del contenedor.
   - **Repositorio:** actionlint, shellcheck y gitleaks sobre todo el historial.
-- **Cobertura mínima del 90 %** en la API y en la web; el CI falla por debajo. Última medición: API 97.7 % en 684 pruebas de pytest, web 98.8 % de líneas en 238 pruebas de Vitest; además, 61 pruebas de Playwright.
+- **Cobertura mínima del 90 %** en la API y en la web; el CI falla por debajo. Última medición: API 97.7 % en 684 pruebas de pytest, web 98.5 % de líneas en 289 pruebas de Vitest; además, 76 pruebas de Playwright.
 - **Ninguna prueba llama a un modelo real.** Los agentes se prueban con los modelos simulados de Pydantic AI y el e2e usa `MODEL_BACKEND=fake`, que pasa por los prompts, validadores y grafo reales.
 - **Dependabot** semanal para pnpm, uv, GitHub Actions y Docker. Las excepciones de auditoría se documentan en [audit-exceptions.md](docs/audit-exceptions.md).
 
 ## Estado
 
-En producción desde el 13 de noviembre de 2026. En desarrollo: la vista oficina (los agentes en una oficina isométrica, [ADR 0012](docs/adr/0012-office-view-react-three-fiber.md)) y la versión 2 de los prompts, que se comparará contra la v1 con los mismos casos y el mismo juez.
+En producción desde el 13 de noviembre de 2026, con la vista clásica y la vista oficina. En desarrollo: la versión 2 de los prompts, que se comparará contra la v1 con los mismos casos y el mismo juez.
 
 ## Estructura del repositorio
 
@@ -351,7 +359,7 @@ Las listas completas, con la fase en que se usa cada variable, están en [servic
 | `NEXT_PUBLIC_APP_ENV`                                                                      | Web         | Sí            | Entorno de la web                                                                                                                                                            |
 | `NEXT_PUBLIC_API_URL`                                                                      | Web         | Sí            | URL de la API; también entra en `connect-src` de la CSP. En producción debe ser `https`                                                                                      |
 | `NEXT_PUBLIC_SENTRY_DSN`                                                                   | Web         | No            | Sentry se activa solo con DSN                                                                                                                                                |
-| `NEXT_PUBLIC_OFFICE_VIEW`                                                                  | Web         | No            | Muestra el cambio de vista; `false` hasta F9                                                                                                                                 |
+| `NEXT_PUBLIC_OFFICE_VIEW`                                                                  | Web         | No            | Muestra el cambio de vista Clásica y Oficina desde 768 px; se lee al compilar                                                                                                |
 | `NEXT_PUBLIC_CONTACT_URL`                                                                  | Web         | No            | Contacto de "Privacidad y datos" (`https` o `mailto:`); vacía enlaza el perfil de GitHub                                                                                     |
 | `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`                                                    | Web         | Sí (servidor) | Secreto de sesión (32+ caracteres) y origen público de la web                                                                                                                |
 | `AUTH_DATABASE_URL`                                                                        | Web         | Sí (servidor) | Postgres como `web_role` (solo el esquema `auth`)                                                                                                                            |
