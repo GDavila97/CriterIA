@@ -63,7 +63,10 @@
 .stage {
   position: relative;
   width: 100%;
-  overflow: hidden;
+  overflow: clip;
+  /* The agents' z-index orders them within the room only, always under the sticky header. */
+  isolation: isolate;
+  contain: paint;
   border-radius: 20px;
   background: #eef0f4;
 }
@@ -117,8 +120,51 @@
   pointer-events: auto;
 }
 
-.figure > svg {
-  filter: drop-shadow(0 10px 8px rgba(20, 24, 40, 0.22));
+.feet {
+  position: relative;
+  display: block;
+}
+
+/* A soft ellipse on the floor that travels with the agent. */
+.shadow {
+  position: absolute;
+  bottom: -4px;
+  left: 50%;
+  width: 40px;
+  height: 10px;
+  margin-left: -20px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(20, 24, 40, 0.28), rgba(20, 24, 40, 0));
+}
+
+.feet > span:not(.shadow) {
+  position: relative;
+  display: block;
+}
+
+.feet span {
+  display: block;
+  transform-origin: 50% 100%;
+}
+
+.bounce {
+  animation: bounce 0.44s ease-in-out infinite alternate;
+}
+
+.settle {
+  animation: settle 0.36s ease-out;
+}
+
+.breathe {
+  animation: breathe var(--respira, 3.4s) ease-in-out var(--desfase, 0s) infinite;
+}
+
+.shift {
+  animation: shift 11s ease-in-out var(--desfase, 0s) infinite;
+}
+
+.say {
+  animation: say 0.42s ease-out;
 }
 
 .figure:focus-visible {
@@ -239,6 +285,45 @@
   font-size: 0.8125rem;
 }
 
+@keyframes bounce {
+  to {
+    transform: translateY(-3px);
+  }
+}
+
+@keyframes settle {
+  40% {
+    transform: scale(1.04, 0.95);
+  }
+}
+
+@keyframes breathe {
+  50% {
+    transform: scaleY(1.02);
+  }
+}
+
+/* Still most of the time, then a slow lean, as if shifting weight. */
+@keyframes shift {
+  0%,
+  82%,
+  100% {
+    transform: rotate(0);
+  }
+  88% {
+    transform: rotate(-2.5deg);
+  }
+  94% {
+    transform: rotate(1.5deg);
+  }
+}
+
+@keyframes say {
+  50% {
+    transform: translateY(-4px) rotate(-3deg);
+  }
+}
+
 @keyframes call {
   from {
     opacity: 1;
@@ -266,7 +351,12 @@
     transition: none;
   }
 
-  .bubbleTurn::after {
+  .bubbleTurn::after,
+  .bounce,
+  .settle,
+  .breathe,
+  .shift,
+  .say {
     animation: none;
   }
 }

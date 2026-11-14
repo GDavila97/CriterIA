@@ -107,4 +107,37 @@ describe('OfficeView', () => {
 
     expect(screen.getByRole('region', { name: 'Oficina' }).className).toMatch(/paused/);
   });
+
+  it('moves the legs only while an agent walks its route, and settles it on arrival', () => {
+    vi.useFakeTimers();
+    motion(false);
+    render(<OfficeView state={initialRunState()} seed={5} />);
+    expect(screen.queryAllByTestId('ficha-walking')).toHaveLength(0);
+
+    act(() => vi.advanceTimersByTime(1_000));
+    const slot = document.querySelector<HTMLElement>('[data-walking]');
+    expect(slot).not.toBeNull();
+    expect(slot!.querySelector('[data-testid="ficha-walking"]')).not.toBeNull();
+
+    // jsdom has no transitions: end each segment by hand until the walk is over.
+    for (let i = 0; i < 20 && slot!.hasAttribute('data-walking'); i += 1) {
+      act(() => {
+        slot!.dispatchEvent(new Event('transitionend', { bubbles: true }));
+      });
+    }
+    expect(slot!.hasAttribute('data-walking')).toBe(false);
+    expect(slot!.querySelector('[data-testid="ficha-walking"]')).toBeNull();
+  });
+
+  it('keeps the Analyst at the board on their turn while the others follow their routine', () => {
+    vi.useFakeTimers();
+    motion(false);
+    render(<OfficeView state={paused} seed={5} approval={{ busy: false, onAnswer: vi.fn() }} />);
+
+    act(() => vi.advanceTimersByTime(90_000));
+
+    const analyst = document.querySelector<HTMLElement>('[data-agent="analista"]')!;
+    expect(analyst.textContent).toContain('necesito tu ayuda');
+    expect(analyst.querySelector('[data-testid="ficha-papers"]')).not.toBeNull();
+  });
 });

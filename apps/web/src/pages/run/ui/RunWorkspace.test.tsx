@@ -312,7 +312,9 @@ describe('RunWorkspace', () => {
     expect(await screen.findByRole('region', { name: 'Oficina' })).toBeInTheDocument();
     expect(screen.queryByRole('region', { name: 'Flujo de agentes' })).not.toBeInTheDocument();
     expect(screen.getByRole('radio', { name: 'Oficina' })).toBeChecked();
-    expect(screen.getByRole('button', { name: 'QA: en espera, abrir panel' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'QA: trabajando en su escritorio, abrir panel' }),
+    ).toBeInTheDocument();
   });
 
   it('hides the switch and stays classic below 768 px even with ?vista=oficina', async () => {

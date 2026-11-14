@@ -8,19 +8,12 @@ import type { RespuestaHumana } from '@/shared/api';
 import { usePageVisible, useReducedMotion } from '@/shared/lib/react';
 import { Button, Drawer, Ficha } from '@/shared/ui';
 
-import {
-  HOME_REST,
-  iso,
-  REST_SPOTS,
-  SCENE,
-  toPercent,
-  VIEW,
-  ZONE_LABELS,
-  type Point3,
-} from '../model/layout';
+import { iso, SCENE, toPercent, VIEW, ZONE_LABELS, type Point3 } from '../model/layout';
+import { WALK_SPEED, type Activity, type Facing } from '../model/life';
+import { DESKS, placeById, REST, screenDistance } from '../model/places';
 import { projectOffice, type AgentPlan, type Globo } from '../model/projection';
 import styles from './OfficeView.module.css';
-import { useIdleLife } from './useIdleLife';
+import { useOfficeLife } from './useOfficeLife';
 
 export interface OfficeViewProps {
   state: RunState;
@@ -29,11 +22,9 @@ export interface OfficeViewProps {
   onOpenAgent?: (id: AgentId) => void;
   /** Present while a live run can be answered. */
   approval?: { busy: boolean; onAnswer: (respuesta: RespuestaHumana) => void };
-  /** Fixes the free agents' wandering, for tests and screenshots. */
+  /** Fixes the agents' routine, for tests and screenshots. */
   seed?: number;
 }
-
-const WALK_MS_PER_PERCENT = 45;
 
 /** The room itself: drawn once and hidden from assistive technology. */
 const OfficeScene = memo(function OfficeScene() {
@@ -82,60 +73,142 @@ function Bubble({ globo }: { globo: Globo }) {
   );
 }
 
+const screenX = (point: Point3) => iso(point)[0];
+
+/** What a free agent is doing, for its button's label. */
+const ROUTINE: Record<Activity, string> = {
+  escritorio: 'trabajando en su escritorio',
+  descanso: 'en la sala de descanso',
+  juntas: 'en la sala de juntas',
+  tablero: 'revisando el tablero',
+  charla: 'platicando',
+  celebrar: 'celebrando',
+  fijo: '',
+};
+
+/** Walks a route one segment at a time at a steady speed, easing in at the start and out at the end. */
+function useWalk(route: readonly Point3[], walk: number, reduced: boolean) {
+  const [progress, setProgress] = useState({ walk, segment: 0 });
+  let segment = progress.segment;
+  if (progress.walk !== walk) {
+    setProgress({ walk, segment: 0 });
+    segment = 0;
+  }
+  const last = route.length - 1;
+  const walking = !reduced && segment < last;
+  const from = route[walking ? segment : last]!;
+  const to = route[walking ? segment + 1 : last]!;
+  const easing =
+    last === 1
+      ? 'ease-in-out'
+      : segment === 0
+        ? 'ease-in'
+        : segment === last - 1
+          ? 'ease-out'
+          : 'linear';
+  return {
+    to,
+    walking,
+    duration: walking ? (screenDistance(from, to) / WALK_SPEED) * 1000 : 0,
+    easing,
+    facing: walking ? (screenX(to) >= screenX(from) ? 'derecha' : 'izquierda') : null,
+    next: () =>
+      setProgress((current) =>
+        current.walk === walk ? { walk, segment: current.segment + 1 } : current,
+      ),
+  } as const;
+}
+
 interface AgentProps {
   id: AgentId;
+  index: number;
   plan: AgentPlan;
-  point: Point3;
+  actividad: string;
+  route: readonly Point3[];
+  walk: number;
+  facing: Facing;
   bubble: Globo | null;
+  /** True while the agent says a chat line, for its small gesture. */
+  speaking: boolean;
+  trabajando: boolean;
   reduced: boolean;
   onOpen?: (id: AgentId) => void;
 }
 
-function OfficeAgent({ id, plan, point, bubble, reduced, onOpen }: AgentProps) {
+function OfficeAgent({
+  id,
+  index,
+  plan,
+  actividad,
+  route,
+  walk,
+  facing,
+  bubble,
+  speaking,
+  trabajando,
+  reduced,
+  onOpen,
+}: AgentProps) {
   const info = AGENTS[id];
-  const target = toPercent(point);
-  const key = `${target.x.toFixed(2)},${target.y.toFixed(2)}`;
-  const [arrived, setArrived] = useState(key);
-  const [from, setFrom] = useState(target);
-  const distance = Math.hypot(target.x - from.x, target.y - from.y);
-  // Walking lasts while the slot travels; with reduced motion, or no real distance, it just arrives.
-  const walking = !reduced && arrived !== key && distance >= 0.5;
-  if (!walking && arrived !== key) setArrived(key);
-  if (!walking && (from.x !== target.x || from.y !== target.y)) setFrom(target);
-  const style: CSSProperties = {
-    transform: `translate(${target.x}%, ${target.y}%)`,
-    transitionDuration: reduced ? '0ms' : `${Math.round(distance * WALK_MS_PER_PERCENT)}ms`,
-    zIndex: Math.round(target.y * 10),
-  };
+  const step = useWalk(route, walk, reduced);
+  const at = toPercent(step.to);
+  const style = {
+    transform: `translate(${at.x}%, ${at.y}%)`,
+    transitionDuration: `${Math.round(step.duration)}ms`,
+    transitionTimingFunction: step.easing,
+    zIndex: Math.round(at.y * 10),
+    // Each agent breathes and blinks on its own beat.
+    '--desfase': `${-index * 0.9}s`,
+    '--respira': `${3 + index * 0.3}s`,
+    '--ficha-desfase': `${-index * 1.7}s`,
+  } as CSSProperties;
 
   return (
     <div
       className={styles.slot}
       style={style}
       onTransitionEnd={(event) => {
-        if (event.target === event.currentTarget) setArrived(key);
+        if (event.target === event.currentTarget) step.next();
       }}
       data-agent={id}
-      data-walking={walking || undefined}
+      data-walking={step.walking || undefined}
     >
       <div className={styles.agent}>
-        {bubble && <Bubble globo={bubble} />}
+        {bubble && <Bubble key={bubble.texto} globo={bubble} />}
         <button
           type="button"
           className={styles.figure}
-          aria-label={`${info.nombre}: ${plan.actividad}, abrir panel`}
+          aria-label={`${info.nombre}: ${actividad}, abrir panel`}
           onClick={() => onOpen?.(id)}
         >
-          <Ficha
-            color={info.color}
-            shadow={info.sombra}
-            size={44}
-            rol={info.icono}
-            patas
-            papeles={plan.papeles}
-            trabajando={plan.trabajando}
-            andar={walking}
-          />
+          <span className={styles.feet}>
+            <span className={styles.shadow} aria-hidden="true" />
+            <span
+              key={speaking ? bubble?.texto : 'quieto'}
+              className={speaking ? styles.say : undefined}
+            >
+              <span
+                key={walk}
+                className={step.walking ? styles.bounce : walk ? styles.settle : undefined}
+              >
+                <span className={step.walking ? undefined : styles.shift}>
+                  <span className={step.walking ? undefined : styles.breathe}>
+                    <Ficha
+                      color={info.color}
+                      shadow={info.sombra}
+                      size={44}
+                      rol={info.icono}
+                      patas
+                      papeles={plan.papeles}
+                      trabajando={trabajando && !step.walking}
+                      andar={step.walking}
+                      mirar={step.facing ?? facing}
+                    />
+                  </span>
+                </span>
+              </span>
+            </span>
+          </span>
           <span className={styles.name}>{info.nombre}</span>
         </button>
       </div>
@@ -157,18 +230,16 @@ export function OfficeView({
   const office = projectOffice(state, userName);
   const reduced = useReducedMotion();
   const visible = usePageVisible();
-  const free = AGENT_IDS.filter((id) => office.agentes[id].libre);
-  // Agents resting without wandering, like the Evaluator at the end, keep their place taken.
-  const fixed = AGENT_IDS.filter(
-    (id) => office.agentes[id].zona === 'descanso' && !office.agentes[id].libre,
-  ).map((id) => HOME_REST[id]);
-  const idle = useIdleLife(free, {
-    seed,
-    spotCount: REST_SPOTS.length,
-    active: visible && !reduced,
-    occupied: fixed,
-    home: HOME_REST,
-  });
+  const fixed = Object.fromEntries(
+    AGENT_IDS.flatMap((id) => {
+      const lugar = office.agentes[id].lugar;
+      return lugar ? [[id, lugar]] : [];
+    }),
+  ) as Partial<Record<AgentId, string>>;
+  const life = useOfficeLife(
+    { fixed, celebrate: office.celebrar },
+    { seed, active: visible && !reduced },
+  );
   const [reviewing, setReviewing] = useState(false);
   const turn = office.momento === 'tu_turno' && approval;
   const { contadores } = office;
@@ -202,18 +273,36 @@ export function OfficeView({
       <div className={styles.body}>
         <div className={styles.stage} style={{ aspectRatio: `${VIEW.width} / ${VIEW.height}` }}>
           <OfficeScene />
-          {AGENT_IDS.map((id) => {
+          {AGENT_IDS.map((id, index) => {
             const plan = office.agentes[id];
-            const spot = reduced ? undefined : idle.spots[id];
-            const point = spot === undefined ? plan.punto : REST_SPOTS[spot]!;
-            const said = reduced ? undefined : idle.chatter[id];
+            const own = life[id];
+            // With reduced motion nobody walks: each agent simply stands where it belongs.
+            const still = plan.lugar
+              ? placeById(plan.lugar)
+              : office.celebrar
+                ? REST[index]!
+                : DESKS[id];
+            const route = reduced ? [still.point] : own.route;
+            const celebrating = reduced ? office.celebrar : own.activity === 'celebrar';
+            const fixedBubble = plan.libre ? (celebrating ? plan.globo : null) : plan.globo;
+            const said = reduced ? null : own.bubble;
             return (
               <OfficeAgent
                 key={id}
                 id={id}
+                index={index}
                 plan={plan}
-                point={point}
-                bubble={plan.globo ?? (said ? { texto: said, tono: 'normal' } : null)}
+                actividad={
+                  plan.libre && !reduced && own.activity !== 'fijo'
+                    ? ROUTINE[own.activity]
+                    : plan.actividad
+                }
+                route={route}
+                walk={reduced ? 0 : own.walk}
+                facing={reduced ? 'derecha' : own.facing}
+                bubble={fixedBubble ?? (said ? { texto: said, tono: 'normal' } : null)}
+                speaking={Boolean(said) && own.activity === 'charla'}
+                trabajando={plan.trabajando || (!reduced && own.activity === 'escritorio')}
                 reduced={reduced}
                 onOpen={onOpenAgent}
               />
