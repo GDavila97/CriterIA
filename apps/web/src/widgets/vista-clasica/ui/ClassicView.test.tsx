@@ -49,7 +49,8 @@ describe('ClassicView', () => {
     expect(within(rubric).getByText('Completitud').nextSibling).toHaveTextContent('3.0');
     expect(within(rubric).getByText(/El juez es del mismo proveedor/)).toBeInTheDocument();
     expect(screen.getByText('Evaluador calificó: 4.0 de 5')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Exportar Markdown' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Descargar' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Nuevo análisis' })).not.toBeInTheDocument();
   });
 
   it('marks a finished analysis kept only in this tab next to its downloads', () => {
@@ -57,8 +58,7 @@ describe('ClassicView', () => {
       <ClassicView state={reduce(fullRun())} requerimiento={REQ} saved={false} />,
     );
     expect(screen.getByText('No guardado en tu historial')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Exportar Markdown' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'JSON' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Descargar' })).toBeInTheDocument();
 
     rerender(<ClassicView state={reduce(fullRun())} requerimiento={REQ} saved />);
     expect(screen.queryByText('No guardado en tu historial')).not.toBeInTheDocument();
@@ -177,5 +177,37 @@ describe('ClassicView', () => {
     await userEvent.click(screen.getByRole('tab', { name: 'Observaciones' }));
     expect(screen.getByText('Aún no hay observaciones.')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Ver agente/ })).not.toBeInTheDocument();
+  });
+
+  it('offers Nuevo análisis on a finished result when the page can start one', async () => {
+    const onNewAnalysis = vi.fn();
+    render(
+      <ClassicView
+        state={reduce(fullRun())}
+        requerimiento={REQ}
+        saved={false}
+        onNewAnalysis={onNewAnalysis}
+      />,
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: 'Nuevo análisis' }));
+
+    expect(onNewAnalysis).toHaveBeenCalled();
+  });
+
+  it('lets another stage replace the agent flow and the event log', () => {
+    render(
+      <ClassicView
+        state={reduce(fullRun())}
+        requerimiento={REQ}
+        stage={<section aria-label="Oficina">escena</section>}
+      />,
+    );
+
+    expect(screen.getByRole('region', { name: 'Oficina' })).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Flujo de agentes' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Registro' })).not.toBeInTheDocument();
+    expect(screen.getByRole('region', { name: /Rúbrica/ })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Artefactos' })).toBeInTheDocument();
   });
 });

@@ -48,7 +48,7 @@ describe('HistoryDetailPage', () => {
     expect(
       screen.getByText(/Calificado por el Evaluador \(Groq · GPT-OSS 20B\)/),
     ).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Exportar Markdown' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Descargar' })).toBeInTheDocument();
   });
 
   it('reports a run that is gone', async () => {

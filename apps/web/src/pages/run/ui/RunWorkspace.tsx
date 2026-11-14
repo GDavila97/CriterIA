@@ -2,9 +2,11 @@
 
 import { useCallback, useEffect, useState } from 'react';
 
-import { AGENT_IDS, type AgentId } from '@/entities/corrida';
+import { AGENT_IDS, runSession, type AgentId } from '@/entities/corrida';
 import { resolveView, ViewSwitch, type Vista } from '@/features/cambiar-vista';
 import {
+  isLimitError,
+  LimitDialog,
   RunForm,
   useRunController,
   type RunController,
@@ -73,6 +75,7 @@ export function RunWorkspace({
   const [params, setParams] = useState<Params>(EMPTY_PARAMS);
   const [maxRondas, setMaxRondas] = useState(DEFAULT_ROUNDS);
   const [agent, setAgent] = useState<AgentId | null>(null);
+  const [formKey, setFormKey] = useState(0);
   const [vista, setVista] = useState<Vista>(() => resolveView(vistaParam, officeEnabled));
 
   useEffect(() => {
@@ -129,6 +132,16 @@ export function RunWorkspace({
     });
   };
 
+  const newAnalysis = () =>
+    lossGuard.guard(() => {
+      runSession.clear();
+      run.dismissError();
+      setDraft(null);
+      setFormKey((key) => key + 1);
+      // Wakes the API and the database while the person writes the next requirement.
+      client.settings().catch(() => {});
+    });
+
   const providerOf = (id: AgentId) => {
     const planned = run.created?.agentes[id].proveedor;
     const fallback =
@@ -156,6 +169,7 @@ export function RunWorkspace({
         <main className={styles.layout}>
           <h1 className="sr-only">Nuevo análisis</h1>
           <RunForm
+            key={formKey}
             catalog={data.catalog}
             settings={data.settings}
             usage={data.usage}
@@ -164,7 +178,9 @@ export function RunWorkspace({
             onSubmit={submit}
           />
           <div className={styles.right}>
-            {run.error && <Notice tone="error">{run.error.message}</Notice>}
+            {run.error && !isLimitError(run.error) && (
+              <Notice tone="error">{run.error.message}</Notice>
+            )}
             <ClassicView
               state={run.state}
               requerimiento={run.requerimiento}
@@ -178,6 +194,7 @@ export function RunWorkspace({
                   : undefined
               }
               saved={run.created?.guardar_historial}
+              onNewAnalysis={newAnalysis}
             />
           </div>
           <AgentPanel
@@ -192,6 +209,7 @@ export function RunWorkspace({
             onClose={() => setAgent(null)}
           />
           <UnsavedRunDialog guard={lossGuard} />
+          <LimitDialog error={run.error} usage={data.usage} onClose={run.dismissError} />
         </main>
       )}
     </div>

@@ -38,7 +38,8 @@ test('una corrida completa con la aprobación editada', async ({ page }) => {
   await expect(page.getByRole('table').getByText('Revisor')).toBeVisible();
   await expect(page.getByRole('region', { name: /Rúbrica/ })).toContainText('4.0');
   const download = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Exportar Markdown' }).click();
+  await page.getByRole('button', { name: 'Descargar' }).click();
+  await page.getByRole('button', { name: 'Markdown' }).click();
   expect((await download).suggestedFilename()).toMatch(/^criteria-.*\.md$/);
 });
 
@@ -147,12 +148,14 @@ test('una corrida larga: registro completo en vivo, artefactos paginados y expor
   );
 
   const download = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Descargar' }).click();
   await page.getByRole('button', { name: 'JSON' }).click();
   const exported = JSON.parse(await readFile((await (await download).path()) ?? '', 'utf8'));
   expect(exported.historias).toHaveLength(12);
   expect(exported.casos).toHaveLength(13);
   const markdown = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Exportar Markdown' }).click();
+  await page.getByRole('button', { name: 'Descargar' }).click();
+  await page.getByRole('button', { name: 'Markdown' }).click();
   const text = await readFile((await (await markdown).path()) ?? '', 'utf8');
   expect(text).toContain('HU-12');
   expect(text).toContain('CP-90');
@@ -177,7 +180,7 @@ test('ir a Historial y volver conserva la pausa y el resultado sin historial', a
   await finishRun(page);
   await expect(page.getByText('No guardado en tu historial')).toBeVisible();
   await expect(page.getByText(/quiero/).first()).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Exportar Markdown' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Descargar' })).toBeVisible();
 });
 
 test('iniciar otro análisis sin historial avisa antes de perder el actual', async ({ page }) => {
@@ -198,10 +201,53 @@ test('iniciar otro análisis sin historial avisa antes de perder el actual', asy
   const download = page.waitForEvent('download');
   await warning.getByRole('button', { name: 'Descargar' }).click();
   expect((await download).suggestedFilename()).toMatch(/^criteria-.*\.md$/);
-  await warning.getByRole('button', { name: 'Continuar' }).click();
+  await warning.getByRole('button', { name: 'Descartar y continuar' }).click();
 
   await waitForApproval(page);
   await expect(page.getByText('No guardado en tu historial')).toBeHidden();
+});
+
+test('Nuevo análisis limpia el formulario y el resultado después de avisar', async ({ page }) => {
+  await startRun(page);
+  await waitForApproval(page);
+  await page.getByRole('button', { name: /^Aprobar/ }).click();
+  await finishRun(page);
+  const warning = page.getByRole('alertdialog', { name: '¿Descartar el análisis?' });
+
+  await page.getByRole('button', { name: 'Nuevo análisis' }).click();
+  await warning.getByRole('button', { name: 'Descartar y continuar' }).click();
+
+  await expect(
+    page.getByLabel('Describe lo que el sistema debe hacer, en lenguaje natural'),
+  ).toHaveValue('');
+  await expect(page.getByText('Escribe un requerimiento y ejecuta el análisis')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Nuevo análisis' })).toBeHidden();
+});
+
+test('un límite de uso se explica en un diálogo sin inventar la hora', async ({ page }) => {
+  await page.route('**/runs', (route) =>
+    route.request().method() === 'POST'
+      ? route.fulfill({
+          status: 429,
+          contentType: 'application/json',
+          // The page and the API are different origins; the real API answers with its CORS header.
+          headers: { 'access-control-allow-origin': '*' },
+          body: JSON.stringify({ code: 'limite_hora', message: 'Alcanzaste el límite.' }),
+        })
+      : route.fallback(),
+  );
+  await startRun(page);
+
+  const dialog = page.getByRole('alertdialog', {
+    name: 'Alcanzaste el límite de análisis por hora',
+  });
+  await expect(dialog).toContainText('Puedes iniciar hasta 100 análisis por hora y 200 al día.');
+  await expect(dialog).not.toContainText(/a las/);
+  await dialog.getByRole('button', { name: 'Entendido' }).click();
+  await expect(dialog).toBeHidden();
+  await expect(
+    page.getByLabel('Describe lo que el sistema debe hacer, en lenguaje natural'),
+  ).not.toHaveValue('');
 });
 
 test('el panel del agente se cierra con Esc y con un clic fuera', async ({ page }) => {

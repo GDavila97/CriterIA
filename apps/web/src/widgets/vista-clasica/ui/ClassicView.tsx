@@ -16,7 +16,7 @@ import {
 } from '@/entities/corrida';
 import { ApprovalPanel } from '@/features/aprobar-historias';
 import type { Connection } from '@/features/ejecutar-corrida';
-import { ExportButtons } from '@/features/exportar';
+import { ResultActions } from '@/features/exportar';
 import type { RespuestaHumana } from '@/shared/api';
 import { Badge, Button, buttonClass, Ficha, Icon, motion, Paged, Tabs } from '@/shared/ui';
 
@@ -36,6 +36,10 @@ export interface ClassicViewProps {
   judgeLabel?: string;
   /** Whether the finished analysis went to the history; unknown for saved ones being viewed. */
   saved?: boolean;
+  /** Starts over from a finished result; absent when viewing a saved analysis. */
+  onNewAnalysis?: () => void;
+  /** Takes the place of the agent flow and the event log, as the office view does. */
+  stage?: ReactNode;
 }
 
 const CONNECTION_TEXT: Record<Connection, string> = {
@@ -409,12 +413,14 @@ export function ClassicView({
   onUseFree,
   judgeLabel,
   saved,
+  onNewAnalysis,
+  stage,
 }: ClassicViewProps) {
   const waiting = state.fase === 'esperando_aprobacion' && approval;
   const finished = state.fase === 'completada' || state.fase === 'error';
   return (
     <div className={styles.view}>
-      <AgentFlow state={state} connection={connection} onOpenAgent={onOpenAgent} />
+      {stage ?? <AgentFlow state={state} connection={connection} onOpenAgent={onOpenAgent} />}
       {state.error?.respaldoSugerido && onUseFree && (
         <Fallback state={state} onUseFree={onUseFree} />
       )}
@@ -439,21 +445,15 @@ export function ClassicView({
             />
           </section>
         ) : (
-          <Card
-            title="Artefactos"
-            label="artifacts-title"
-            extra={
-              finished && (
-                <div className={styles.exports}>
-                  <ExportButtons
-                    state={state}
-                    requerimiento={requerimiento}
-                    unsaved={saved === false}
-                  />
-                </div>
-              )
-            }
-          >
+          <Card title="Artefactos" label="artifacts-title">
+            {finished && (
+              <ResultActions
+                state={state}
+                requerimiento={requerimiento}
+                unsaved={saved === false}
+                onNewAnalysis={onNewAnalysis}
+              />
+            )}
             <Tabs
               label="Artefactos"
               items={[
@@ -471,7 +471,7 @@ export function ClassicView({
         )}
         <div className={styles.aside}>
           <Rubric state={state} judgeLabel={judgeLabel} />
-          <EventLog state={state} />
+          {!stage && <EventLog state={state} />}
         </div>
       </div>
     </div>

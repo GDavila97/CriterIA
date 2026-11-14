@@ -1,10 +1,18 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
-import { initialRunState, runReducer, type RunState } from '@/entities/corrida';
+import { initialRunState, runReducer, runSession, type RunState } from '@/entities/corrida';
 import { EXAMPLES, type RunController } from '@/features/ejecutar-corrida';
 import { ApiError, type RunCreatedBody } from '@/shared/api';
-import { agentsGuide, catalog, eventsFrom, inicia, settings, usage } from '@/shared/lib/testing';
+import {
+  agentsGuide,
+  catalog,
+  eventsFrom,
+  fullRun,
+  inicia,
+  settings,
+  usage,
+} from '@/shared/lib/testing';
 
 import { RunWorkspace } from './RunWorkspace';
 
@@ -39,6 +47,7 @@ function controller(
     busy: false,
     start: vi.fn(async () => {}),
     respond: vi.fn(async () => {}),
+    dismissError: vi.fn(),
     ...extra,
   };
 }
@@ -125,7 +134,7 @@ describe('RunWorkspace', () => {
 
   it('shows API and loading errors', async () => {
     const run = controller(initialRunState(), {
-      error: new ApiError(429, 'limite_hora', 'Alcanzaste el límite de análisis por hora.'),
+      error: new ApiError(422, 'entrada_invalida', 'Revisa el requerimiento.'),
     });
     const { unmount } = render(
       <RunWorkspace
@@ -136,9 +145,7 @@ describe('RunWorkspace', () => {
         useController={() => run}
       />,
     );
-    expect(
-      await screen.findByText('Alcanzaste el límite de análisis por hora.'),
-    ).toBeInTheDocument();
+    expect(await screen.findByText('Revisa el requerimiento.')).toBeInTheDocument();
     unmount();
 
     const failing = {
@@ -176,5 +183,74 @@ describe('RunWorkspace', () => {
     );
 
     expect(await screen.findByRole('alert')).toHaveTextContent('No se pudo cargar la página');
+  });
+
+  it('shows a usage limit as a dialog instead of a notice and dismisses it', async () => {
+    const run = controller(initialRunState(), {
+      error: new ApiError(429, 'limite_hora', 'Alcanzaste el límite de análisis por hora.'),
+    });
+    render(
+      <RunWorkspace
+        user={user}
+        officeEnabled={false}
+        vistaParam={null}
+        client={client()}
+        useController={() => run}
+      />,
+    );
+
+    const dialog = await screen.findByRole('alertdialog', {
+      name: 'Alcanzaste el límite de análisis por hora',
+    });
+    expect(dialog).toHaveAccessibleDescription(
+      'Puedes iniciar hasta 5 análisis por hora y 20 al día.',
+    );
+    expect(
+      screen.queryByText('Alcanzaste el límite de análisis por hora.'),
+    ).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Entendido' }));
+    expect(run.dismissError).toHaveBeenCalled();
+  });
+
+  it('starts over from a finished result, asking first when it was not saved', async () => {
+    const done = fullRun().reduce(
+      (s, evento) => runReducer(s, { type: 'evento', evento }),
+      initialRunState('r'),
+    );
+    runSession.start({ run_id: 'r', guardar_historial: false } as RunCreatedBody, 'Requerimiento');
+    fullRun().forEach((evento) => runSession.apply({ type: 'evento', evento }));
+    const run = controller(done, {
+      created: { run_id: 'r', guardar_historial: false } as RunCreatedBody,
+    });
+    const c = client();
+    render(
+      <RunWorkspace
+        user={user}
+        officeEnabled={false}
+        vistaParam={null}
+        client={c}
+        useController={() => run}
+      />,
+    );
+    await userEvent.click(await screen.findByRole('button', { name: EXAMPLES[0].label }));
+    const field = screen.getByLabelText(
+      'Describe lo que el sistema debe hacer, en lenguaje natural',
+    );
+    expect(field).toHaveValue(EXAMPLES[0].texto);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Nuevo análisis' }));
+    await userEvent.click(
+      within(screen.getByRole('alertdialog', { name: '¿Descartar el análisis?' })).getByRole(
+        'button',
+        { name: 'Descartar y continuar' },
+      ),
+    );
+
+    expect(runSession.get().created).toBeNull();
+    expect(run.dismissError).toHaveBeenCalled();
+    expect(
+      screen.getByLabelText('Describe lo que el sistema debe hacer, en lenguaje natural'),
+    ).toHaveValue('');
+    expect(c.settings).toHaveBeenCalledTimes(2);
   });
 });
