@@ -8,14 +8,16 @@ import { useModal } from './useModal';
 export interface DialogProps {
   open: boolean;
   title: string;
-  description: string;
+  description: ReactNode;
   onClose: () => void;
-  /** The buttons; the first one gets the focus when the dialog opens. */
+  /** The buttons, left to right; the first one sits apart on the left and gets the focus. */
   actions: ReactNode;
+  /** A decorative mark beside the title, such as a clock for a limit. */
+  icon?: ReactNode;
 }
 
-/** A centered confirmation that asks before something is lost. */
-export function Dialog({ open, title, description, onClose, actions }: DialogProps) {
+/** A centered confirmation that asks before something is lost or explains why it stopped. */
+export function Dialog({ open, title, description, onClose, actions, icon }: DialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
   const modal = useModal(ref, open, onClose);
   const titleId = useId();
@@ -32,12 +34,21 @@ export function Dialog({ open, title, description, onClose, actions }: DialogPro
       onClick={modal.onClick}
       onClose={onClose}
     >
-      <h2 id={titleId} className={styles.title}>
-        {title}
-      </h2>
-      <p id={descriptionId} className={styles.description}>
-        {description}
-      </p>
+      <div className={styles.head}>
+        {icon && (
+          <span className={styles.icon} aria-hidden="true">
+            {icon}
+          </span>
+        )}
+        <div>
+          <h2 id={titleId} className={styles.title}>
+            {title}
+          </h2>
+          <p id={descriptionId} className={styles.description}>
+            {description}
+          </p>
+        </div>
+      </div>
       <div className={styles.actions}>{actions}</div>
     </dialog>
   );

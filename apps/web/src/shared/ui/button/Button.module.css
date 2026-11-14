@@ -54,6 +54,16 @@
   background: var(--color-surface-2);
 }
 
+.soft {
+  background: var(--color-accent-soft);
+  color: var(--color-accent-soft-ink);
+}
+
+.destructive {
+  background: var(--color-danger-strong);
+  color: var(--color-on-danger);
+}
+
 .danger {
   background: var(--color-surface);
   border-color: var(--color-danger-line);

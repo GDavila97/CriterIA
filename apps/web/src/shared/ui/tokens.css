@@ -26,6 +26,14 @@
   --color-ficha-ink: #0f1115;
   /* Reserved for the human-attention bubble and errors. */
   --color-attention: #d92d20;
+  --color-accent-soft-ink: #1d3592;
+  --color-danger-strong: #b42318;
+  --color-on-danger: #ffffff;
+  --color-warning-soft: #fff4db;
+  --color-warning-ink: #6e4700;
+  /* The office's "your turn" bubble and card. */
+  --color-turn: #f2b33d;
+  --color-turn-ink: #16181d;
 
   --color-agent-analista: #2f6bdb;
   --color-agent-analista-shadow: #1f4fa8;
@@ -97,6 +105,10 @@
     --color-danger: #f97066;
     --color-danger-soft: #3a1d1b;
     --color-danger-line: #5a2a27;
+    --color-accent-soft-ink: #d3dcff;
+    --color-danger-strong: #c2352b;
+    --color-warning-soft: #3a2e12;
+    --color-warning-ink: #f2c66d;
     --color-badge-revisor: #2c2445;
     --color-badge-revisor-ink: #c4b2f5;
     --color-card-border: #2c313b;

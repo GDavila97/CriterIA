@@ -1,7 +1,7 @@
 'use client';
 
 import { useRunSession } from '@/entities/corrida';
-import { Button, Dialog } from '@/shared/ui';
+import { Button, Dialog, Icon } from '@/shared/ui';
 
 import type { LossGuard } from '../model/useLossGuard';
 import { downloadMarkdown } from './ExportButtons';
@@ -19,14 +19,16 @@ export function UnsavedRunDialog({ guard }: { guard: LossGuard }) {
       onClose={guard.cancel}
       actions={
         <>
-          <Button onClick={() => downloadMarkdown(session.state, session.requerimiento)}>
+          <Button onClick={guard.cancel}>Cancelar</Button>
+          <Button
+            variant="soft"
+            onClick={() => downloadMarkdown(session.state, session.requerimiento)}
+          >
+            <Icon name="descargar" size={18} />
             Descargar
           </Button>
-          <Button variant="ghost" onClick={guard.cancel}>
-            Cancelar
-          </Button>
-          <Button variant="danger" onClick={guard.proceed}>
-            Continuar
+          <Button variant="destructive" onClick={guard.proceed}>
+            Descartar y continuar
           </Button>
         </>
       }

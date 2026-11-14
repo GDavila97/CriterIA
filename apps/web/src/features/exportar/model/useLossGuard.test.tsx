@@ -1,4 +1,4 @@
-import { render, renderHook, screen } from '@testing-library/react';
+import { render, renderHook, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import { runSession } from '@/entities/corrida';
@@ -56,11 +56,17 @@ describe('losing an analysis', () => {
     expect(dialog).toHaveAccessibleDescription(
       'Este análisis no está guardado en tu historial. Si continúas, se perderá. Puedes descargarlo antes.',
     );
+    // Cancelar on the left, then Descargar and the destructive action, as in the design.
+    expect(
+      within(dialog)
+        .getAllByRole('button')
+        .map((b) => b.textContent),
+    ).toEqual(['Cancelar', 'Descargar', 'Descartar y continuar']);
     await userEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
     expect(action).not.toHaveBeenCalled();
 
     await userEvent.click(screen.getByRole('button', { name: 'Nuevo análisis' }));
-    await userEvent.click(screen.getByRole('button', { name: 'Continuar' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Descartar y continuar' }));
     expect(action).toHaveBeenCalledTimes(1);
   });
 

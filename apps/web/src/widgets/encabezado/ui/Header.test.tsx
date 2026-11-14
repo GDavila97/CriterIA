@@ -56,7 +56,7 @@ describe('Header', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Cuenta de Ana' }));
     await userEvent.click(screen.getByRole('button', { name: 'Cerrar sesión' }));
     expect(authClient.signOut).not.toHaveBeenCalled();
-    await userEvent.click(screen.getByRole('button', { name: 'Continuar' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Descartar y continuar' }));
 
     expect(authClient.signOut).toHaveBeenCalled();
     expect(runSession.get().created).toBeNull();

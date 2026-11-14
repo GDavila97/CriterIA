@@ -1,8 +1,8 @@
-import type { ButtonHTMLAttributes } from 'react';
+import type { ButtonHTMLAttributes, Ref } from 'react';
 
 import styles from './Button.module.css';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost';
+export type ButtonVariant = 'primary' | 'secondary' | 'soft' | 'danger' | 'destructive' | 'ghost';
 
 export interface ButtonStyle {
   variant?: ButtonVariant;
@@ -17,7 +17,8 @@ export function buttonClass({ variant = 'secondary', block, small }: ButtonStyle
     .join(' ');
 }
 
-export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & ButtonStyle;
+export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> &
+  ButtonStyle & { ref?: Ref<HTMLButtonElement> };
 
 export function Button({
   variant,
