@@ -77,8 +77,22 @@ export function WaitOverlay({ stage, onRetry, onCancel, onStartAnyway }: WaitOve
 
   useEffect(() => {
     // A second analysis is never one keypress away: that case starts on Cancelar.
-    if (stage === 'sin_conexion') next.current?.focus();
-    if (stage === 'creado_sin_abrir') cancel.current?.focus();
+    const target =
+      stage === 'sin_conexion'
+        ? next.current
+        : stage === 'creado_sin_abrir'
+          ? cancel.current
+          : null;
+    if (!target) return;
+    // A dialog that is still closing keeps the rest of the page inert, so try for a moment.
+    let frame = 0;
+    let tries = 0;
+    const take = () => {
+      target.focus();
+      if (document.activeElement !== target && tries++ < 60) frame = requestAnimationFrame(take);
+    };
+    take();
+    return () => cancelAnimationFrame(frame);
   }, [stage]);
 
   return (

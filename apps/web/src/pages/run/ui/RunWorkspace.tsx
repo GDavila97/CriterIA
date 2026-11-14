@@ -1,9 +1,10 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import { useCallback, useEffect, useState } from 'react';
 
 import { AGENT_IDS, runSession, type AgentId } from '@/entities/corrida';
-import { resolveView, ViewSwitch, type Vista } from '@/features/cambiar-vista';
+import { useView, ViewSwitch } from '@/features/cambiar-vista';
 import {
   isLimitError,
   LimitDialog,
@@ -20,6 +21,7 @@ import {
   type AgentParamsBody,
   type AgentsBody,
   type CatalogBody,
+  type RespuestaHumana,
   type RunCreateBody,
   type SettingsBody,
   type UsageBody,
@@ -31,6 +33,12 @@ import { AgentPanel } from '@/widgets/panel-agente';
 import { ClassicView } from '@/widgets/vista-clasica';
 
 import styles from './RunWorkspace.module.css';
+
+// The office's code loads only when someone picks it, so the classic view stays as light as before.
+const OfficeView = dynamic(() => import('@/widgets/vista-oficina').then((m) => m.OfficeView), {
+  ssr: false,
+  loading: () => <SkeletonCard lines={6} label="Cargando la oficina" />,
+});
 
 type Client = Pick<typeof api, 'catalog' | 'settings' | 'usage' | 'agents'>;
 type Params = Record<AgentId, AgentParamsBody>;
@@ -77,7 +85,7 @@ export function RunWorkspace({
   const [maxRondas, setMaxRondas] = useState(DEFAULT_ROUNDS);
   const [agent, setAgent] = useState<AgentId | null>(null);
   const [formKey, setFormKey] = useState(0);
-  const [vista, setVista] = useState<Vista>(() => resolveView(vistaParam, officeEnabled));
+  const view = useView(vistaParam, officeEnabled);
 
   useEffect(() => {
     Promise.all([client.catalog(), client.settings(), client.usage(), client.agents()])
@@ -149,6 +157,11 @@ export function RunWorkspace({
       client.settings().catch(() => {});
     });
 
+  const approval = {
+    busy: run.busy,
+    onAnswer: (respuesta: RespuestaHumana) => void run.respond(respuesta),
+  };
+
   const providerOf = (id: AgentId) => {
     const planned = run.created?.agentes[id].proveedor;
     const fallback =
@@ -159,72 +172,87 @@ export function RunWorkspace({
   };
 
   return (
-    <div className={styles.page}>
-      <Header
-        user={user}
-        actions={<ViewSwitch value={vista} enabled={officeEnabled} onChange={setVista} />}
-      />
-      {loadError && <Notice tone="error">{loadError}</Notice>}
-      {!data ? (
-        !loadError && (
-          <main className={styles.layout} aria-busy="true">
-            <SkeletonCard lines={5} label="Cargando el análisis" />
-            <SkeletonCard lines={3} label="Cargando el tablero" />
-          </main>
-        )
-      ) : (
-        <main className={styles.layout}>
-          <h1 className="sr-only">Nuevo análisis</h1>
-          <RunForm
-            key={formKey}
-            catalog={data.catalog}
-            settings={data.settings}
-            usage={data.usage}
-            busy={run.busy || run.connection !== 'cerrado'}
-            hasRun={Boolean(run.created)}
-            onSubmit={submit}
-          />
-          <div className={styles.right}>
-            {run.error && !isLimitError(run.error) && (
-              <Notice tone="error">{run.error.message}</Notice>
-            )}
-            <ClassicView
-              state={run.state}
-              requerimiento={run.requerimiento}
-              connection={run.connection}
-              onOpenAgent={setAgent}
-              approval={{ busy: run.busy, onAnswer: (respuesta) => void run.respond(respuesta) }}
-              onUseFree={useFree}
-              judgeLabel={
-                run.state.modelos
-                  ? modelLabelFromId(run.state.modelos.juez, data.catalog)
-                  : undefined
-              }
-              saved={run.created?.guardar_historial}
-              onNewAnalysis={newAnalysis}
+    <>
+      {/* Behind the waiting layer nothing can be reached, not even by a dialog giving focus back. */}
+      <div className={styles.page} inert={run.wait !== 'oculta'}>
+        <Header
+          user={user}
+          actions={
+            <ViewSwitch value={view.vista} enabled={view.available} onChange={view.choose} />
+          }
+        />
+        {loadError && <Notice tone="error">{loadError}</Notice>}
+        {!data ? (
+          !loadError && (
+            <main className={styles.layout} aria-busy="true">
+              <SkeletonCard lines={5} label="Cargando el análisis" />
+              <SkeletonCard lines={3} label="Cargando el tablero" />
+            </main>
+          )
+        ) : (
+          <main className={styles.layout}>
+            <h1 className="sr-only">Nuevo análisis</h1>
+            <RunForm
+              key={formKey}
+              catalog={data.catalog}
+              settings={data.settings}
+              usage={data.usage}
+              busy={run.busy || run.connection !== 'cerrado'}
+              hasRun={Boolean(run.created)}
+              onSubmit={submit}
             />
-          </div>
-          <AgentPanel
-            agent={agent}
-            state={run.state}
-            guide={data.guide}
-            provider={agent ? providerOf(agent) : null}
-            params={agent ? params[agent] : {}}
-            maxRondas={maxRondas}
-            onParams={(id, next) => setParams((current) => ({ ...current, [id]: next }))}
-            onMaxRondas={setMaxRondas}
-            onClose={() => setAgent(null)}
-          />
-          <UnsavedRunDialog guard={lossGuard} />
-          <LimitDialog error={run.error} usage={data.usage} onClose={run.dismissError} />
-          <WaitOverlay
-            stage={run.wait}
-            onRetry={() => void run.retry()}
-            onCancel={run.cancelWait}
-            onStartAnyway={() => void run.startAnyway()}
-          />
-        </main>
-      )}
-    </div>
+            <div className={styles.right}>
+              {run.error && !isLimitError(run.error) && (
+                <Notice tone="error">{run.error.message}</Notice>
+              )}
+              <ClassicView
+                state={run.state}
+                requerimiento={run.requerimiento}
+                connection={run.connection}
+                onOpenAgent={setAgent}
+                approval={view.vista === 'clasica' ? approval : undefined}
+                stage={
+                  view.vista === 'oficina' ? (
+                    <OfficeView
+                      state={run.state}
+                      userName={user.name}
+                      onOpenAgent={setAgent}
+                      approval={approval}
+                    />
+                  ) : undefined
+                }
+                onUseFree={useFree}
+                judgeLabel={
+                  run.state.modelos
+                    ? modelLabelFromId(run.state.modelos.juez, data.catalog)
+                    : undefined
+                }
+                saved={run.created?.guardar_historial}
+                onNewAnalysis={newAnalysis}
+              />
+            </div>
+            <AgentPanel
+              agent={agent}
+              state={run.state}
+              guide={data.guide}
+              provider={agent ? providerOf(agent) : null}
+              params={agent ? params[agent] : {}}
+              maxRondas={maxRondas}
+              onParams={(id, next) => setParams((current) => ({ ...current, [id]: next }))}
+              onMaxRondas={setMaxRondas}
+              onClose={() => setAgent(null)}
+            />
+            <UnsavedRunDialog guard={lossGuard} />
+            <LimitDialog error={run.error} usage={data.usage} onClose={run.dismissError} />
+          </main>
+        )}
+      </div>
+      <WaitOverlay
+        stage={run.wait}
+        onRetry={() => void run.retry()}
+        onCancel={run.cancelWait}
+        onStartAnyway={() => void run.startAnyway()}
+      />
+    </>
   );
 }

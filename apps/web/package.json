@@ -22,7 +22,7 @@
     "test": "vitest run --coverage",
     "test:watch": "vitest",
     "e2e": "node e2e/support/prepare.mjs && playwright test",
-    "e2e:build": "NEXT_PUBLIC_APP_ENV=test NEXT_PUBLIC_API_URL=http://127.0.0.1:8090 next build",
+    "e2e:build": "NEXT_PUBLIC_APP_ENV=test NEXT_PUBLIC_API_URL=http://127.0.0.1:8090 NEXT_PUBLIC_OFFICE_VIEW=true next build",
     "audit": "pnpm audit --audit-level=moderate"
   },
   "dependencies": {

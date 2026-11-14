@@ -10,7 +10,7 @@ export interface ViewSwitchProps {
   onChange: (vista: Vista) => void;
 }
 
-/** Hidden until the office view exists (NEXT_PUBLIC_OFFICE_VIEW). */
+/** Shown only with NEXT_PUBLIC_OFFICE_VIEW and room for the office (768 px or more). */
 export function ViewSwitch({ value, enabled, onChange }: ViewSwitchProps) {
   if (!enabled) return null;
   return (

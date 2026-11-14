@@ -40,9 +40,9 @@ export async function signUpByApi(
 
 export async function startRun(
   page: Page,
-  options: { save?: boolean; generation?: string; requirement?: string } = {},
+  options: { save?: boolean; generation?: string; requirement?: string; vista?: string } = {},
 ): Promise<void> {
-  await page.goto('/analisis');
+  await page.goto(options.vista ? `/analisis?vista=${options.vista}` : '/analisis');
   await page
     .getByLabel('Describe lo que el sistema debe hacer, en lenguaje natural')
     .fill(options.requirement ?? REQUIREMENT);

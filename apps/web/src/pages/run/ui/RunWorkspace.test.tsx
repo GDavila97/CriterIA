@@ -56,6 +56,19 @@ function controller(
   };
 }
 
+function wideScreen(wide: boolean) {
+  window.matchMedia = ((query: string) => ({
+    matches: query === '(min-width: 768px)' ? wide : false,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+  })) as unknown as typeof window.matchMedia;
+}
+
+const originalMatchMedia = window.matchMedia;
+afterEach(() => {
+  window.matchMedia = originalMatchMedia;
+});
+
 describe('RunWorkspace', () => {
   it('loads the catalog, runs with the agent tuning and the history choice', async () => {
     const run = controller();
@@ -112,6 +125,7 @@ describe('RunWorkspace', () => {
       } as unknown as RunCreatedBody,
     });
     const c = client();
+    wideScreen(true);
     render(
       <RunWorkspace
         user={user}
@@ -281,5 +295,40 @@ describe('RunWorkspace', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
     expect(run.retry).toHaveBeenCalled();
     expect(run.cancelWait).toHaveBeenCalled();
+  });
+
+  it('shows the office in place of the agent flow from 768 px with ?vista=oficina', async () => {
+    wideScreen(true);
+    render(
+      <RunWorkspace
+        user={user}
+        officeEnabled
+        vistaParam="oficina"
+        client={client()}
+        useController={() => controller()}
+      />,
+    );
+
+    expect(await screen.findByRole('region', { name: 'Oficina' })).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Flujo de agentes' })).not.toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'Oficina' })).toBeChecked();
+    expect(screen.getByRole('button', { name: 'QA: en espera, abrir panel' })).toBeInTheDocument();
+  });
+
+  it('hides the switch and stays classic below 768 px even with ?vista=oficina', async () => {
+    wideScreen(false);
+    render(
+      <RunWorkspace
+        user={user}
+        officeEnabled
+        vistaParam="oficina"
+        client={client()}
+        useController={() => controller()}
+      />,
+    );
+
+    expect(await screen.findByRole('region', { name: 'Flujo de agentes' })).toBeInTheDocument();
+    expect(screen.queryByRole('radiogroup', { name: 'Vista' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Oficina' })).not.toBeInTheDocument();
   });
 });

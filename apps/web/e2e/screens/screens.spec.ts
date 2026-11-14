@@ -31,8 +31,15 @@ test.beforeEach(async ({ page }) => {
 });
 
 /** axe and the CSP on what is on screen, plus the evidence screenshot when asked for. */
-async function check(page: Page, testInfo: TestInfo, name: string, fullPage = true): Promise<void> {
-  await page.waitForLoadState('networkidle');
+async function check(
+  page: Page,
+  testInfo: TestInfo,
+  name: string,
+  fullPage = true,
+  { idle = true }: { idle?: boolean } = {},
+): Promise<void> {
+  // A request the test holds open on purpose never lets the network go idle.
+  if (idle) await page.waitForLoadState('networkidle');
   await settleAnimations(page);
   await expectNoAxeViolations(page);
   await expectNoHorizontalOverflow(page);
@@ -168,6 +175,96 @@ test('evaluación, historial, privacidad y cuenta', async ({
   await check(page, testInfo, '11-cuenta');
   await page.goto('/ajustes/historial');
   await check(page, testInfo, '12-ajustes-historial');
+});
+
+test('vista oficina: durante, tu turno y al terminar', async ({
+  page,
+  baseURL,
+  clientIp,
+  isMobile,
+}, testInfo) => {
+  test.skip(isMobile, 'a 390 px la oficina no se ofrece; la otra prueba cubre esa caída');
+  await signUpByApi(page.request, baseURL ?? '', clientIp);
+  await page.goto('/analisis?vista=oficina');
+  const office = page.getByRole('region', { name: 'Oficina' });
+  await expect(office).toBeVisible();
+  await check(page, testInfo, '16-oficina-inactiva');
+
+  await startRun(page, { vista: 'oficina' });
+  await expect(office.getByText('Redactando historias')).toBeVisible();
+  await check(page, testInfo, '17-oficina-durante');
+  await expect(office.getByRole('button', { name: 'Revisar historias' })).toBeVisible();
+  await check(page, testInfo, '18-oficina-tu-turno');
+  await office.getByRole('button', { name: 'Revisar historias' }).click();
+  await expect(page.getByRole('dialog', { name: 'Revisar historias' })).toBeVisible();
+  await check(page, testInfo, '19-oficina-revisar-historias', false);
+  await page.getByRole('button', { name: /^Aprobar/ }).click();
+  await expect(office.getByText('Análisis listo')).toBeVisible();
+  await check(page, testInfo, '20-oficina-al-terminar');
+});
+
+test('a 390 px la oficina cae a la vista clásica', async ({
+  page,
+  baseURL,
+  clientIp,
+  isMobile,
+}) => {
+  test.skip(!isMobile, 'solo aplica a 390 px');
+  await signUpByApi(page.request, baseURL ?? '', clientIp);
+  await page.goto('/analisis?vista=oficina');
+  await expect(page.getByRole('region', { name: 'Flujo de agentes' })).toBeVisible();
+  await expect(page.getByRole('radiogroup', { name: 'Vista' })).toBeHidden();
+});
+
+test('capa de espera y diálogo de límite', async ({ page, baseURL, clientIp }, testInfo) => {
+  await signIn(page, page.request, baseURL ?? '', clientIp);
+  let release: () => void = () => {};
+  const answered = new Promise<void>((resolve) => (release = resolve));
+  let posts = 0;
+  await page.route('**/runs', async (route) => {
+    if (route.request().method() !== 'POST') return route.fallback();
+    posts += 1;
+    if (posts === 1) {
+      await answered;
+      return route.continue();
+    }
+    if (posts === 2) return route.abort('internetdisconnected');
+    return route.fulfill({
+      status: 429,
+      contentType: 'application/json',
+      headers: { 'access-control-allow-origin': '*' },
+      body: JSON.stringify({ code: 'limite_hora', message: 'Alcanzaste el límite.' }),
+    });
+  });
+
+  await startRun(page);
+  const layer = page.getByRole('status').filter({ hasText: 'Estamos preparando todo' });
+  await expect(layer).toBeVisible();
+  await check(page, testInfo, '21-espera-preparando', false, { idle: false });
+  release();
+  await waitForApproval(page);
+
+  await page.getByRole('button', { name: /^Ejecutar/ }).click();
+  await page
+    .getByRole('alertdialog', { name: '¿Descartar el análisis?' })
+    .getByRole('button', { name: 'Descartar y continuar' })
+    .click();
+  const failed = page.getByRole('status').filter({ hasText: 'No logramos conectar' });
+  await expect(failed.getByRole('button', { name: 'Reintentar' })).toBeFocused();
+  await check(page, testInfo, '22-espera-sin-conexion', false);
+  await failed.getByRole('button', { name: 'Cancelar' }).click();
+
+  // The paused analysis is still the one on screen, so starting another asks again.
+  await page.getByRole('button', { name: /^Ejecutar/ }).click();
+  await page
+    .getByRole('alertdialog', { name: '¿Descartar el análisis?' })
+    .getByRole('button', { name: 'Descartar y continuar' })
+    .click();
+  const limit = page.getByRole('alertdialog', {
+    name: 'Alcanzaste el límite de análisis por hora',
+  });
+  await expect(limit).toBeVisible();
+  await check(page, testInfo, '23-limite', false);
 });
 
 test('con movimiento reducido nada se desplaza, solo se funde', async ({ page }) => {

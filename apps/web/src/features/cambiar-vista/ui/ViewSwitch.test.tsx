@@ -1,7 +1,7 @@
-import { render, screen } from '@testing-library/react';
+import { renderHook, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
-import { readStoredView, resolveView, storeView } from '../model/view';
+import { readStoredView, resolveView, storeView, useView } from '../model/view';
 import { ViewSwitch } from './ViewSwitch';
 
 afterEach(() => {
@@ -43,5 +43,40 @@ describe('ViewSwitch', () => {
 
     expect(onChange).toHaveBeenCalledWith('oficina');
     expect(readStoredView()).toBe('oficina');
+  });
+});
+
+describe('useView', () => {
+  const original = window.matchMedia;
+  const width = (wide: boolean) => {
+    window.matchMedia = ((query: string) => ({
+      matches: query === '(min-width: 768px)' ? wide : false,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    })) as unknown as typeof window.matchMedia;
+  };
+  afterEach(() => {
+    window.matchMedia = original;
+  });
+
+  it('offers the office from 768 px and follows ?vista=oficina', () => {
+    width(true);
+    const { result } = renderHook(() => useView('oficina', true));
+
+    expect(result.current).toMatchObject({ vista: 'oficina', available: true });
+  });
+
+  it('falls back to classic below 768 px or with the office turned off', () => {
+    width(false);
+    expect(renderHook(() => useView('oficina', true)).result.current).toMatchObject({
+      vista: 'clasica',
+      available: false,
+    });
+
+    width(true);
+    expect(renderHook(() => useView('oficina', false)).result.current).toMatchObject({
+      vista: 'clasica',
+      available: false,
+    });
   });
 });
