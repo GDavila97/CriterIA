@@ -22,7 +22,7 @@ export const publicEnvSchema = z
       emptyAsUndefined,
       z.url({ protocol: /^https$/ }).optional(),
     ),
-    // The office view arrives in F9; until then the view switch stays hidden.
+    // Read at build time: true offers the office view from 768 px.
     NEXT_PUBLIC_OFFICE_VIEW: flag,
     // A profile page today; a mailto: address works the same once there is one.
     NEXT_PUBLIC_CONTACT_URL: z.preprocess(
