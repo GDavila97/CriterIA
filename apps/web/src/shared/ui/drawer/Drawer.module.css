@@ -106,3 +106,19 @@
 .close:focus-visible {
   outline: 3px solid var(--color-focus);
 }
+
+/* Follows the page's theme instead of the agent panel's dark one. */
+.amplio {
+  width: min(640px, 100vw);
+  --color-bg: inherit;
+  --color-surface: inherit;
+  --color-surface-2: inherit;
+  --color-ink: inherit;
+  --color-muted: inherit;
+  --color-line: inherit;
+  --color-accent: inherit;
+  --color-accent-soft: inherit;
+  --color-focus: inherit;
+  --color-ok: inherit;
+  color-scheme: inherit;
+}

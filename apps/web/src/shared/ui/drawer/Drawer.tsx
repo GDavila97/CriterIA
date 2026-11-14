@@ -12,10 +12,12 @@ export interface DrawerProps {
   title: string;
   onClose: () => void;
   children: ReactNode;
+  /** Wider and in the page's theme, for work such as reviewing stories; dark and narrow otherwise. */
+  amplio?: boolean;
 }
 
 /** A modal side panel: closes with Escape, the X or a click outside, and returns the focus. */
-export function Drawer({ open, title, onClose, children }: DrawerProps) {
+export function Drawer({ open, title, onClose, children, amplio = false }: DrawerProps) {
   const ref = useRef<HTMLDialogElement>(null);
   // The last content stays on screen while the panel slides out; nothing renders before opening.
   const [shown, setShown] = useState<ReactNode>(null);
@@ -25,7 +27,7 @@ export function Drawer({ open, title, onClose, children }: DrawerProps) {
   return (
     <dialog
       ref={ref}
-      className={styles.drawer}
+      className={amplio ? `${styles.drawer} ${styles.amplio}` : styles.drawer}
       aria-label={title}
       onCancel={modal.onCancel}
       onClick={modal.onClick}
