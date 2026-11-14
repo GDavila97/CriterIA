@@ -10,6 +10,20 @@
   animation: blink 6s infinite;
 }
 
+.walking .leg {
+  animation: step 0.44s ease-in-out infinite alternate;
+}
+
+.walking .leg + .leg {
+  animation-delay: -0.22s;
+}
+
+@keyframes step {
+  to {
+    transform: translateY(-3px);
+  }
+}
+
 .working {
   transform-origin: 50% 90%;
   animation: sway 1.6s ease-in-out infinite;
@@ -38,6 +52,20 @@
 
 @media (prefers-reduced-motion: reduce) {
   .eyes,
+  .walking .leg {
+    animation: step 0.44s ease-in-out infinite alternate;
+  }
+
+  .walking .leg + .leg {
+    animation-delay: -0.22s;
+  }
+
+  @keyframes step {
+    to {
+      transform: translateY(-3px);
+    }
+  }
+
   .working {
     animation: none;
   }

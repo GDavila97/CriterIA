@@ -4,6 +4,8 @@ import styles from './Ficha.module.css';
 
 const SMILE_MIN_SIZE = 26;
 const TEXT_LINES_MIN_SIZE = 48;
+const GLASSES_MIN_SIZE = 24;
+const PAPERS_MIN_SIZE = 32;
 
 export interface FichaProps {
   color: string;
@@ -15,6 +17,10 @@ export interface FichaProps {
   patas?: boolean;
   /** Sways gently while the agent works; still with reduced motion. */
   trabajando?: boolean;
+  lentes?: boolean;
+  papeles?: boolean;
+  /** Moves the legs; whoever places the Ficha moves it. Needs `patas`. */
+  andar?: boolean;
 }
 
 export function Ficha({
@@ -25,7 +31,11 @@ export function Ficha({
   rol,
   patas = false,
   trabajando = false,
+  lentes = false,
+  papeles = false,
+  andar = false,
 }: FichaProps) {
+  const showPapers = papeles && size >= PAPERS_MIN_SIZE;
   const a11y = title ? { role: 'img', 'aria-label': title } : { 'aria-hidden': true };
   const height = patas ? 72 : 64;
 
@@ -43,9 +53,13 @@ export function Ficha({
         data-testid={trabajando ? 'ficha-working' : undefined}
       >
         {patas && (
-          <g fill={shadow} data-testid="ficha-legs">
-            <rect x="19" y="56" width="7" height="14" rx="3.5" />
-            <rect x="38" y="56" width="7" height="14" rx="3.5" />
+          <g
+            fill={shadow}
+            className={andar ? styles.walking : undefined}
+            data-testid={andar ? 'ficha-walking' : 'ficha-legs'}
+          >
+            <rect x="19" y="56" width="7" height="14" rx="3.5" className={styles.leg} />
+            <rect x="38" y="56" width="7" height="14" rx="3.5" className={styles.leg} />
           </g>
         )}
         <path d="M14 6h30l14 14v30a8 8 0 0 1-8 8H14a8 8 0 0 1-8-8V14a8 8 0 0 1 8-8Z" fill={color} />
@@ -66,10 +80,39 @@ export function Ficha({
             data-testid="ficha-smile"
           />
         )}
-        {size >= TEXT_LINES_MIN_SIZE && (
+        {lentes && size >= GLASSES_MIN_SIZE && (
+          <g
+            fill="rgba(255,255,255,0.18)"
+            stroke="var(--color-ficha-ink)"
+            strokeWidth="2"
+            data-testid="ficha-glasses"
+          >
+            <circle cx="24" cy="28.5" r="6.5" />
+            <circle cx="40" cy="28.5" r="6.5" />
+            <path d="M30.5 28.5h3" fill="none" />
+          </g>
+        )}
+        {size >= TEXT_LINES_MIN_SIZE && !showPapers && (
           <g fill="#fff" opacity="0.6" data-testid="ficha-lines">
             <rect x="17" y="46" width="30" height="2.6" rx="1.3" />
             <rect x="17" y="51" width="19" height="2.6" rx="1.3" />
+          </g>
+        )}
+        {showPapers && (
+          <g stroke="#c9cfd9" strokeWidth="0.8" data-testid="ficha-papers">
+            <rect
+              x="2"
+              y="37"
+              width="24"
+              height="18"
+              rx="2"
+              fill="#f4f6fa"
+              transform="rotate(-14 14 46)"
+            />
+            <g transform="rotate(-6 13 47)">
+              <rect x="1" y="38" width="24" height="18" rx="2" fill="#fff" />
+              <path d="M5 43h15M5 47h11M5 51h13" strokeWidth="1.6" strokeLinecap="round" />
+            </g>
           </g>
         )}
         {rol && (
