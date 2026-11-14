@@ -9,6 +9,7 @@ import {
   LimitDialog,
   RunForm,
   useRunController,
+  WaitOverlay,
   type RunController,
   type RunRequestDraft,
 } from '@/features/ejecutar-corrida';
@@ -103,16 +104,19 @@ export function RunWorkspace({
 
   const start = (next: RunRequestDraft) => {
     setDraft(next);
-    void run.start({
-      requerimiento: next.requerimiento,
-      proveedor: next.proveedor,
-      nivel: next.nivel ?? null,
-      modelo: next.modelo ?? null,
-      juez: next.juez ?? null,
-      guardar_historial: next.guardarHistorial,
-      max_rondas: maxRondas,
-      agentes: tunedAgents(params),
-    });
+    void run.start(
+      {
+        requerimiento: next.requerimiento,
+        proveedor: next.proveedor,
+        nivel: next.nivel ?? null,
+        modelo: next.modelo ?? null,
+        juez: next.juez ?? null,
+        guardar_historial: next.guardarHistorial,
+        max_rondas: maxRondas,
+        agentes: tunedAgents(params),
+      },
+      data?.usage ?? null,
+    );
   };
 
   const submit = (next: RunRequestDraft) => lossGuard.guard(() => start(next));
@@ -122,14 +126,17 @@ export function RunWorkspace({
   const useFree = () => {
     const requerimiento = draft?.requerimiento ?? run.requerimiento;
     if (!requerimiento) return;
-    void run.start({
-      requerimiento,
-      proveedor: 'groq',
-      nivel: 'economico',
-      juez: 'groq',
-      guardar_historial: draft?.guardarHistorial ?? run.created?.guardar_historial,
-      max_rondas: maxRondas,
-    });
+    void run.start(
+      {
+        requerimiento,
+        proveedor: 'groq',
+        nivel: 'economico',
+        juez: 'groq',
+        guardar_historial: draft?.guardarHistorial ?? run.created?.guardar_historial,
+        max_rondas: maxRondas,
+      },
+      data?.usage ?? null,
+    );
   };
 
   const newAnalysis = () =>
@@ -210,6 +217,12 @@ export function RunWorkspace({
           />
           <UnsavedRunDialog guard={lossGuard} />
           <LimitDialog error={run.error} usage={data.usage} onClose={run.dismissError} />
+          <WaitOverlay
+            stage={run.wait}
+            onRetry={() => void run.retry()}
+            onCancel={run.cancelWait}
+            onStartAnyway={() => void run.startAnyway()}
+          />
         </main>
       )}
     </div>

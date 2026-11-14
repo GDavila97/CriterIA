@@ -48,6 +48,10 @@ function controller(
     start: vi.fn(async () => {}),
     respond: vi.fn(async () => {}),
     dismissError: vi.fn(),
+    wait: 'oculta',
+    retry: vi.fn(async () => {}),
+    startAnyway: vi.fn(async () => {}),
+    cancelWait: vi.fn(),
     ...extra,
   };
 }
@@ -74,16 +78,19 @@ describe('RunWorkspace', () => {
     await userEvent.click(screen.getByRole('button', { name: EXAMPLES[0].label }));
     await userEvent.click(screen.getByRole('button', { name: 'Ejecutar' }));
 
-    expect(run.start).toHaveBeenCalledWith({
-      requerimiento: EXAMPLES[0].texto,
-      proveedor: 'groq',
-      nivel: 'economico',
-      modelo: null,
-      juez: null,
-      guardar_historial: false,
-      max_rondas: 3,
-      agentes: { qa: { temperatura: 0.6 } },
-    });
+    expect(run.start).toHaveBeenCalledWith(
+      {
+        requerimiento: EXAMPLES[0].texto,
+        proveedor: 'groq',
+        nivel: 'economico',
+        modelo: null,
+        juez: null,
+        guardar_historial: false,
+        max_rondas: 3,
+        agentes: { qa: { temperatura: 0.6 } },
+      },
+      usage(1),
+    );
     expect(screen.queryByRole('radiogroup', { name: 'Vista' })).not.toBeInTheDocument();
   });
 
@@ -120,14 +127,17 @@ describe('RunWorkspace', () => {
     expect(run.start).toHaveBeenCalledTimes(1);
     await userEvent.click(screen.getByRole('button', { name: 'Usar el gratuito' }));
 
-    expect(run.start).toHaveBeenLastCalledWith({
-      requerimiento: EXAMPLES[1].texto,
-      proveedor: 'groq',
-      nivel: 'economico',
-      juez: 'groq',
-      guardar_historial: false,
-      max_rondas: 2,
-    });
+    expect(run.start).toHaveBeenLastCalledWith(
+      {
+        requerimiento: EXAMPLES[1].texto,
+        proveedor: 'groq',
+        nivel: 'economico',
+        juez: 'groq',
+        guardar_historial: false,
+        max_rondas: 2,
+      },
+      usage(1),
+    );
     expect(screen.getByRole('radiogroup', { name: 'Vista' })).toBeInTheDocument();
     await waitFor(() => expect(c.usage).toHaveBeenCalledTimes(2));
   });
@@ -252,5 +262,24 @@ describe('RunWorkspace', () => {
       screen.getByLabelText('Describe lo que el sistema debe hacer, en lenguaje natural'),
     ).toHaveValue('');
     expect(c.settings).toHaveBeenCalledTimes(2);
+  });
+
+  it('shows the waiting layer the controller asks for and passes its choices back', async () => {
+    const run = controller(initialRunState(), { wait: 'sin_conexion' });
+    render(
+      <RunWorkspace
+        user={user}
+        officeEnabled={false}
+        vistaParam={null}
+        client={client()}
+        useController={() => run}
+      />,
+    );
+
+    expect(await screen.findByRole('status')).toHaveTextContent('No logramos conectar');
+    await userEvent.click(screen.getByRole('button', { name: 'Reintentar' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
+    expect(run.retry).toHaveBeenCalled();
+    expect(run.cancelWait).toHaveBeenCalled();
   });
 });

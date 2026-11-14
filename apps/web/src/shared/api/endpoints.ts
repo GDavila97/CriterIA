@@ -18,7 +18,8 @@ import type {
 export type ProviderId = CatalogBody['proveedores'][number]['proveedor'];
 
 export const api = {
-  createRun: (body: RunCreateBody) => apiRequest<RunCreatedBody>('/runs', { method: 'POST', body }),
+  createRun: (body: RunCreateBody, signal?: AbortSignal) =>
+    apiRequest<RunCreatedBody>('/runs', { method: 'POST', body, signal }),
   approveRun: (runId: string, body: RespuestaHumana) =>
     apiRequest<void>(`/runs/${encodeURIComponent(runId)}/approval`, { method: 'POST', body }),
   catalog: () => apiRequest<CatalogBody>('/catalog'),

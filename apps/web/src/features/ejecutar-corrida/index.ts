@@ -8,3 +8,5 @@ export {
 } from './model/useRunController';
 export { isLimitError, LimitDialog, type LimitDialogProps } from './ui/LimitDialog';
 export { RunForm, type RunFormProps, type RunRequestDraft } from './ui/RunForm';
+export { WaitOverlay, type WaitOverlayProps } from './ui/WaitOverlay';
+export type { WaitStage } from './model/waiting';

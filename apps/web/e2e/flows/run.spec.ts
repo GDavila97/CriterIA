@@ -269,3 +269,59 @@ test('el panel del agente se cierra con Esc y con un clic fuera', async ({ page 
   await expect(panel).toBeHidden();
   await expect(opener).toBeFocused();
 });
+
+test('con la API lenta aparece la capa de espera y sigue sola al responder', async ({ page }) => {
+  await page.route('**/runs', async (route) => {
+    if (route.request().method() !== 'POST') return route.fallback();
+    await new Promise((resolve) => setTimeout(resolve, 2_500));
+    return route.continue();
+  });
+  await startRun(page);
+
+  const status = page.getByRole('status').filter({ hasText: /preparando|listo/ });
+  await expect(status).toContainText('Estamos preparando todo');
+  await expect(status).toContainText('¡Todo listo!');
+  await waitForApproval(page);
+  await expect(page.getByText('Estamos preparando todo')).toBeHidden();
+});
+
+test('reintentar no crea un segundo análisis cuando el primero sí llegó', async ({ page }) => {
+  let posts = 0;
+  await page.route('**/runs', async (route) => {
+    if (route.request().method() !== 'POST') return route.fallback();
+    posts += 1;
+    if (posts > 1) return route.continue();
+    // The API creates the analysis, but its answer never reaches the browser.
+    await route.fetch();
+    return route.abort('connectionreset');
+  });
+  await startRun(page);
+
+  const layer = page.getByRole('status').filter({ hasText: 'No logramos conectar' });
+  await expect(layer).toBeVisible();
+  await layer.getByRole('button', { name: 'Reintentar' }).click();
+  await expect(layer).toContainText('Tu análisis sí se creó, pero no pudimos abrirlo.');
+  expect(posts).toBe(1);
+
+  await layer.getByRole('button', { name: 'Cancelar' }).click();
+  await expect(layer).toBeHidden();
+  await expect(
+    page.getByLabel('Describe lo que el sistema debe hacer, en lenguaje natural'),
+  ).not.toHaveValue('');
+});
+
+test('si la red falla antes de llegar, reintentar crea el análisis', async ({ page }) => {
+  let posts = 0;
+  await page.route('**/runs', (route) => {
+    if (route.request().method() !== 'POST') return route.fallback();
+    posts += 1;
+    return posts === 1 ? route.abort('internetdisconnected') : route.continue();
+  });
+  await startRun(page);
+
+  const layer = page.getByRole('status').filter({ hasText: 'No logramos conectar' });
+  await layer.getByRole('button', { name: 'Reintentar' }).click();
+
+  await waitForApproval(page);
+  expect(posts).toBe(2);
+});
