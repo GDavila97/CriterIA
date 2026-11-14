@@ -2,6 +2,7 @@ import { defineConfig, devices } from '@playwright/test';
 
 import {
   API_DIR,
+  API_RUN_DIR,
   API_URL,
   apiEnv,
   GITHUB_STUB_URL,
@@ -50,8 +51,8 @@ export default defineConfig({
       reuseExistingServer: reuse,
     },
     {
-      command: 'uv run --no-sync criteria-api',
-      cwd: API_DIR,
+      command: `uv run --project "${API_DIR}" --no-sync criteria-api`,
+      cwd: API_RUN_DIR,
       url: `${API_URL}/health`,
       env: { ...apiEnv, VIRTUAL_ENV: '' },
       reuseExistingServer: reuse,

@@ -2,6 +2,7 @@ type Env = Record<string, string>;
 
 export declare const WEB_DIR: string;
 export declare const API_DIR: string;
+export declare const API_RUN_DIR: string;
 export declare const PORTS: { web: number; mailWeb: number; api: number; githubStub: number };
 export declare const WEB_URL: string;
 export declare const MAIL_WEB_URL: string;

@@ -6,6 +6,9 @@ const derive = (label) => createHash('sha256').update(`criteria-e2e:${label}`).d
 
 export const WEB_DIR = fileURLToPath(new URL('../..', import.meta.url));
 export const API_DIR = fileURLToPath(new URL('../../../../services/api', import.meta.url));
+// The API reads a .env from its working directory; this folder has none, so a developer's local
+// settings never reach the end-to-end API and it runs exactly as in CI.
+export const API_RUN_DIR = fileURLToPath(new URL('.', import.meta.url));
 
 export const PORTS = { web: 3100, mailWeb: 3200, api: 8090, githubStub: 4010 };
 export const WEB_URL = `http://127.0.0.1:${PORTS.web}`;
