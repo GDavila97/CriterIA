@@ -61,3 +61,14 @@ export {
   type ArtifactRef,
   type RefKind,
 } from './model/refs';
+export {
+  conversationSummary,
+  filterMessages,
+  isCorrection,
+  teamMessages,
+  type Listener,
+  type MessageFilter,
+  type MessageKind,
+  type Speaker,
+  type TeamMessage,
+} from './model/conversation';

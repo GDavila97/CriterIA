@@ -67,6 +67,8 @@ export interface RunState {
   totales: Totales | null;
   otrasVersiones: number;
   registro: LogEntry[];
+  /** What the run said so far, for the team's conversation; progress lines are left out. */
+  eventos: Evento[];
   error: RunError | null;
 }
 
@@ -104,6 +106,7 @@ export function initialRunState(runId: string | null = null): RunState {
     totales: null,
     otrasVersiones: 0,
     registro: [],
+    eventos: [],
     error: null,
   };
 }
@@ -321,5 +324,8 @@ function apply(state: RunState, evento: Evento): RunState {
 export function runReducer(state: RunState, action: RunAction): RunState {
   if (action.type === 'iniciar') return initialRunState(action.runId);
   if (action.evento.seq <= state.ultimoSeq) return state;
-  return { ...apply(state, action.evento), ultimoSeq: action.evento.seq };
+  const next = { ...apply(state, action.evento), ultimoSeq: action.evento.seq };
+  return action.evento.type === 'agente_progreso'
+    ? next
+    : { ...next, eventos: [...next.eventos, action.evento] };
 }
