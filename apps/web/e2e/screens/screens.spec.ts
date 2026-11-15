@@ -135,6 +135,34 @@ test('corrida larga: artefactos paginados y registro completo', async ({
   await check(page, testInfo, '14-registro-completo', false);
 });
 
+test('así trabajó el equipo: conversación, diagrama, Gherkin y detalle del historial', async ({
+  page,
+  baseURL,
+  clientIp,
+}, testInfo) => {
+  await signIn(page, page.request, baseURL ?? '', clientIp);
+  await startRun(page, { save: true });
+  await waitForApproval(page);
+  await page.getByRole('button', { name: /^Aprobar/ }).click();
+  await finishRun(page);
+  const team = page.getByRole('region', { name: 'Así trabajó el equipo' });
+  await expect(team.getByText('Corrección', { exact: true })).toBeVisible();
+  await check(page, testInfo, '21-equipo-correcciones');
+  await team.getByRole('button', { name: /^Ver toda la conversación/ }).click();
+  await check(page, testInfo, '22-equipo-conversacion');
+  if ((page.viewportSize()?.width ?? 0) >= 768) {
+    await team.getByRole('radio', { name: 'Diagrama' }).click();
+    await expect(page.getByRole('region', { name: 'Detalle del paso' })).toBeVisible();
+    await check(page, testInfo, '23-equipo-diagrama');
+  }
+  await page.getByRole('tab', { name: 'Gherkin' }).click();
+  await check(page, testInfo, '24-gherkin');
+  await page.goto('/historial');
+  await page.getByRole('link', { name: /Terminada/ }).click();
+  await expect(team.getByRole('listitem').first()).toBeVisible();
+  await check(page, testInfo, '25-historial-detalle');
+});
+
 test('aviso de clave sin saldo', async ({ page, baseURL, clientIp }, testInfo) => {
   await signIn(page, page.request, baseURL ?? '', clientIp);
   await page.goto('/ajustes/modelos');
