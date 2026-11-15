@@ -9,6 +9,8 @@ export class ApiError extends Error {
     readonly status: number,
     readonly code: string,
     message: string,
+    /** When a usage limit frees up, as the API sent it (ISO 8601). */
+    readonly retryAt: string | null = null,
   ) {
     super(message);
   }
@@ -32,9 +34,14 @@ export interface ApiClientDeps {
 
 async function errorFrom(response: Response): Promise<ApiError> {
   try {
-    const body = (await response.json()) as { code?: unknown; message?: unknown };
+    const body = (await response.json()) as {
+      code?: unknown;
+      message?: unknown;
+      retry_at?: unknown;
+    };
     if (typeof body.code === 'string' && typeof body.message === 'string') {
-      return new ApiError(response.status, body.code, body.message);
+      const retryAt = typeof body.retry_at === 'string' ? body.retry_at : null;
+      return new ApiError(response.status, body.code, body.message, retryAt);
     }
   } catch {
     // A body that is not the API's error shape falls through to the generic error.

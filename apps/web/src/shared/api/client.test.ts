@@ -55,7 +55,11 @@ describe('createApiClient', () => {
         .fn()
         .mockResolvedValueOnce(
           Response.json(
-            { code: 'limite_hora', message: 'Alcanzaste el límite de análisis por hora.' },
+            {
+              code: 'limite_hora',
+              message: 'Alcanzaste el límite de análisis por hora.',
+              retry_at: '2026-11-15T19:41:30Z',
+            },
             { status: 429 },
           ),
         )
@@ -74,6 +78,7 @@ describe('createApiClient', () => {
       status: 429,
       code: 'limite_hora',
       message: 'Alcanzaste el límite de análisis por hora.',
+      retryAt: '2026-11-15T19:41:30Z',
     });
     await expect(request('/me/credentials')).rejects.toMatchObject({
       code: 'clave_invalida',

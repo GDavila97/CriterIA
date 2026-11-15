@@ -224,7 +224,8 @@ test('Nuevo análisis limpia el formulario y el resultado después de avisar', a
   await expect(page.getByRole('button', { name: 'Nuevo análisis' })).toBeHidden();
 });
 
-test('un límite de uso se explica en un diálogo sin inventar la hora', async ({ page }) => {
+test('un límite de uso se explica en un diálogo con la hora que da la API', async ({ page }) => {
+  const retryAt = new Date(Date.now() + 25 * 60_000);
   await page.route('**/runs', (route) =>
     route.request().method() === 'POST'
       ? route.fulfill({
@@ -232,7 +233,11 @@ test('un límite de uso se explica en un diálogo sin inventar la hora', async (
           contentType: 'application/json',
           // The page and the API are different origins; the real API answers with its CORS header.
           headers: { 'access-control-allow-origin': '*' },
-          body: JSON.stringify({ code: 'limite_hora', message: 'Alcanzaste el límite.' }),
+          body: JSON.stringify({
+            code: 'limite_hora',
+            message: 'Alcanzaste el límite de análisis por hora.',
+            retry_at: retryAt.toISOString(),
+          }),
         })
       : route.fallback(),
   );
@@ -242,7 +247,18 @@ test('un límite de uso se explica en un diálogo sin inventar la hora', async (
     name: 'Alcanzaste el límite de análisis por hora',
   });
   await expect(dialog).toContainText('Puedes iniciar hasta 100 análisis por hora y 200 al día.');
-  await expect(dialog).not.toContainText(/a las/);
+  const hour = await page.evaluate(
+    (iso) =>
+      new Date(iso).toLocaleTimeString('es-MX', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      }),
+    retryAt.toISOString(),
+  );
+  await expect(dialog).toContainText(
+    new RegExp(`Podrás iniciar el siguiente (mañana )?a las ${hour}`),
+  );
   await dialog.getByRole('button', { name: 'Entendido' }).click();
   await expect(dialog).toBeHidden();
   await expect(

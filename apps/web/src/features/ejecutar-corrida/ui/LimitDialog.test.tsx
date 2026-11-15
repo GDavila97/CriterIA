@@ -3,10 +3,11 @@ import userEvent from '@testing-library/user-event';
 
 import { ApiError, type UsageBody } from '@/shared/api';
 
-import { isLimitError, LimitDialog } from './LimitDialog';
+import { isLimitError, LimitDialog, whenText } from './LimitDialog';
 
 const usage: UsageBody = { corridas_hora: 5, limite_hora: 5, corridas_dia: 7, limite_dia: 20 };
-const limit = (code: string) => new ApiError(429, code, 'Mensaje de la API');
+const limit = (code: string, retryAt: string | null = null) =>
+  new ApiError(429, code, 'Mensaje de la API', retryAt);
 
 describe('LimitDialog', () => {
   it('explains the hourly limit with the account limits and no invented time', async () => {
@@ -53,5 +54,34 @@ describe('LimitDialog', () => {
     expect(isLimitError(limit('limite_dia'))).toBe(true);
     expect(isLimitError(limit('sin_conexion'))).toBe(false);
     expect(isLimitError(null)).toBe(false);
+  });
+
+  it('says when the next analysis can start, in local time, only when the API tells', () => {
+    const retryAt = new Date(Date.now() + 25 * 60_000).toISOString();
+    render(<LimitDialog error={limit('limite_hora', retryAt)} usage={usage} onClose={vi.fn()} />);
+
+    const hour = new Date(retryAt).toLocaleTimeString('es-MX', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    });
+    expect(screen.getByRole('alertdialog')).toHaveAccessibleDescription(
+      new RegExp(`Podrás iniciar el siguiente (mañana )?a las ${hour}\\.`),
+    );
+  });
+});
+
+describe('whenText', () => {
+  const now = new Date('2026-11-15T20:00:00Z');
+
+  it('writes the hour in the given time zone, today, tomorrow or on a date', () => {
+    expect(whenText('2026-11-15T23:42:00Z', now, 'America/Mexico_City')).toBe('a las 17:42');
+    expect(whenText('2026-11-16T00:00:00Z', now, 'America/Mexico_City')).toBe('a las 18:00');
+    expect(whenText('2026-11-16T00:00:00Z', now, 'UTC')).toBe('mañana a las 00:00');
+    expect(whenText('2026-11-18T09:05:00Z', now, 'UTC')).toMatch(/^el 18 nov\.? a las 09:05$/);
+  });
+
+  it('gives up on a moment it cannot read', () => {
+    expect(whenText('no es una fecha', now)).toBeNull();
   });
 });

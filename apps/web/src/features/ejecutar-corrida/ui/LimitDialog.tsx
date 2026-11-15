@@ -19,14 +19,38 @@ const TITLES: Record<LimitCode, string> = {
   cupo_gratuito_agotado: 'Se agotó el cupo gratuito de hoy',
 };
 
-// The API does not say when the quota frees up, so the dialog never names a time.
-function description(code: LimitCode, usage: UsageBody | null): string {
+const DAY_MS = 86_400_000;
+
+/**
+ * "a las 18:42", "mañana a las 00:00" or a full date, in the person's own time zone. The API
+ * computes the moment; the web only writes it.
+ */
+export function whenText(retryAt: string, now = new Date(), timeZone?: string): string | null {
+  const at = new Date(retryAt);
+  if (Number.isNaN(at.getTime())) return null;
+  const day = (d: Date) => d.toLocaleDateString('en-CA', { timeZone });
+  const hour = at.toLocaleTimeString('es-MX', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    timeZone,
+  });
+  if (day(at) === day(now)) return `a las ${hour}`;
+  if (day(at) === day(new Date(now.getTime() + DAY_MS))) return `mañana a las ${hour}`;
+  const date = at.toLocaleDateString('es-MX', { day: 'numeric', month: 'short', timeZone });
+  return `el ${date} a las ${hour}`;
+}
+
+function description(code: LimitCode, usage: UsageBody | null, retryAt: string | null): string {
+  const when = retryAt ? whenText(retryAt) : null;
+  const next = when ? ` Podrás iniciar el siguiente ${when}.` : '';
   if (code === 'cupo_gratuito_agotado') {
-    return 'El modo gratuito tiene un tope diario compartido por todas las personas. Puedes seguir con tu propia clave de OpenAI, Anthropic o Groq.';
+    return `El modo gratuito tiene un tope diario compartido por todas las personas.${when ? ` Vuelve a abrirse ${when}.` : ''} Mientras, puedes usar tu propia clave de OpenAI, Anthropic o Groq.`;
   }
-  return usage
+  const limits = usage
     ? `Puedes iniciar hasta ${usage.limite_hora} análisis por hora y ${usage.limite_dia} al día.`
     : 'Cada persona tiene un número de análisis por hora y por día.';
+  return `${limits}${next}`;
 }
 
 function Clock() {
@@ -59,7 +83,7 @@ export function LimitDialog({ error, usage, onClose }: LimitDialogProps) {
     <Dialog
       open={code !== null}
       title={code ? TITLES[code] : ''}
-      description={code ? description(code, usage) : ''}
+      description={code ? description(code, usage, error?.retryAt ?? null) : ''}
       icon={<Clock />}
       onClose={onClose}
       actions={
