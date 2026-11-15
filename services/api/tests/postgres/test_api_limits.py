@@ -29,7 +29,7 @@ async def test_the_hourly_limit_stops_the_sixth_run(api: Api) -> None:
     assert [r.status_code for r in responses] == [201] * 5 + [429]
     assert responses[-1].json() == {
         "code": "limite_hora",
-        "message": "Alcanzaste el límite de corridas por hora.",
+        "message": "Alcanzaste el límite de análisis por hora.",
     }
     assert (await api.create_run("someone-else")).status_code == 201
 

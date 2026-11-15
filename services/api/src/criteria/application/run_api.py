@@ -63,7 +63,7 @@ logger = logging.getLogger(__name__)
 
 AgentBuilder = Callable[[AgentSelections], AgentSet]
 Action = Callable[[EventSink], Coroutine[Any, Any, RunOutcome]]
-INTERNAL_ERROR_MESSAGE = "La corrida se detuvo por un error interno. Intenta de nuevo."
+INTERNAL_ERROR_MESSAGE = "El análisis se detuvo por un error interno. Intenta de nuevo."
 
 
 @dataclass(frozen=True)
