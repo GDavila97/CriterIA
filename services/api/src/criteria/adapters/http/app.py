@@ -43,6 +43,7 @@ def build_app(settings: ApiSettings, make_services: Callable[[], ApiServices]) -
         allow_credentials=False,
         allow_methods=["GET", "POST", "PUT", "DELETE"],
         allow_headers=["authorization", "content-type", "last-event-id"],
+        expose_headers=["Retry-After"],
         max_age=600,
     )
     app.add_middleware(HardeningMiddleware, max_body_bytes=settings.max_request_bytes)

@@ -1,4 +1,6 @@
 import logging
+from datetime import UTC, datetime
+from email.utils import format_datetime
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
@@ -52,13 +54,17 @@ STATUS: dict[str, int] = {
 }
 
 
-def error_response(code: str) -> JSONResponse:
-    headers = {"WWW-Authenticate": "Bearer"} if code == "no_autenticado" else None
-    return JSONResponse(
-        {"code": code, "message": MESSAGES.get(code, MESSAGES["error_interno"])},
-        status_code=STATUS.get(code, 422),
-        headers=headers,
-    )
+def error_response(code: str, retry_at: datetime | None = None) -> JSONResponse:
+    headers: dict[str, str] = {}
+    if code == "no_autenticado":
+        headers["WWW-Authenticate"] = "Bearer"
+    body: dict[str, str] = {"code": code, "message": MESSAGES.get(code, MESSAGES["error_interno"])}
+    if retry_at is not None:
+        moment = retry_at.astimezone(UTC)
+        body["retry_at"] = moment.isoformat().replace("+00:00", "Z")
+        # An HTTP date, so the header says the same moment however late the response leaves.
+        headers["Retry-After"] = format_datetime(moment, usegmt=True)
+    return JSONResponse(body, status_code=STATUS.get(code, 422), headers=headers or None)
 
 
 class ForbiddenError(Exception):
@@ -73,7 +79,9 @@ def install_error_handlers(app: FastAPI) -> None:
         return error_response("entrada_invalida")
 
     async def application(_request: Request, error: Exception) -> JSONResponse:
-        return error_response(getattr(error, "codigo", "error_interno"))
+        return error_response(
+            getattr(error, "codigo", "error_interno"), getattr(error, "retry_at", None)
+        )
 
     async def auth(_request: Request, _error: Exception) -> JSONResponse:
         return error_response("no_autenticado")

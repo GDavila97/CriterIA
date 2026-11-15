@@ -446,6 +446,7 @@ export interface EnEsperaHumano {
 export interface ErrorBody {
   code: string;
   message: string;
+  retry_at: string | null;
 }
 /**
  * This interface was referenced by `CriteriaContract`'s JSON-Schema

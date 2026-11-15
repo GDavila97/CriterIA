@@ -102,9 +102,11 @@ class UsageLimits:
 
 
 class LimitExceededError(Exception):
-    def __init__(self, codigo: LimitCode) -> None:
+    def __init__(self, codigo: LimitCode, retry_at: datetime | None = None) -> None:
         super().__init__(codigo)
         self.codigo: LimitCode = codigo
+        # When the limit frees up, for the client to tell the person.
+        self.retry_at = retry_at
 
 
 @dataclass(frozen=True)

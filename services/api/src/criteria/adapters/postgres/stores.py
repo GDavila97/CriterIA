@@ -1,6 +1,6 @@
 from collections.abc import AsyncIterator, Mapping, Sequence
 from contextlib import asynccontextmanager
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, date, datetime, time, timedelta
 from typing import Any, cast
 from uuid import UUID, uuid4
 
@@ -13,6 +13,7 @@ from criteria.adapters.postgres import database as t
 from criteria.domain.artifacts import CRITERIOS
 from criteria.domain.eval_metrics import common_keys, mean
 from criteria.domain.events import ProveedorId
+from criteria.domain.quota import hour_window_reopens, next_utc_day
 from criteria.domain.run_config import Nivel
 from criteria.ports.credentials import Sealed, StoredCredential
 from criteria.ports.stores import (
@@ -191,16 +192,24 @@ class PostgresUsageGuard:
                 )
             )
             if int(recent or 0) >= limits.user_runs_per_hour:
-                raise LimitExceededError("limite_hora")
+                oldest = await conn.scalar(
+                    sa.select(sa.func.min(t.run_start.c.started_at)).where(
+                        t.run_start.c.user_id == user_id,
+                        t.run_start.c.started_at > at - timedelta(hours=1),
+                    )
+                )
+                raise LimitExceededError(
+                    "limite_hora", hour_window_reopens(oldest) if oldest else None
+                )
             today = await conn.scalar(
                 sa.select(t.usage_daily.c.runs).where(
                     t.usage_daily.c.user_id == user_id, t.usage_daily.c.day == day
                 )
             )
             if int(today or 0) >= limits.user_runs_per_day:
-                raise LimitExceededError("limite_dia")
+                raise LimitExceededError("limite_dia", next_utc_day(at))
             if uses_server_key:
-                await self._book_global(conn, day, server_cost_usd)
+                await self._book_global(conn, at, server_cost_usd)
             await conn.execute(
                 sa.insert(t.run_start).values(
                     id=reservation.id,
@@ -250,8 +259,8 @@ class PostgresUsageGuard:
                     )
                 )
 
-    async def _book_global(self, conn: Any, day: date, cost: float) -> None:
-        g = t.global_usage_daily
+    async def _book_global(self, conn: Any, at: datetime, cost: float) -> None:
+        g, day = t.global_usage_daily, at.date()
         await conn.execute(
             insert(g)
             .values(day=day, runs=0, cost_usd=0)
@@ -269,7 +278,7 @@ class PostgresUsageGuard:
             .returning(g.c.runs)
         )
         if booked is None:
-            raise LimitExceededError("cupo_gratuito_agotado")
+            raise LimitExceededError("cupo_gratuito_agotado", next_utc_day(at))
 
     async def reserve_extra(self, run_id: UUID, user_id: str, day: date, cost_usd: float) -> None:
         g, u, r = t.global_usage_daily, t.usage_daily, t.run
@@ -284,7 +293,9 @@ class PostgresUsageGuard:
                 .returning(g.c.day)
             )
             if booked is None:
-                raise LimitExceededError("cupo_gratuito_agotado")
+                raise LimitExceededError(
+                    "cupo_gratuito_agotado", next_utc_day(datetime.combine(day, time(), tzinfo=UTC))
+                )
             await conn.execute(
                 sa.update(u)
                 .where(u.c.user_id == user_id, u.c.day == day)

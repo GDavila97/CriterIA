@@ -1165,11 +1165,24 @@
         },
         "message": {
           "type": "string"
+        },
+        "retry_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         }
       },
       "required": [
         "code",
-        "message"
+        "message",
+        "retry_at"
       ],
       "title": "ErrorBody",
       "type": "object"

@@ -26,6 +26,8 @@ class Body(BaseModel):
 class ErrorBody(Body):
     code: str
     message: str
+    # Only on usage limits: when the next run can start, in ISO 8601 (UTC).
+    retry_at: datetime | None = None
 
 
 class HealthBody(Body):
