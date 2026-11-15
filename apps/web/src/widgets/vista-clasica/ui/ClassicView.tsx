@@ -303,7 +303,7 @@ function Rubric({ state, judgeLabel }: { state: RunState; judgeLabel?: string })
       label="rubric-title"
       extra={
         media !== null && (
-          <span className={styles.big}>
+          <span className={`${styles.big} ${motion.fade}`}>
             {media.toFixed(1)}
             <span className={styles.headline}>/5</span>
           </span>
@@ -363,7 +363,11 @@ function Fallback({ state, onUseFree }: { state: RunState; onUseFree: () => void
     ] ?? proveedor;
   const donde = error.agente === 'sistema' ? '' : ` en ${AGENTS[error.agente].nombre}`;
   return (
-    <section className={styles.fallback} role="alert" aria-labelledby="fallback-title">
+    <section
+      className={`${styles.fallback} ${motion.enter}`}
+      role="alert"
+      aria-labelledby="fallback-title"
+    >
       <span className={styles.fallbackIcon}>
         <Icon name="alerta" />
       </span>
@@ -420,12 +424,20 @@ export function ClassicView({
   const finished = state.fase === 'completada' || state.fase === 'error';
   return (
     <div className={styles.view}>
-      {stage ?? <AgentFlow state={state} connection={connection} onOpenAgent={onOpenAgent} />}
+      {stage ?? (
+        <div className={motion.fade}>
+          <AgentFlow state={state} connection={connection} onOpenAgent={onOpenAgent} />
+        </div>
+      )}
       {state.error?.respaldoSugerido && onUseFree && (
         <Fallback state={state} onUseFree={onUseFree} />
       )}
       {state.error && !state.error.respaldoSugerido && (
-        <section className={styles.fallback} role="alert" aria-label="Error del análisis">
+        <section
+          className={`${styles.fallback} ${motion.enter}`}
+          role="alert"
+          aria-label="Error del análisis"
+        >
           <span className={styles.fallbackIcon}>
             <Icon name="alerta" />
           </span>
@@ -447,12 +459,14 @@ export function ClassicView({
         ) : (
           <Card title="Artefactos" label="artifacts-title">
             {finished && (
-              <ResultActions
-                state={state}
-                requerimiento={requerimiento}
-                unsaved={saved === false}
-                onNewAnalysis={onNewAnalysis}
-              />
+              <div className={motion.enter}>
+                <ResultActions
+                  state={state}
+                  requerimiento={requerimiento}
+                  unsaved={saved === false}
+                  onNewAnalysis={onNewAnalysis}
+                />
+              </div>
             )}
             <Tabs
               label="Artefactos"

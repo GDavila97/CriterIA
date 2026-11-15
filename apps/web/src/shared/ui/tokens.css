@@ -60,9 +60,10 @@
   --space-48: 48px;
 
   /* Motion: only transform and opacity are animated. */
-  --duration-fast: 120ms;
+  /* Every transition lasts between 150 and 250 ms. */
+  --duration-fast: 150ms;
   --duration-base: 200ms;
-  --duration-slow: 320ms;
+  --duration-slow: 250ms;
   --ease-out: cubic-bezier(0, 0, 0.2, 1);
   --ease-in: cubic-bezier(0.4, 0, 1, 1);
   --motion-shift: 4px;

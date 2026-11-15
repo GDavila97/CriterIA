@@ -27,7 +27,7 @@ import {
   type UsageBody,
 } from '@/shared/api';
 import { modelLabelFromId } from '@/shared/config/providers';
-import { Notice, SkeletonCard } from '@/shared/ui';
+import { motion, Notice, SkeletonCard } from '@/shared/ui';
 import { Header, type HeaderUser } from '@/widgets/encabezado';
 import { AgentPanel } from '@/widgets/panel-agente';
 import { ClassicView } from '@/widgets/vista-clasica';
@@ -213,12 +213,14 @@ export function RunWorkspace({
                 approval={view.vista === 'clasica' ? approval : undefined}
                 stage={
                   view.vista === 'oficina' ? (
-                    <OfficeView
-                      state={run.state}
-                      userName={user.name}
-                      onOpenAgent={setAgent}
-                      approval={approval}
-                    />
+                    <div className={motion.fade}>
+                      <OfficeView
+                        state={run.state}
+                        userName={user.name}
+                        onOpenAgent={setAgent}
+                        approval={approval}
+                      />
+                    </div>
                   ) : undefined
                 }
                 onUseFree={useFree}
