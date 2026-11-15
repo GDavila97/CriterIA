@@ -2,7 +2,6 @@ import { publicEnv } from '@/shared/config';
 import { createSseParser } from '@/shared/lib/sse';
 
 import { ApiError, authHeaders } from './client';
-import { userMessage } from './messages';
 import { apiToken, type TokenStore } from './token';
 import type { Evento } from './types.gen';
 
@@ -50,11 +49,7 @@ const defaults: StreamDeps = {
 async function errorFrom(response: Response): Promise<ApiError> {
   const body = (await response.json().catch(() => ({}))) as { code?: string; message?: string };
   const code = body.code ?? 'error_interno';
-  return new ApiError(
-    response.status,
-    code,
-    userMessage(code, body.message ?? 'No se pudo abrir el análisis.'),
-  );
+  return new ApiError(response.status, code, body.message ?? 'No se pudo abrir el análisis.');
 }
 
 /**

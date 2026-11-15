@@ -48,14 +48,14 @@ describe('createApiClient', () => {
     expect(fetchMock.mock.calls[1]?.[1]).toMatchObject({ headers: { authorization: 'Bearer t2' } });
   });
 
-  it('turns API errors into ApiError with the code and the interface wording', async () => {
+  it('turns API errors into ApiError with the code and the message the API wrote', async () => {
     vi.stubGlobal(
       'fetch',
       vi
         .fn()
         .mockResolvedValueOnce(
           Response.json(
-            { code: 'limite_hora', message: 'Alcanzaste el límite de corridas por hora.' },
+            { code: 'limite_hora', message: 'Alcanzaste el límite de análisis por hora.' },
             { status: 429 },
           ),
         )

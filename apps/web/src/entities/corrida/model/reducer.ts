@@ -1,5 +1,4 @@
 import {
-  runMessage,
   type AgenteError,
   type CasoPrueba,
   type CriterioAceptacion,
@@ -282,7 +281,7 @@ function apply(state: RunState, evento: Evento): RunState {
           error: {
             agente,
             codigo: evento.codigo,
-            mensaje: runMessage(evento.codigo, evento.mensaje),
+            mensaje: evento.mensaje,
             respaldoSugerido: evento.respaldo_sugerido,
           },
         },
@@ -298,10 +297,7 @@ function apply(state: RunState, evento: Evento): RunState {
           ? {
               agente: 'sistema' as const,
               codigo: evento.codigo,
-              mensaje: runMessage(
-                evento.codigo,
-                evento.mensaje ?? 'El análisis se detuvo por un error.',
-              ),
+              mensaje: evento.mensaje ?? 'El análisis se detuvo por un error.',
               respaldoSugerido: evento.respaldo_sugerido,
             }
           : null);

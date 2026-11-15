@@ -152,7 +152,7 @@ describe('runReducer', () => {
         totales: { tokens_entrada: 0, tokens_salida: 0, latencia_ms: 0, costo_usd: 0 },
         respaldo_sugerido: null,
         codigo: 'error_interno',
-        mensaje: 'La corrida se detuvo por un error interno.',
+        mensaje: 'El análisis se detuvo por un error interno. Intenta de nuevo.',
       }),
     );
 
