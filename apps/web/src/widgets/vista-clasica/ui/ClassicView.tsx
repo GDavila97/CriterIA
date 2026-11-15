@@ -40,6 +40,8 @@ export interface ClassicViewProps {
   onNewAnalysis?: () => void;
   /** Takes the place of the agent flow and the event log, as the office view does. */
   stage?: ReactNode;
+  /** Off where the page already offers the download, as the saved analysis does. */
+  actions?: boolean;
 }
 
 const CONNECTION_TEXT: Record<Connection, string> = {
@@ -419,6 +421,7 @@ export function ClassicView({
   saved,
   onNewAnalysis,
   stage,
+  actions = true,
 }: ClassicViewProps) {
   const waiting = state.fase === 'esperando_aprobacion' && approval;
   const finished = state.fase === 'completada' || state.fase === 'error';
@@ -458,7 +461,7 @@ export function ClassicView({
           </section>
         ) : (
           <Card title="Artefactos" label="artifacts-title">
-            {finished && (
+            {finished && actions && (
               <div className={motion.enter}>
                 <ResultActions
                   state={state}

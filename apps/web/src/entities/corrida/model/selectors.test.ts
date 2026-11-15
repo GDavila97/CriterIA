@@ -4,10 +4,12 @@ import { eventsFrom, fullRun, historia, inicia, puntajes, uso } from '@/shared/l
 import { initialRunState, runReducer, type RunState } from './reducer';
 import {
   agentSummary,
+  analysisTitle,
   formatClock,
   formatElapsed,
   formatUsd,
   runHeadline,
+  stateFromHistory,
   stateFromSaved,
   totalUse,
 } from './selectors';
@@ -114,6 +116,77 @@ describe('formatting', () => {
     expect(runHeadline({ ...done, fase: 'error', rondasRevision: 0, totales: null })).toBe(
       'Análisis detenido · 2 min 33 s',
     );
+  });
+});
+
+const savedItem = (overrides: Partial<HistoryItemBody> = {}): HistoryItemBody => ({
+  id: 'r1',
+  status: 'completada',
+  requirement: 'La biblioteca necesita apartados en línea',
+  artifacts: { historias: { historias: [historia(1)] } },
+  scores: puntajes() as unknown as HistoryItemBody['scores'],
+  provider: 'groq',
+  model: 'openai/gpt-oss-20b',
+  model_display_name: 'GPT-OSS 20B',
+  judge_model: 'groq:openai/gpt-oss-20b',
+  judge_display_name: 'GPT-OSS 20B',
+  prompt_version: 'v1',
+  judge_version: 'v1',
+  experimental: false,
+  totals: { tokens_entrada: 1, tokens_salida: 1, latencia_ms: 1, costo_usd: 0 },
+  created_at: '2026-11-07T12:00:00Z',
+  events: null,
+  events_version: null,
+  ...overrides,
+});
+
+describe('stateFromHistory', () => {
+  const events = fullRun() as unknown as HistoryItemBody['events'];
+
+  it('replays the saved events, rounds included, when their version is known', () => {
+    const state = stateFromHistory(savedItem({ events, events_version: 1 }));
+
+    expect(state.fase).toBe('completada');
+    expect(state.rondasRevision).toBe(1);
+    expect(state.casos.map((c) => c.id)).toEqual(['CP-01', 'CP-02', 'CP-90']);
+    expect(state.registro.length).toBeGreaterThan(5);
+  });
+
+  it('falls back to the artifacts with an unknown version or without events', () => {
+    for (const item of [
+      savedItem({ events, events_version: 2 }),
+      savedItem({ events: [], events_version: 1 }),
+      savedItem(),
+    ]) {
+      const state = stateFromHistory(item);
+      expect(state.registro).toEqual([]);
+      expect(state.historias).toHaveLength(1);
+    }
+  });
+});
+
+describe('analysisTitle', () => {
+  it('takes the first sentence without its period', () => {
+    expect(
+      analysisTitle(
+        'La clínica quiere que los pacientes agenden citas en línea. Las citas deben ser rápidas.',
+      ),
+    ).toBe('La clínica quiere que los pacientes agenden citas en línea');
+    expect(analysisTitle('  ¿Qué pasa si cancelo?  Nada.')).toBe('¿Qué pasa si cancelo');
+    expect(analysisTitle('Sin punto final')).toBe('Sin punto final');
+    expect(analysisTitle('Versión 2.1 del portal. Otra frase.')).toBe('Versión 2.1 del portal');
+  });
+
+  it('cuts a long sentence at a word and adds an ellipsis', () => {
+    const long =
+      'El portal de trámites escolares debe permitir inscripciones, pagos, constancias, citas y avisos a las familias';
+    const title = analysisTitle(long);
+
+    expect(title.endsWith('…')).toBe(true);
+    expect(title.length).toBeLessThanOrEqual(81);
+    expect(long.startsWith(title.slice(0, -1))).toBe(true);
+    expect(title).not.toMatch(/[ ,]…$/);
+    expect(analysisTitle('a'.repeat(100), 10)).toBe(`${'a'.repeat(10)}…`);
   });
 });
 

@@ -18,7 +18,16 @@ function downloadJson(state: RunState, requerimiento: string) {
   download(`${fileName(state)}.json`, toJson(state, requerimiento), 'application/json');
 }
 
-function DownloadMenu({ state, requerimiento }: { state: RunState; requerimiento: string }) {
+export function DownloadMenu({
+  state,
+  requerimiento,
+  align = 'start',
+}: {
+  state: RunState;
+  requerimiento: string;
+  /** Which edge of the button the options line up with. */
+  align?: 'start' | 'end';
+}) {
   const [open, setOpen] = useState(false);
   const menuId = useId();
   const root = useRef<HTMLDivElement>(null);
@@ -61,7 +70,11 @@ function DownloadMenu({ state, requerimiento }: { state: RunState; requerimiento
         <Icon name="abajo" size={16} />
       </Button>
       {open && (
-        <ul id={menuId} className={styles.options} aria-label="Formato de descarga">
+        <ul
+          id={menuId}
+          className={`${styles.options} ${align === 'end' ? styles.optionsEnd : ''}`}
+          aria-label="Formato de descarga"
+        >
           <li>
             <button type="button" onClick={() => choose(downloadMarkdown)}>
               Markdown

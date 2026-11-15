@@ -49,6 +49,11 @@
   list-style: none;
 }
 
+.optionsEnd {
+  right: 0;
+  left: auto;
+}
+
 .options button {
   width: 100%;
   min-height: var(--size-control-min);

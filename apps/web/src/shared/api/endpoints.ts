@@ -39,6 +39,8 @@ export const api = {
   history: () => apiRequest<HistorySummaryBody[]>('/me/runs'),
   historyItem: (runId: string) =>
     apiRequest<HistoryItemBody>(`/me/runs/${encodeURIComponent(runId)}`),
+  deleteHistoryItem: (runId: string) =>
+    apiRequest<void>(`/me/runs/${encodeURIComponent(runId)}`, { method: 'DELETE' }),
   clearHistory: () => apiRequest<HistoryDeletedBody>('/me/runs', { method: 'DELETE' }),
   evaluation: () => apiRequest<EvaluationBody>('/evaluation', { auth: false }),
 };

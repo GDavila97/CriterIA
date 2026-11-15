@@ -1,7 +1,7 @@
-import type { HistoryItemBody, Uso } from '@/shared/api';
+import type { Evento, HistoryItemBody, Uso } from '@/shared/api';
 
 import type { AgentId } from './agents';
-import { initialRunState, promedio, type RunState } from './reducer';
+import { initialRunState, promedio, runReducer, type RunState } from './reducer';
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
@@ -148,4 +148,33 @@ export function stateFromSaved(item: HistoryItemBody): RunState {
     puntajes: item.scores as unknown as RunState['puntajes'],
     totales: item.totals as unknown as RunState['totales'],
   };
+}
+
+/** The saved events' format this web knows how to replay. */
+export const SAVED_EVENTS_VERSION = 1;
+
+/** Whether a saved analysis kept how the team worked, in a format this web can replay. */
+export function hasSavedEvents(item: HistoryItemBody): boolean {
+  return item.events_version === SAVED_EVENTS_VERSION && Boolean(item.events?.length);
+}
+
+/** A saved analysis replayed from its events when it kept them, so every view sees its rounds. */
+export function stateFromHistory(item: HistoryItemBody): RunState {
+  if (!hasSavedEvents(item)) return stateFromSaved(item);
+  return (item.events as unknown as Evento[]).reduce<RunState>(
+    (state, evento) => runReducer(state, { type: 'evento', evento }),
+    initialRunState(item.id),
+  );
+}
+
+const TITLE_LIMIT = 80;
+
+/** The requirement's first sentence, cut at a word with an ellipsis when it is too long. */
+export function analysisTitle(requirement: string, limit = TITLE_LIMIT): string {
+  const text = requirement.trim().replace(/\s+/g, ' ');
+  const sentence = /^(.+?)[.!?](?:\s|$)/.exec(text)?.[1] ?? text;
+  if (sentence.length <= limit) return sentence;
+  const cut = sentence.slice(0, limit + 1);
+  const word = cut.lastIndexOf(' ');
+  return `${(word > limit / 2 ? cut.slice(0, word) : cut.slice(0, limit)).replace(/[\s,;:]+$/, '')}…`;
 }

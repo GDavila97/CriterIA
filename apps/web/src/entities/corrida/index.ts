@@ -21,6 +21,10 @@ export {
 } from './model/reducer';
 export {
   agentSummary,
+  analysisTitle,
+  hasSavedEvents,
+  SAVED_EVENTS_VERSION,
+  stateFromHistory,
   formatClock,
   formatElapsed,
   formatUsd,

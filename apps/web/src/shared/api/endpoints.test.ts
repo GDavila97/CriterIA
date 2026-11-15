@@ -18,6 +18,7 @@ describe('api endpoints', () => {
     await api.deleteCredential('groq');
     await api.history();
     await api.historyItem('r 1');
+    await api.deleteHistoryItem('r 1');
     await api.clearHistory();
     await api.evaluation();
 
@@ -38,6 +39,7 @@ describe('api endpoints', () => {
       ['/me/credentials/groq', { method: 'DELETE' }],
       ['/me/runs'],
       ['/me/runs/r%201'],
+      ['/me/runs/r%201', { method: 'DELETE' }],
       ['/me/runs', { method: 'DELETE' }],
       ['/evaluation', { auth: false }],
     ]);

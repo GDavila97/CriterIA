@@ -14,6 +14,8 @@ const PATHS = {
   menu: 'M4 7h16M4 12h16M4 17h16',
   mas: 'M12 5v14M5 12h14',
   descargar: 'M12 4v11m-5-5 5 5 5-5M5 20h14',
+  basura: 'M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13',
+  copiar: 'M8 8h12v12H8V8Zm8 0V4H4v12h4',
 } as const;
 
 export type IconName = keyof typeof PATHS;
