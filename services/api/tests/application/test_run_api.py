@@ -23,12 +23,14 @@ from criteria.application.errors import (
     VersionsExhaustedError,
 )
 from criteria.application.run_api import (
+    EVENTS_LIMIT_BYTES,
     EVENTS_VERSION,
     INTERNAL_ERROR_MESSAGE,
     AgentParams,
     RunApplication,
     RunDefaults,
     RunRequest,
+    _kept_events,
     _saved_run,
     _server_cost,
 )
@@ -771,3 +773,17 @@ def _record(generation: ModelPlan = SERVER, judge: ModelPlan = SERVER) -> RunRec
         estimated_cost_usd=None,
         created_at=FakeClock().now(),
     )
+
+
+def test_the_events_cap_is_512_kb_and_keeps_a_copy_right_at_it(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    run_id = uuid4()
+    # '[{"x": "' and '"}]' add 11 bytes around the text.
+    at_limit = [{"x": "a" * (EVENTS_LIMIT_BYTES - 11)}]
+    over = [{"x": "a" * (EVENTS_LIMIT_BYTES - 10)}]
+
+    assert EVENTS_LIMIT_BYTES == 512 * 1024
+    assert _kept_events(run_id, at_limit) == at_limit
+    assert _kept_events(run_id, over) is None
+    assert f"run {run_id} saved without its events: {EVENTS_LIMIT_BYTES + 1} bytes" in caplog.text
