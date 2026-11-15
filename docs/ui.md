@@ -47,12 +47,23 @@ Reglas:
 
 ## Vista oficina
 
-- **Escena:** un SVG isométrico estático (escritorios, sala de juntas, tablero y sala de descanso), con `aria-hidden`. En modo oscuro se atenúa con un filtro.
-- **Agentes:** la Ficha a 44 px con patas, dentro de un botón con su nombre. Los globos van fuera del botón, con `aria-hidden`, porque el `aria-label` ya dice la actividad.
-- **Caminar:** cada agente vive en una capa del tamaño de la escena que se traslada con `transform`, con una duración proporcional a la distancia. La Ficha anda (`andar`) solo mientras dura el traslado.
-- **Vida libre:** cada 2.5 a 6 s, un agente libre camina a un punto vacío de la sala de descanso o dice una frase de la lista fija durante 2.6 s. Los cinco puntos están calculados para que dos agentes nunca se encimen a 1440 px.
+- **Escena:** un SVG isométrico estático (escritorios, sala de juntas, tablero y sala de descanso). En modo oscuro se atenúa con un filtro. Recorta su contenido (`overflow: clip`, `contain: paint`) y crea su propio contexto de apilamiento (`isolation: isolate`), así que ningún agente ni globo queda encima del encabezado fijo al hacer scroll.
+- **Accesibilidad:** la escena entera lleva `aria-hidden`. Debajo, la fila «Agentes» tiene un botón de 44 px por agente con su nombre y su actividad actual («QA · escribiendo casos de prueba»), que abre el mismo panel; es el control accesible. Los agentes de la escena responden al clic del mouse con `tabindex="-1"`, sin tomar el foco.
+- **Rutina:**
+  - Cada agente tiene su escritorio: Analista y QA en los de atrás, Revisor y Evaluador en los de adelante. Sin análisis activo, todos empiezan ahí.
+  - Libres, eligen con pesos: su escritorio a trabajar un rato (45 %), la sala de descanso (20 %), platicar con otro (20 %), la sala de juntas (10 %) o el tablero (5 %).
+  - Para platicar, dos caminan a un par de puntos frente a frente, se miran y alternan dos o tres frases de la lista fija.
+  - El que trabaja de verdad sigue su actividad; en «Tu turno» el Analista no se mueve del tablero.
+  - Al terminar, primero se juntan en la sala de descanso a celebrar y después retoman la rutina.
+  - El programador (`model/life.ts`) es una simulación de eventos con semilla: la misma semilla repite la misma escena. Nunca hay dos agentes en el mismo punto, y los puntos están separados para que se encimen lo menos posible.
+- **Caminar:**
+  - Las rutas pasan por puntos de los pasillos (`model/places.ts`), sin cruzar muebles.
+  - El agente recorre cada tramo con una transición de `transform` a velocidad constante (110 unidades de escena por segundo): arranca suave en el primer tramo y frena suave en el último.
+  - Mira hacia donde camina: la Ficha voltea el cuerpo, no el ícono del rol ni el texto.
+  - Las patas andan durante todo el trayecto, el cuerpo rebota un poco en cada paso y una sombra lo sigue. Al llegar, se asienta.
+- **En reposo:** respiración sutil (escala vertical de 1 a 1.02 cada 3 a 4 s), parpadeo ocasional y, de vez en cuando, un cambio de peso, todo desfasado por agente. Al decir su frase, un pequeño gesto. Solo se animan `transform` y `opacity`.
 - **Tu turno:** globo ámbar (`--color-turn`) con un anillo que crece y se desvanece. El rojo sigue reservado para errores.
-- **Pausa y movimiento reducido:** con la pestaña oculta, las animaciones se pausan y no se programan pasos. Con `prefers-reduced-motion`, los agentes aparecen en su zona sin caminar, nadie deambula y el anillo no pulsa.
+- **Pausa y movimiento reducido:** con la pestaña oculta, el reloj de la rutina se detiene y las animaciones se pausan. Con `prefers-reduced-motion` no hay rutina ni animaciones: cada agente aparece donde le toca (su trabajo, el tablero, su escritorio o, al terminar, la sala de descanso).
 
 ## Capa de espera
 

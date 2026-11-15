@@ -37,9 +37,9 @@ El panel de cada agente muestra su prompt de sistema, el modelo y sus parámetro
 
 ### Vista oficina
 
-Desde 768 px, el mismo análisis se puede ver como una oficina: los agentes caminan a la zona de lo que hacen (escritorios, sala de juntas, tablero), el Analista te llama al tablero cuando las historias esperan tu revisión y, al terminar, todos van a la sala de descanso. Es otra forma de ver el mismo estado que la vista clásica, sin eventos propios; con movimiento reducido nadie camina ([ADR 0025](docs/adr/0025-office-view-as-a-projection.md)).
+Desde 768 px, el mismo análisis se puede ver como una oficina. Cada agente tiene su escritorio y una rutina: trabaja, va a la sala de descanso o platica con otro. El que tiene trabajo real camina a su zona, el Analista te llama al tablero cuando las historias esperan tu revisión y, al terminar, todos se juntan a celebrar. Es otra forma de ver el mismo estado que la vista clásica, sin eventos propios; con movimiento reducido nadie camina ([ADR 0025](docs/adr/0025-office-view-as-a-projection.md)).
 
-![Vista oficina: la espera mientras despierta la API, la pausa para revisar las historias y el final en la sala de descanso](docs/media/oficina-animado.webp)
+![Vista oficina: la rutina de los agentes, la espera mientras despierta la API, la pausa para revisar las historias y la celebración en la sala de descanso](docs/media/oficina-animado.webp)
 
 Si la API tarda más de 1.5 s en abrir un análisis, el Evaluador avisa que se está preparando todo. Si no hay respuesta, Reintentar nunca crea un segundo análisis por error.
 
@@ -381,7 +381,7 @@ Las listas completas, con la fase en que se usa cada variable, están en [servic
 - [Despliegue](docs/deploy.md)
 - [Evaluación de modelos](docs/evaluation.md)
 - [Reporte de evaluación v1](docs/evaluation/report-v1.md)
-- [Overrides de auditoría de dependencias](docs/audit-exceptions.md)
+- [Auditorías: overrides de dependencias y excepciones de accesibilidad](docs/audit-exceptions.md)
 - [Seguridad y reporte de vulnerabilidades](SECURITY.md)
 
 ## Licencia
