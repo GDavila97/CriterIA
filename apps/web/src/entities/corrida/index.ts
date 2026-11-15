@@ -79,3 +79,14 @@ export {
   TeamConversation,
   type TeamConversationProps,
 } from './ui/TeamConversation';
+export {
+  DIAGRAM,
+  diagramLayout,
+  LANES,
+  relatedSteps,
+  type DiagramEdge,
+  type DiagramLayout,
+  type DiagramNode,
+} from './model/diagram';
+export { TeamDiagram } from './ui/TeamDiagram';
+export { DIAGRAM_MIN_WIDTH, TeamWork } from './ui/TeamWork';

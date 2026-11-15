@@ -13,8 +13,8 @@ import {
   promedio,
   REF_TAB,
   runHeadline,
-  TeamConversation,
   teamMessages,
+  TeamWork,
   type AgentId,
   type ArtifactRef,
   type RunState,
@@ -333,12 +333,7 @@ export function ClassicView({
   const team =
     finished && !shownStage && messages.length > 0 ? (
       <div className={motion.enter}>
-        <TeamConversation
-          messages={messages}
-          start={state.inicio}
-          onOpen={openRef}
-          mode={conversation}
-        />
+        <TeamWork messages={messages} start={state.inicio} onOpen={openRef} mode={conversation} />
       </div>
     ) : null;
   const flow = (

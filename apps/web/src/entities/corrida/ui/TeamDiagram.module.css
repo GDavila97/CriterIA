@@ -1,0 +1,242 @@
+.diagram {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
+
+.scroll {
+  overflow-x: auto;
+  border-top: 1px solid var(--color-line);
+  border-radius: 4px;
+}
+
+.scroll:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.canvas {
+  position: relative;
+}
+
+.lane {
+  position: absolute;
+  right: 0;
+  left: 0;
+  border-bottom: 1px solid var(--color-line);
+}
+
+.laneAlt {
+  background: var(--color-surface-2);
+}
+
+.laneName {
+  position: absolute;
+  top: 50%;
+  left: var(--space-16);
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  font-weight: 700;
+  transform: translateY(-50%);
+}
+
+.lane-tu {
+  color: var(--color-ink);
+}
+
+.lane-analista {
+  --lane-color: var(--color-agent-analista);
+  color: var(--color-agent-analista-ink);
+}
+
+.lane-qa {
+  --lane-color: var(--color-agent-qa);
+  color: var(--color-agent-qa-ink);
+}
+
+.lane-revisor {
+  --lane-color: var(--color-agent-revisor);
+  color: var(--color-agent-revisor-ink);
+}
+
+.lane-evaluador {
+  --lane-color: var(--color-agent-evaluador);
+  color: var(--color-agent-evaluador-ink);
+}
+
+.edges {
+  position: absolute;
+  top: 0;
+  left: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.edge path {
+  stroke: var(--color-muted);
+  stroke-width: 2;
+}
+
+.edge polygon {
+  fill: var(--color-muted);
+}
+
+.fixEdge path {
+  stroke: var(--color-turn);
+  stroke-width: 3;
+}
+
+.fixEdge polygon {
+  fill: var(--color-turn);
+}
+
+.fixLabel {
+  position: absolute;
+  padding: 1px var(--space-8);
+  border: 1px solid var(--color-turn);
+  border-radius: var(--radius-pill);
+  background: var(--color-warning-soft);
+  color: var(--color-warning-ink);
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+  transform: translate(-50%, -50%);
+}
+
+.slot {
+  position: absolute;
+}
+
+.node {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: 6px 10px;
+  border: 2px solid var(--lane-color, var(--color-ink));
+  border-radius: 14px;
+  background: var(--color-surface);
+  box-shadow: 0 1px 2px rgb(16 24 40 / 6%);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    transform var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
+}
+
+.node:hover {
+  transform: translateY(var(--motion-lift));
+}
+
+.node[aria-pressed='true'] {
+  border-color: var(--color-ink);
+  box-shadow: 0 8px 20px rgb(16 24 40 / 18%);
+}
+
+.node:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.related {
+  border-style: dashed;
+  background: var(--color-accent-soft);
+}
+
+.nodeTitle,
+.nodeSub {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nodeTitle {
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+
+.nodeSub {
+  font-size: 0.75rem;
+  color: var(--color-muted);
+}
+
+.related .nodeSub {
+  color: var(--color-accent-soft-ink);
+}
+
+.round {
+  position: absolute;
+  top: -9px;
+  right: 8px;
+  padding: 0 6px;
+  border-radius: var(--radius-pill);
+  background: var(--color-turn);
+  color: var(--color-turn-ink);
+  font-size: 0.6875rem;
+  font-weight: 800;
+}
+
+.detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-height: 7rem;
+  padding: var(--space-16) var(--space-20);
+  border: 1px solid var(--color-card-border);
+  border-radius: 20px;
+}
+
+.detailHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-8);
+  color: var(--color-muted);
+}
+
+.detailWho {
+  font-weight: 800;
+}
+
+.detailTitle {
+  font-weight: 700;
+  color: var(--color-ink);
+}
+
+.detailTime {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+}
+
+.detailText {
+  margin: 0;
+}
+
+.detailRefs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+}
+
+.ref {
+  min-width: var(--size-control-min);
+  min-height: 32px;
+  padding: 0 var(--space-8);
+  border: 0;
+  border-radius: 6px;
+  background: var(--color-accent-soft);
+  color: var(--color-accent-soft-ink);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ref:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
