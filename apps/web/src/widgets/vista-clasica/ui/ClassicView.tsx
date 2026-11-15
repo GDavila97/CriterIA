@@ -1,25 +1,29 @@
 'use client';
 
 import Link from 'next/link';
-import type { ReactNode } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 
 import {
   AGENT_IDS,
   AGENTS,
   agentSummary,
+  anchorOf,
   CRITERIO_LABEL,
-  OBSERVACION_LABEL,
+  observationLabel,
   promedio,
+  REF_TAB,
   runHeadline,
   type AgentId,
+  type ArtifactRef,
   type RunState,
 } from '@/entities/corrida';
 import { ApprovalPanel } from '@/features/aprobar-historias';
 import type { Connection } from '@/features/ejecutar-corrida';
 import { ResultActions } from '@/features/exportar';
 import type { RespuestaHumana } from '@/shared/api';
-import { Badge, Button, buttonClass, Ficha, Icon, motion, Paged, Tabs } from '@/shared/ui';
+import { Button, buttonClass, Ficha, Icon, motion, Tabs } from '@/shared/ui';
 
+import { Casos, Gherkin, Historias, Observaciones, type Reveal } from './Artifacts';
 import styles from './ClassicView.module.css';
 import { EventLog } from './EventLog';
 
@@ -56,14 +60,22 @@ function Card({
   extra,
   children,
   label,
+  anchor,
 }: {
   title: string;
   extra?: ReactNode;
   children: ReactNode;
   label: string;
+  /** Lets a reference open this card. */
+  anchor?: string;
 }) {
   return (
-    <section className={styles.card} aria-labelledby={label}>
+    <section
+      className={`${styles.card} ${anchor ? styles.target : ''}`}
+      aria-labelledby={label}
+      id={anchor}
+      tabIndex={anchor ? -1 : undefined}
+    >
       <div className={styles.cardHead}>
         <h2 id={label} className={styles.cardTitle}>
           {title}
@@ -147,160 +159,11 @@ function AgentFlow({
   );
 }
 
-function Historias({ state }: { state: RunState }) {
-  if (!state.historias.length) return <p className={styles.empty}>Aún no hay historias.</p>;
-  return (
-    <Paged items={state.historias} label="Páginas de historias">
-      {(page) => (
-        <ul className={styles.stack}>
-          {page.map((h) => (
-            <li key={h.id} className={`${styles.item} ${motion.enter}`}>
-              <div className={styles.itemHead}>
-                <span className={styles.mono}>{h.id}</span>
-                <Badge>Prioridad {h.prioridad}</Badge>
-              </div>
-              <p className={styles.itemTitle}>
-                Como {h.como}, quiero {h.quiero} para {h.para}.
-              </p>
-              {h.supuestos?.map((s) => (
-                <p key={s} className={styles.itemText}>
-                  Supuesto: {s}
-                </p>
-              ))}
-            </li>
-          ))}
-        </ul>
-      )}
-    </Paged>
-  );
-}
-
-const origin = (o: 'qa' | 'revisor') => (
-  <Badge tone={o === 'revisor' ? 'revisor' : 'neutral'}>{o === 'revisor' ? 'Revisor' : 'QA'}</Badge>
-);
-
-function Casos({ state }: { state: RunState }) {
-  if (!state.casos.length) return <p className={styles.empty}>Aún no hay casos de prueba.</p>;
-  return (
-    <Paged items={state.casos} label="Páginas de casos de prueba">
-      {(page) => (
-        <>
-          <table className={styles.table}>
-            <caption className="sr-only">
-              Casos de prueba con su historia, resultado esperado y origen
-            </caption>
-            <thead>
-              <tr>
-                <th scope="col" className={styles.colId}>
-                  ID
-                </th>
-                <th scope="col" className={styles.colId}>
-                  Historia
-                </th>
-                <th scope="col">Caso</th>
-                <th scope="col">Resultado esperado</th>
-                <th scope="col" className={styles.colOrigin}>
-                  Origen
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {page.map((c) => (
-                <tr key={c.id} className={motion.enter}>
-                  <td className={styles.mono}>{c.id}</td>
-                  <td className={styles.mono}>{c.historia_id}</td>
-                  <td>{c.titulo}</td>
-                  <td>{c.resultado_esperado}</td>
-                  <td>{origin(c.origen)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <ul className={`${styles.stack} ${styles.casesMobile}`}>
-            {page.map((c) => (
-              <li key={c.id} className={`${styles.item} ${motion.enter}`}>
-                <div className={styles.itemHead}>
-                  <span className={styles.mono}>
-                    {c.id} · {c.historia_id}
-                  </span>
-                  {origin(c.origen)}
-                </div>
-                <p className={styles.itemTitle}>{c.titulo}</p>
-                <p className={styles.itemText}>{c.resultado_esperado}</p>
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
-    </Paged>
-  );
-}
-
-function Gherkin({ state }: { state: RunState }) {
-  if (!state.casos.length) return <p className={styles.empty}>Aún no hay escenarios.</p>;
-  return (
-    <Paged items={state.casos} label="Páginas de escenarios Gherkin">
-      {(page) => (
-        <div className={styles.stack}>
-          {page.map((c) => (
-            <pre
-              key={c.id}
-              className={`${styles.gherkin} ${motion.enter}`}
-              tabIndex={0}
-              aria-label={`Escenario de ${c.id}`}
-            >
-              {[
-                `Escenario: ${c.gherkin.escenario}`,
-                ...c.gherkin.dado.map((s, i) => `  ${i ? 'Y' : 'Dado'} ${s}`),
-                ...c.gherkin.cuando.map((s, i) => `  ${i ? 'Y' : 'Cuando'} ${s}`),
-                ...c.gherkin.entonces.map((s, i) => `  ${i ? 'Y' : 'Entonces'} ${s}`),
-              ].join('\n')}
-            </pre>
-          ))}
-        </div>
-      )}
-    </Paged>
-  );
-}
-
-function Observaciones({ state }: { state: RunState }) {
-  if (!state.observaciones.length) {
-    return (
-      <p className={styles.empty}>
-        {state.revisorAprobo ? 'El Revisor no dejó observaciones.' : 'Aún no hay observaciones.'}
-      </p>
-    );
-  }
-  const keyed = state.observaciones.map((item, i) => ({ ...item, key: `${item.ronda}-${i}` }));
-  return (
-    <Paged items={keyed} label="Páginas de observaciones">
-      {(page) => (
-        <ul className={styles.stack}>
-          {page.map(({ observacion: o, ronda, seCorrige, key }) => (
-            <li key={key} className={`${styles.item} ${motion.enter}`}>
-              <div className={styles.itemHead}>
-                <Badge tone="revisor">{OBSERVACION_LABEL[o.tipo]}</Badge>
-                <span className={styles.itemText}>
-                  Ronda {ronda + 1} · para {AGENTS[o.destino].nombre}
-                  {seCorrige ? '' : ' · pendiente'}
-                </span>
-              </div>
-              <p className={styles.itemTitle}>{o.descripcion}</p>
-              <p className={styles.itemText}>
-                {o.referencias.join(', ')} · Sugerencia: {o.sugerencia}
-              </p>
-            </li>
-          ))}
-        </ul>
-      )}
-    </Paged>
-  );
-}
-
 function Rubric({ state, judgeLabel }: { state: RunState; judgeLabel?: string }) {
   const media = promedio(state.puntajes);
   return (
     <Card
+      anchor={anchorOf({ kind: 'rubrica', id: 'rubrica' })}
       title="Rúbrica"
       label="rubric-title"
       extra={
@@ -425,6 +288,38 @@ export function ClassicView({
 }: ClassicViewProps) {
   const waiting = state.fase === 'esperando_aprobacion' && approval;
   const finished = state.fase === 'completada' || state.fase === 'error';
+  const [tab, setTab] = useState('historias');
+  const [reveal, setReveal] = useState<Reveal | null>(null);
+
+  const openRef = useCallback(
+    (target: ArtifactRef) => {
+      const lists: Record<ArtifactRef['kind'], readonly { id?: string }[]> = {
+        historia: state.historias,
+        caso: state.casos,
+        observacion: state.observaciones.map((_, i) => ({ id: observationLabel(i + 1) })),
+        rubrica: [],
+      };
+      const tabId = REF_TAB[target.kind];
+      if (tabId) setTab(tabId);
+      setReveal({ ref: target, index: lists[target.kind].findIndex((i) => i.id === target.id) });
+    },
+    [state.historias, state.casos, state.observaciones],
+  );
+
+  useEffect(() => {
+    if (!reveal) return;
+    const anchor = anchorOf(reveal.ref);
+    const candidates = [anchor, `${anchor}-movil`]
+      .map((id) => document.getElementById(id))
+      .filter((element): element is HTMLElement => element !== null);
+    const element = candidates.find((e) => e.getClientRects().length > 0) ?? candidates[0];
+    if (!element) return;
+    const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    element.focus({ preventScroll: true });
+    element.scrollIntoView?.({ block: 'center', behavior: reduced ? 'auto' : 'smooth' });
+  }, [reveal]);
+
+  const revealFor = (kind: ArtifactRef['kind']) => (reveal?.ref.kind === kind ? reveal : null);
   return (
     <div className={styles.view}>
       {stage ?? (
@@ -473,14 +368,28 @@ export function ClassicView({
             )}
             <Tabs
               label="Artefactos"
+              selected={tab}
+              onSelect={setTab}
               items={[
-                { id: 'historias', label: 'Historias', content: <Historias state={state} /> },
-                { id: 'casos', label: 'Casos de prueba', content: <Casos state={state} /> },
-                { id: 'gherkin', label: 'Gherkin', content: <Gherkin state={state} /> },
+                {
+                  id: 'historias',
+                  label: 'Historias',
+                  content: <Historias state={state} reveal={revealFor('historia')} />,
+                },
+                {
+                  id: 'casos',
+                  label: 'Casos de prueba',
+                  content: <Casos state={state} reveal={revealFor('caso')} />,
+                },
+                {
+                  id: 'gherkin',
+                  label: 'Gherkin',
+                  content: <Gherkin state={state} onOpen={openRef} />,
+                },
                 {
                   id: 'observaciones',
                   label: 'Observaciones',
-                  content: <Observaciones state={state} />,
+                  content: <Observaciones state={state} reveal={revealFor('observacion')} />,
                 },
               ]}
             />

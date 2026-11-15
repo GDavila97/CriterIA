@@ -1,4 +1,10 @@
-import { CRITERIO_LABEL, OBSERVACION_LABEL, promedio, type RunState } from '@/entities/corrida';
+import {
+  CRITERIO_LABEL,
+  gherkinSteps,
+  OBSERVACION_LABEL,
+  promedio,
+  type RunState,
+} from '@/entities/corrida';
 
 const list = (items: readonly string[]) => items.map((item) => `- ${item}`).join('\n');
 
@@ -55,9 +61,7 @@ export function toMarkdown(state: RunState, requerimiento: string): string {
       parts.push(
         '```gherkin',
         `Escenario: ${g.escenario}`,
-        ...g.dado.map((s, i) => `  ${i ? 'Y' : 'Dado'} ${s}`),
-        ...g.cuando.map((s, i) => `  ${i ? 'Y' : 'Cuando'} ${s}`),
-        ...g.entonces.map((s, i) => `  ${i ? 'Y' : 'Entonces'} ${s}`),
+        ...gherkinSteps(g).map((step) => `  ${step.keyword} ${step.text}`),
         '```',
         '',
       );

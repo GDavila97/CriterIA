@@ -38,8 +38,8 @@ describe('ClassicView', () => {
     const table = screen.getByRole('table');
     expect(within(table).getAllByText('Revisor')).toHaveLength(1);
     await userEvent.click(screen.getByRole('tab', { name: 'Gherkin' }));
-    expect(screen.getByLabelText('Escenario de CP-01')).toHaveTextContent(
-      'Dado una alumna con sesión',
+    expect(screen.getByRole('article', { name: 'Escenario CP-01' })).toHaveTextContent(
+      'Dadouna alumna con sesión',
     );
     await userEvent.click(screen.getByRole('tab', { name: 'Observaciones' }));
     expect(screen.getByText('Falta un caso de error')).toBeInTheDocument();
@@ -66,7 +66,7 @@ describe('ClassicView', () => {
 
   it('pages long artifact lists inside the card', async () => {
     const historias = Array.from({ length: 12 }, (_, i) => historia(i + 1));
-    const casos = Array.from({ length: 13 }, (_, i) => caso(i + 1));
+    const casos = Array.from({ length: 13 }, (_, i) => caso(i + 1, 'qa', `HU-${i + 1}`));
     const state = reduce(
       eventsFrom(
         inicia,
@@ -209,5 +209,36 @@ describe('ClassicView', () => {
     expect(screen.queryByRole('region', { name: 'Registro' })).not.toBeInTheDocument();
     expect(screen.getByRole('region', { name: /Rúbrica/ })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Artefactos' })).toBeInTheDocument();
+  });
+
+  it('groups the Gherkin by story and opens the observation behind a Reviewer case', async () => {
+    const writeText = vi.fn(async () => undefined);
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+    render(<ClassicView state={reduce(fullRun())} requerimiento={REQ} />);
+
+    await userEvent.click(screen.getByRole('tab', { name: 'Gherkin' }));
+    const story = screen.getByRole('region', { name: 'HU-1 Hacer la tarea 1' });
+    expect(within(story).getByText('Escrito por QA')).toBeInTheDocument();
+    const added = within(story).getByRole('article', { name: 'Escenario CP-90' });
+    expect(added).toHaveTextContent('Agregado en la ronda 2 a pedido del Revisor');
+    expect(added).toHaveTextContent('«Falta un caso de error»');
+    expect(within(story).getByRole('article', { name: 'Escenario CP-01' })).not.toHaveTextContent(
+      'Revisor',
+    );
+
+    await userEvent.click(within(added).getByRole('button', { name: 'Copiar el escenario CP-90' }));
+    expect(writeText).toHaveBeenCalledWith(
+      expect.stringContaining('@CP-90\nEscenario: Escenario 90'),
+    );
+    expect(screen.getByText('Copiaste el escenario CP-90.')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Copiar todo' }));
+    expect(writeText).toHaveBeenLastCalledWith(expect.stringMatching(/^# language: es\n/));
+
+    await userEvent.click(within(added).getByRole('button', { name: 'Ver la observación O-1' }));
+    expect(screen.getByRole('tab', { name: 'Observaciones' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    expect(screen.getByText('O-1').closest('li')).toHaveFocus();
   });
 });

@@ -420,3 +420,230 @@
     display: none;
   }
 }
+
+/* Elements a message or a note can open; the outline shows where the link went. */
+.target {
+  scroll-margin: var(--space-48);
+}
+
+.target:focus {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.observationHead {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.gherkinTools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-8);
+}
+
+.copied {
+  flex: 1 1 12rem;
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--color-muted);
+}
+
+.feature {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+}
+
+.featureHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-8) var(--space-12);
+}
+
+.featureTag {
+  padding: 2px var(--space-12);
+  border-radius: var(--radius-pill);
+  background: var(--color-accent-soft);
+  color: var(--color-accent-soft-ink);
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+
+.featureTitle {
+  flex: 1 1 14rem;
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.featureId {
+  font-family: var(--font-mono);
+  color: var(--color-accent);
+}
+
+.author {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+  font-size: 0.8125rem;
+  color: var(--color-muted);
+}
+
+.scenario {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  padding: var(--space-16) var(--space-20);
+  border: 1px solid var(--color-line);
+  border-radius: 20px;
+}
+
+.scenarioHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-8) var(--space-12);
+}
+
+.scenarioLabel {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.scenarioTitle {
+  flex: 1 1 10rem;
+  font-weight: 700;
+}
+
+.caseTag {
+  padding: 1px var(--space-8);
+  border-radius: 6px;
+  background: var(--color-qa-soft);
+  color: var(--color-qa-soft-ink);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.copy {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--size-control-min);
+  height: var(--size-control-min);
+  border: 1px solid var(--color-line);
+  border-radius: 12px;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  cursor: pointer;
+}
+
+.copy:hover {
+  background: var(--color-surface-2);
+}
+
+.copy:focus-visible,
+.linkButton:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.stepRow {
+  display: grid;
+  grid-template-columns: 92px 1fr;
+  gap: var(--space-12);
+  align-items: baseline;
+}
+
+.keyword {
+  justify-self: start;
+  padding: 1px 10px;
+  border-radius: var(--radius-pill);
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+
+.kwDado {
+  background: var(--color-accent-soft);
+  color: var(--color-accent-soft-ink);
+}
+
+.kwCuando {
+  background: var(--color-qa-soft);
+  color: var(--color-qa-soft-ink);
+}
+
+.kwEntonces {
+  background: var(--color-ok-soft);
+  color: var(--color-ok);
+}
+
+.kwY {
+  background: var(--color-surface-2);
+  color: var(--color-muted);
+}
+
+.kwPero {
+  background: var(--color-warning-soft);
+  color: var(--color-warning-ink);
+}
+
+.origin {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-12);
+  padding: var(--space-12) var(--space-16);
+  border: 1px solid var(--color-badge-revisor);
+  border-radius: 14px;
+  background: var(--color-badge-revisor);
+}
+
+.originText {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  font-size: 0.875rem;
+}
+
+.originTitle {
+  margin: 0;
+  font-weight: 700;
+  color: var(--color-badge-revisor-ink);
+}
+
+.linkButton {
+  min-height: var(--size-control-min);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-accent);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+@media (max-width: 639px) {
+  .stepRow {
+    grid-template-columns: 76px 1fr;
+  }
+}

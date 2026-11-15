@@ -5,9 +5,9 @@ import { Paged } from './Paged';
 
 const items = (n: number) => Array.from({ length: n }, (_, i) => `Elemento ${i + 1}`);
 
-function List({ values }: { values: string[] }) {
+function List({ values, reveal }: { values: string[]; reveal?: { index: number } | null }) {
   return (
-    <Paged items={values} label="Páginas de elementos">
+    <Paged items={values} label="Páginas de elementos" reveal={reveal}>
       {(page) => (
         <ul>
           {page.map((value) => (
@@ -72,5 +72,16 @@ describe('Paged', () => {
     rerender(<List values={items(15)} />);
 
     expect(screen.getByText('Página 2 de 2')).toBeInTheDocument();
+  });
+
+  it('turns to the page of a revealed item, again each time it is asked', async () => {
+    const { rerender } = render(<List values={items(25)} />);
+
+    rerender(<List values={items(25)} reveal={{ index: 21 }} />);
+    expect(screen.getByText('Página 3 de 3')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Anterior' }));
+    rerender(<List values={items(25)} reveal={{ index: 21 }} />);
+    expect(screen.getByText('Página 3 de 3')).toBeInTheDocument();
   });
 });

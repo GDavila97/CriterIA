@@ -31,6 +31,8 @@
   --color-on-danger: #ffffff;
   --color-warning-soft: #fff4db;
   --color-warning-ink: #6e4700;
+  --color-qa-soft: #fff0e3;
+  --color-qa-soft-ink: #8a4b12;
   /* The office's "your turn" bubble and card. */
   --color-turn: #f2b33d;
   --color-turn-ink: #16181d;
@@ -110,6 +112,8 @@
     --color-danger-strong: #c2352b;
     --color-warning-soft: #3a2e12;
     --color-warning-ink: #f2c66d;
+    --color-qa-soft: #3a2414;
+    --color-qa-soft-ink: #f5b98a;
     --color-badge-revisor: #2c2445;
     --color-badge-revisor-ink: #c4b2f5;
     --color-card-border: #2c313b;

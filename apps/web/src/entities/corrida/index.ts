@@ -7,6 +7,17 @@ export {
   type AgentIcon,
 } from './model/agents';
 export {
+  featuresOf,
+  gherkinSteps,
+  scenarioOrigin,
+  scenarioText,
+  toFeature,
+  type Feature,
+  type GherkinKeyword,
+  type GherkinStep,
+  type ScenarioOrigin,
+} from './model/gherkin';
+export {
   CRITERIO_LABEL,
   OBSERVACION_LABEL,
   initialRunState,
@@ -14,6 +25,7 @@ export {
   runReducer,
   type AgentState,
   type LogEntry,
+  type ObservacionRonda,
   type RunAction,
   type RunError,
   type RunPhase,
@@ -41,3 +53,11 @@ export {
   wouldBeLost,
   type RunSession,
 } from './model/session';
+export {
+  anchorOf,
+  observationLabel,
+  ref,
+  REF_TAB,
+  type ArtifactRef,
+  type RefKind,
+} from './model/refs';

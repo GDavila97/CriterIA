@@ -14,12 +14,21 @@ export interface TabsProps {
   label: string;
   items: TabItem[];
   initial?: string;
+  /** Controlled selection, for pages that open a tab from elsewhere. */
+  selected?: string;
+  onSelect?: (id: string) => void;
 }
 
 /** WAI-ARIA tabs: arrows, Home and End move between tabs and select them. */
-export function Tabs({ label, items, initial }: TabsProps) {
+export function Tabs({ label, items, initial, selected: controlled, onSelect }: TabsProps) {
   const base = useId();
-  const [selected, setSelected] = useState(initial ?? items[0]?.id);
+  const [own, setOwn] = useState(initial ?? items[0]?.id);
+  const selected = controlled ?? own;
+  const setSelected = (id: string | undefined) => {
+    if (id === undefined) return;
+    setOwn(id);
+    onSelect?.(id);
+  };
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {

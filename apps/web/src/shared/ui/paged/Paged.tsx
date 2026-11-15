@@ -11,6 +11,8 @@ export interface PagedProps<T> {
   /** What is paged, for the navigation's name: "Páginas de casos de prueba". */
   label: string;
   pageSize?: number;
+  /** Turns to the page of this item; a new object turns again to the same one. */
+  reveal?: { index: number } | null;
   children: (pageItems: T[]) => ReactNode;
 }
 
@@ -18,8 +20,13 @@ export interface PagedProps<T> {
  * Pages a list inside its card. Every page sits in the same grid cell and only the current one is
  * visible, so the card keeps the height of its tallest page and nothing moves when paging.
  */
-export function Paged<T>({ items, label, pageSize = 10, children }: PagedProps<T>) {
+export function Paged<T>({ items, label, pageSize = 10, reveal = null, children }: PagedProps<T>) {
   const [page, setPage] = useState(1);
+  const [revealed, setRevealed] = useState(reveal);
+  if (reveal !== revealed) {
+    setRevealed(reveal);
+    if (reveal && reveal.index >= 0) setPage(Math.floor(reveal.index / pageSize) + 1);
+  }
   const pages = Math.max(1, Math.ceil(items.length / pageSize));
   const current = Math.min(page, pages);
   if (pages === 1) return <>{children([...items])}</>;
