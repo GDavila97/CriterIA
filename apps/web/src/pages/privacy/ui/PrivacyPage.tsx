@@ -119,7 +119,9 @@ export function PrivacyPage({
               <strong>Tu uso:</strong> cuántos análisis haces al día, para aplicar los límites.
             </li>
             <li>
-              <strong>Tus análisis:</strong> solo si activas el historial.
+              <strong>Tus análisis:</strong> solo si activas el historial. Cada análisis guardado
+              incluye el requerimiento, lo que entregaron los agentes y cómo trabajaron: sus
+              entregas, las observaciones del Revisor y tu aprobación.
             </li>
             <li>
               <strong>Errores técnicos:</strong> registros de fallos sin datos personales ni

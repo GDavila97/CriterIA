@@ -119,6 +119,8 @@ saved_run = sa.Table(
     sa.Column("experimental", sa.Boolean, nullable=False),
     sa.Column("totals", JSONB, nullable=False),
     sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+    sa.Column("events", JSONB),
+    sa.Column("events_version", sa.Integer),
 )
 
 eval_case = sa.Table(

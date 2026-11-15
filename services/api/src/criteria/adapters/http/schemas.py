@@ -189,6 +189,9 @@ class HistoryItemBody(Body):
     experimental: bool
     totals: dict[str, Any]
     created_at: datetime | None
+    # The stream's events, in the format of `events_version`; null for analyses saved before.
+    events: list[dict[str, Any]] | None = None
+    events_version: int | None = None
 
 
 class HistoryDeletedBody(Body):

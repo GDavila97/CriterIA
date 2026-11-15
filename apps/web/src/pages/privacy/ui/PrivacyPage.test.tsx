@@ -33,4 +33,12 @@ describe('PrivacyPage', () => {
       screen.getByText('Inicia sesión para borrar tu historial, tus claves o tu cuenta.'),
     ).toBeInTheDocument();
   });
+
+  it('says that a saved analysis also keeps how the agents worked', () => {
+    render(<PrivacyPage user={null} contactUrl="https://github.com/GDavila97" />);
+
+    expect(
+      screen.getByText(/cómo trabajaron: sus entregas, las observaciones del Revisor/),
+    ).toBeInTheDocument();
+  });
 });

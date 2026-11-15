@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 from collections.abc import AsyncIterator, Callable, Coroutine, Mapping, Sequence
 from contextlib import AsyncExitStack, suppress
@@ -161,6 +162,19 @@ def _server_cost(events: Sequence[EventoBase], record: RunRecord) -> float | Non
     return round(total, 6)
 
 
+# Bumped whenever the stored events change shape; the web only reads versions it knows.
+EVENTS_VERSION = 1
+EVENTS_LIMIT_BYTES = 512 * 1024
+
+
+def _kept_events(run_id: UUID, dumped: list[dict[str, Any]]) -> list[dict[str, Any]] | None:
+    size = len(json.dumps(dumped, ensure_ascii=False).encode())
+    if size > EVENTS_LIMIT_BYTES:
+        logger.warning("run %s saved without its events: %d bytes", run_id, size)
+        return None
+    return dumped
+
+
 def _saved_run(record: RunRecord, events: Sequence[EventoBase]) -> SavedRun | None:
     dumped = [event.model_dump(mode="json") for event in events]
     start = next((e for e in dumped if e["type"] == "corrida_inicia"), None)
@@ -189,6 +203,8 @@ def _saved_run(record: RunRecord, events: Sequence[EventoBase]) -> SavedRun | No
         experimental=start["experimental"],
         totals=end["totales"],
         created_at=record.created_at,
+        events=(kept := _kept_events(record.id, dumped)),
+        events_version=EVENTS_VERSION if kept is not None else None,
     )
 
 

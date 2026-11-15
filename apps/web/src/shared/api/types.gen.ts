@@ -600,6 +600,12 @@ export interface HistoryItemBody {
     [k: string]: unknown;
   };
   created_at: string | null;
+  events:
+    | {
+        [k: string]: unknown;
+      }[]
+    | null;
+  events_version: number | null;
 }
 /**
  * This interface was referenced by `CriteriaContract`'s JSON-Schema

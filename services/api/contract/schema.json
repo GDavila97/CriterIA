@@ -1651,6 +1651,32 @@
               "type": "null"
             }
           ]
+        },
+        "events": {
+          "anyOf": [
+            {
+              "items": {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "events_version": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         }
       },
       "required": [
@@ -1668,7 +1694,9 @@
         "judge_version",
         "experimental",
         "totals",
-        "created_at"
+        "created_at",
+        "events",
+        "events_version"
       ],
       "title": "HistoryItemBody",
       "type": "object"

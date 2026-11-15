@@ -169,6 +169,9 @@ class SavedRun:
     experimental: bool
     totals: dict[str, Any]
     created_at: datetime | None = None
+    # What the person saw on the stream, for the history's conversation; None when not kept.
+    events: list[dict[str, Any]] | None = None
+    events_version: int | None = None
 
 
 @dataclass(frozen=True)

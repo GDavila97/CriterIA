@@ -32,6 +32,8 @@ describe('HistoryDetailPage', () => {
       experimental: false,
       totals: { tokens_entrada: 1, tokens_salida: 1, latencia_ms: 1, costo_usd: 0.004 },
       created_at: '2026-11-07T12:00:00Z',
+      events: null,
+      events_version: null,
     };
     render(
       <HistoryDetailPage

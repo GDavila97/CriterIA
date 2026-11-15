@@ -23,6 +23,7 @@ from criteria.application.errors import (
     VersionsExhaustedError,
 )
 from criteria.application.run_api import (
+    EVENTS_VERSION,
     INTERNAL_ERROR_MESSAGE,
     AgentParams,
     RunApplication,
@@ -345,6 +346,26 @@ class TestStream:
         assert actual is not None
         assert 0 < actual != reserved
         assert [r.id for r in h.history.runs[USER]] == [run_id]
+        [saved] = h.history.runs[USER]
+        assert saved.events == [e.model_dump(mode="json") for e in [*first, *second]]
+        assert saved.events_version == EVENTS_VERSION
+
+    async def test_a_history_copy_too_large_keeps_everything_but_the_events(
+        self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        monkeypatch.setattr("criteria.application.run_api.EVENTS_LIMIT_BYTES", 200)
+        h = harness()
+        await h.settings.put(USER, UserSettings(save_history=True))
+        run_id = (await h.app.create(USER, request())).run_id
+
+        first = await h.collect(run_id)
+        await h.app.approve(USER, run_id, RespuestaHumana(decision="aprobado"))
+        await h.collect(run_id, first[-1].seq)
+
+        [saved] = h.history.runs[USER]
+        assert (saved.events, saved.events_version) == (None, None)
+        assert saved.artifacts
+        assert "saved without its events" in caplog.text
 
     async def test_waiting_runs_only_replay_until_approved(self) -> None:
         h = harness()

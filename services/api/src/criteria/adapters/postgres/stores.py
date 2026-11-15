@@ -532,6 +532,8 @@ class PostgresHistoryStore:
                     experimental=run.experimental,
                     totals=run.totals,
                     created_at=run.created_at or _now(),
+                    events=run.events,
+                    events_version=run.events_version,
                 )
                 # A close retried after a crash must not fail on the copy it already made.
                 .on_conflict_do_nothing(index_elements=["id"])
