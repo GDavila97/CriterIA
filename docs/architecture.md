@@ -158,7 +158,8 @@ apps/web/
     widgets/     encabezado, vista-clasica, vista-oficina, panel-agente, tablero-evaluacion
     features/    autenticacion, ejecutar-corrida, aprobar-historias, exportar, cambiar-vista,
                  gestionar-claves, controles-datos
-    entities/    corrida (agentes, reductor de eventos a estado y textos derivados)
+    entities/    corrida (agentes, reductor de eventos a estado, textos derivados, Gherkin,
+                 conversación del equipo y su diagrama)
     shared/      api (cliente, token en memoria, stream SSE, tipos generados), config (entorno
                  público y del servidor, proveedores), lib (auth, email, sse, security, react,
                  testing), ui (Ficha, botones, campos, pestañas, cajón, avisos)
@@ -179,6 +180,7 @@ Las dos vistas del análisis, clásica y oficina, son widgets sobre la misma ent
 - **Oficina** (`widgets/vista-oficina`, [ADR 0025](adr/0025-office-view-as-a-projection.md)): `projectOffice` proyecta el estado en la actividad, la zona y el globo de cada agente; la escena es un SVG estático y los agentes son botones encima. Reemplaza solo el flujo de agentes y el registro: `ClassicView` recibe la oficina en su espacio `stage`, y artefactos y rúbrica siguen debajo, iguales.
 - **Carga:** la página la importa con `next/dynamic` solo al elegirla, así que no pesa en la vista clásica.
 - **Interruptor:** `useView` (`features/cambiar-vista`) lo muestra con `NEXT_PUBLIC_OFFICE_VIEW=true` y 768 px o más. Por debajo, `?vista=oficina` cae a la clásica. La elección se recuerda en `localStorage`, y el primer render es siempre la clásica, para que la hidratación coincida.
+- **Conversación del equipo** ([ADR 0026](adr/0026-team-conversation-from-events.md)): `teamMessages` arma los mensajes desde `state.eventos`, que el reductor conserva salvo los de progreso; `diagramLayout` calcula los carriles. La UI (`TeamConversation`, `TeamDiagram`, `TeamWork`) vive en la entidad porque la usan la vista clásica, la oficina y el detalle del historial, y recibe por prop cómo abrir una referencia. El detalle del historial reproduce los eventos guardados con `runReducer` cuando conoce su `events_version`.
 
 El análisis en pantalla vive en `runSession` (`entities/corrida/model/session.ts`), un almacén del módulo leído con `useSyncExternalStore`:
 

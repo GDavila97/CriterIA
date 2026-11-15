@@ -524,6 +524,7 @@ Qué hace cada migración de la API:
 3. Agrega `app.run.settled`, que evita ajustar dos veces el cupo de una corrida.
 4. Liga cada `user_id` de `app` a `auth."user"` con borrado en cascada, y guarda los planes por agente y la decisión de historial de cada corrida.
 5. Agrega los detalles de la evaluación y los permisos de inserción de `eval_writer`.
+6. Agrega `app.saved_run.events` (`jsonb`) y `events_version` (`integer`), ambas nulas, para que la versión anterior de la API siga guardando sin ellas.
 
 La API no ejecuta DDL: si los checkpoints no están en la última versión, se niega a arrancar. Al actualizar `langgraph-checkpoint-postgres` hay que agregar una migración de Alembic que vuelva a correr sus migraciones. Las migraciones solo avanzan: nunca se hace `downgrade` en producción, y cada una debe ser compatible con la versión anterior de la API.
 

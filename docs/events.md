@@ -77,4 +77,10 @@ Con un error no previsto fuera de los agentes (solo en la API): directamente `co
 
 Una corrida nunca pasa a otro proveedor por su cuenta: hacerlo enviaría los datos del usuario a un tercero que no eligió ([ADR 0016](adr/0016-claves-por-usuario.md)). Cuando el error es `clave_invalida`, `sin_saldo` o `limite_proveedor` y el proveedor que falló no es Groq, `agente_error` y `corrida_fin` llevan `respaldo_sugerido: "groq"`, para que la interfaz ofrezca "Usar el gratuito". En los demás casos el campo es `null`. El proveedor que cuenta es el del agente que falló, así que un fallo del juez sugiere según el proveedor del juez. No existe un evento `respaldo_activado`.
 
-El nombre que se muestra en el globo de la oficina ("{nombre}, necesito tu visto bueno") se arma en el navegador y nunca viaja en los eventos.
+El nombre que se muestra en el globo de la oficina ("{nombre}, necesito tu ayuda") se arma en el navegador y nunca viaja en los eventos.
+
+## Eventos guardados en el historial
+
+Cuando una corrida se copia al historial, `app.saved_run.events` guarda los mismos eventos que la persona recibió por SSE, ya sanitizados y sin heartbeats, y `events_version` dice su formato (hoy `1`). No contienen claves, URLs propias ni datos de otros usuarios. Si pasan de 512 KB, la corrida se guarda sin eventos (`events` y `events_version` en `null`), el log lo registra y el guardado no falla. Las corridas guardadas antes de la migración 0006 tampoco los tienen.
+
+La web reconstruye "Así trabajó el equipo" con una función pura sobre esos eventos y solo si conoce `events_version`; si no, oculta la sección ([ADR 0026](adr/0026-team-conversation-from-events.md)). Se borran con la corrida guardada y con la cuenta.

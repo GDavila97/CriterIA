@@ -29,3 +29,4 @@ Cada ADR sigue el formato Estado, Contexto, Decisión, Alternativas y Consecuenc
 | [0023](0023-connections-closed-by-neon.md)         | Conexiones que Neon cierra al suspender el cómputo                            | Aceptada                           |
 | [0024](0024-pnpm-on-vercel-with-npx.md)            | pnpm fijado con npx en Vercel                                                 | Aceptada                           |
 | [0025](0025-office-view-as-a-projection.md)        | Vista oficina como proyección del estado, en SVG y DOM                        | Aceptada                           |
+| [0026](0026-team-conversation-from-events.md)      | Conversación del equipo a partir de los eventos guardados                     | Aceptada                           |

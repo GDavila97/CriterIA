@@ -26,9 +26,9 @@ Forma de los controles:
 
 | Token             | Valor                        | Uso                                                                  |
 | ----------------- | ---------------------------- | -------------------------------------------------------------------- |
-| `--duration-fast` | 120 ms                       | Hover, foco y presión                                                |
+| `--duration-fast` | 150 ms                       | Hover, foco y presión                                                |
 | `--duration-base` | 200 ms                       | Cambio de pestaña, entrada de eventos y artefactos, salida del panel |
-| `--duration-slow` | 320 ms                       | Entrada del panel del agente                                         |
+| `--duration-slow` | 250 ms                       | Entrada del panel del agente                                         |
 | `--ease-out`      | `cubic-bezier(0, 0, 0.2, 1)` | Todo lo que entra                                                    |
 | `--ease-in`       | `cubic-bezier(0.4, 0, 1, 1)` | Todo lo que sale                                                     |
 | `--motion-shift`  | 4 px                         | Desplazamiento de una entrada                                        |
@@ -38,7 +38,9 @@ Forma de los controles:
 
 Reglas:
 
+- Toda transición dura entre 150 y 250 ms, y una prueba de Vitest lo comprueba sobre `tokens.css`.
 - Solo se animan `transform` y `opacity`, para que nada provoque reflujo ni saltos de diseño.
+- **Técnica: CSS con los tokens, sin librería.** Cada página entra con un fundido de `main` (solo opacidad); el resultado, las acciones al terminar, los mensajes del equipo, los artefactos y los errores entran con `enter`; el cambio de vista (clásica u oficina) y el puntaje con `fade`; los paneles y diálogos con sus propias transiciones. No se usan las View Transitions de React porque en Next siguen siendo experimentales y detrás de una opción.
 - Las clases compartidas están en `shared/ui/motion`: `enter` (fundido con desplazamiento leve), `fade` y `lift` (tarjetas que se pueden pulsar).
 - Mientras cargan datos se muestran esqueletos (`Skeleton`, `SkeletonCard`) con la forma del contenido, nunca un texto que luego empuja la página.
 - El panel del agente se desliza desde el borde derecho; al cerrar, incluido con Escape, el diálogo espera a que termine la salida antes de cerrarse.
@@ -74,6 +76,8 @@ La Ficha del Evaluador, con lentes y papeles, camina de un lado a otro mientras 
 - **Botones:** de izquierda a derecha, primero la salida (secundario con borde) y después las acciones que avanzan. Descargar usa la variante suave (`soft`, azul tenue con icono) y "Descartar y continuar" la destructiva (`destructive`, rojo sólido).
 - **A 480 px o menos:** los botones se apilan a todo el ancho, con la acción decisiva arriba y la salida al final (`column-reverse`).
 - **Límite de uso:** `alertdialog` con un reloj en un círculo ámbar, "Ver historial" (o "Modelos y claves" para el cupo gratuito) y "Entendido".
+- **Límite de uso con hora:** cuando la API da `retry_at`, la descripción agrega la hora local en que se libera: «Podrás iniciar el siguiente a las 18:42», «mañana a las 00:00» o «el 17 nov a las 09:15». El cupo gratuito dice «Vuelve a abrirse …» y sigue ofreciendo la clave propia.
+- **Eliminar un análisis guardado:** `alertdialog` "¿Eliminar este análisis?" con Cancelar y la acción destructiva; al terminar vuelve a `/historial`.
 - **Resultado terminado:** "Descargar" es un menú (Markdown y JSON) que se cierra con Esc, con un clic fuera o al elegir, y devuelve el foco al botón. "Nuevo análisis" limpia el formulario y el resultado, y pregunta antes si el resultado no está guardado.
 
 ## Listas largas en la vista del análisis
@@ -82,6 +86,26 @@ La página no crece sin límite:
 
 - **Registro.** La tarjeta muestra los últimos 5 eventos y el botón "Ver registro completo (N)" abre un panel lateral (`Drawer`, con el mismo movimiento que el panel del agente) con la línea de tiempo completa y un filtro por agente. El panel lee el mismo estado en vivo, así que el análisis sigue avanzando con el panel abierto: el stream pertenece a la página ([ADR 0018](adr/0018-run-lifecycle-bound-to-the-stream.md)) y abrirlo no abre otra conexión.
 - **Artefactos.** Historias, Casos de prueba, Gherkin y Observaciones se paginan dentro de la tarjeta, 10 por página, con `Paged` (`shared/ui/paged`): "Anterior", "Siguiente" (con `aria-disabled` en los extremos, para no perder el foco) y "Página X de Y" anunciado con `aria-live`. Todas las páginas ocupan la misma celda de la cuadrícula y solo la actual es visible (las demás con `visibility: hidden` e `inert`), de modo que la tarjeta conserva la altura de su página más alta y cambiar de página no mueve nada. La exportación siempre incluye todo.
+
+## Así trabajó el equipo
+
+Una lista de mensajes entre el equipo, construida en el navegador con una función pura (`teamMessages`, en `entities/corrida/model/conversation.ts`) a partir de los eventos que la persona ya recibió: las entregas, las correcciones del Revisor, tu aprobación y la calificación ([ADR 0026](adr/0026-team-conversation-from-events.md)). El orden es el del grafo real: Analista → Tú → QA → Revisor → correcciones → Revisor → Evaluador.
+
+- **Dónde aparece.** En la vista clásica, al terminar, arriba de los artefactos y plegada a las correcciones, con "Ver toda la conversación (N)". En la oficina, en vivo y en lugar del registro, con los últimos 4 mensajes en una región `role="log"`. En el detalle del historial, completa, cuando el análisis se guardó con sus eventos en una versión conocida; si no, la sección no aparece.
+- **Filtros.** Todo, Correcciones, Entregas y Tu aprobación, como botones con `aria-pressed`.
+- **Enlaces.** Cada mensaje enlaza lo que menciona (HU, CP, O-n o la rúbrica). El enlace abre su pestaña, pasa a la página que lo contiene y le da el foco. Las observaciones se numeran O-1, O-2… en el orden en que llegan, igual en la pestaña Observaciones.
+- **Globos de la oficina.** Usan los mismos textos cortos: el Revisor que pide una corrección dice, por ejemplo, «QA: corrige HU-1».
+- **Diagrama.** Desde 768 px, el interruptor "Lista | Diagrama" muestra un carril por miembro (Tú, Analista, Revisor, QA, Evaluador), el tiempo de izquierda a derecha y un paso por mensaje. Las entregas son flechas grises; las correcciones, ámbar con la etiqueta «corrección», y los pasos de una ronda de corrección llevan la marca R2, R3. Cada paso es un botón con `aria-pressed`; al tocarlo, su detalle aparece en una región `aria-live` debajo y se resaltan los pasos que mencionan los mismos artefactos. El diagrama es un SVG propio con los botones en HTML encima y se desplaza a lo ancho. Por debajo de 768 px solo existe la lista, que es su equivalente.
+
+## Gherkin legible
+
+Los escenarios se agrupan por historia ("Característica · HU-n", con "Escrito por QA") y cada uno es una tarjeta con su CP, la palabra clave de cada paso en color (Dado, Cuando, Entonces, Y, Pero) y un botón para copiarlo. "Copiar todo" y "Descargar .feature" generan un archivo con `# language: es`, una `Característica` por historia y la etiqueta `@CP-nn` en cada escenario. El texto del modelo no se cambia: solo una conjunción inicial ("pero", "y") pasa a ser la palabra clave del paso para no repetirse.
+
+Una nota morada del Revisor aparece solo cuando los datos lo dicen: el caso viene de una corrección (`origen: revisor`) o una observación para QA lo nombra. Cita la observación y enlaza a ella solo si una sola la explica; si no, deja la nota sin cita.
+
+## Detalle de un análisis guardado
+
+Botón "← Historial" con la fecha de guardado; como título, la primera frase del requerimiento, recortada en una palabra con elipsis si pasa de 80 caracteres; chips con modelo, costo, historias, casos, observaciones y puntaje; "Descargar" (menú) y "Eliminar" a la derecha; el requerimiento en un `<details>` abierto.
 
 ## Nombres de modelos
 

@@ -35,6 +35,14 @@ El panel de cada agente muestra su prompt de sistema, el modelo y sus parámetro
 
 ![Resultado con las pestañas de artefactos y el panel del agente Revisor](docs/media/panel-agente-animado.webp)
 
+### Así trabajó el equipo
+
+Al terminar, la vista muestra lo que se pidieron y entregaron los agentes, en orden: las entregas, las correcciones del Revisor y tu aprobación. Cada mensaje enlaza las historias, casos u observaciones que menciona. Desde 768 px también se ve como un diagrama con un carril por miembro, flechas grises para las entregas y ámbar para las correcciones. Si el análisis se guarda en el historial, guarda también estos eventos y el detalle los muestra igual ([ADR 0026](docs/adr/0026-team-conversation-from-events.md)).
+
+![Así trabajó el equipo como diagrama: un carril por miembro, las correcciones del Revisor en ámbar y el detalle del paso elegido](docs/media/equipo-diagrama.webp)
+
+Los escenarios Gherkin se agrupan por historia, con las palabras clave en color, y se copian o descargan como `.feature`.
+
 ### Vista oficina
 
 Desde 768 px, el mismo análisis se puede ver como una oficina. Cada agente tiene su escritorio y una rutina: trabaja, va a la sala de descanso o platica con otro. El que tiene trabajo real camina a su zona, el Analista te llama al tablero cuando las historias esperan tu revisión y, al terminar, todos se juntan a celebrar. Es otra forma de ver el mismo estado que la vista clásica, sin eventos propios; con movimiento reducido nadie camina ([ADR 0025](docs/adr/0025-office-view-as-a-projection.md)).
@@ -80,7 +88,7 @@ Detalle en el [reporte v1](docs/evaluation/report-v1.md) y el método completo e
 | ![Modelos y claves: modo gratuito, claves propias cifradas y juez](docs/media/modelos-y-claves.webp)     | ![Tablero público de evaluación de modelos](docs/media/evaluacion.webp)                                          |
 | Modelos y claves                                                                                         | Tablero de evaluación (producción)                                                                               |
 
-A 390 px: [pausa de aprobación](docs/media/pausa-aprobacion-390.webp), [resultado en modo oscuro](docs/media/resultado-390-oscuro.webp) y [tablero en modo oscuro](docs/media/evaluacion-390-oscuro.webp). También: [inicio](docs/media/inicio.webp), [panel del agente](docs/media/panel-agente.webp) e [historial](docs/media/historial-oscuro.webp).
+A 390 px: [pausa de aprobación](docs/media/pausa-aprobacion-390.webp), [resultado en modo oscuro](docs/media/resultado-390-oscuro.webp) y [tablero en modo oscuro](docs/media/evaluacion-390-oscuro.webp). También: [inicio](docs/media/inicio.webp), [panel del agente](docs/media/panel-agente.webp) e [historial](docs/media/historial-oscuro.webp). La conversación del equipo como [lista](docs/media/equipo-conversacion.webp).
 
 ## Arquitectura
 
