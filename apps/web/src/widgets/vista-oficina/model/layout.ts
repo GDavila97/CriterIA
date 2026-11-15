@@ -99,7 +99,7 @@ export const SCENE: readonly Shape[] = [
 export type Zona = 'escritorios' | 'juntas' | 'tablero' | 'descanso';
 
 export const ZONE_LABELS: Record<Zona, { label: string; at: Point3 }> = {
-  escritorios: { label: 'Escritorios', at: [4.2, 5.6, 0] },
+  escritorios: { label: 'Escritorios', at: [6.4, 4.7, 0] },
   juntas: { label: 'Sala de juntas', at: [13.1, 1.0, 0] },
   descanso: { label: 'Sala de descanso', at: [9.0, 9.9, 0] },
   tablero: { label: 'Tablero', at: [6.5, -0.3, 2.35] },

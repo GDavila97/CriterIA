@@ -10,7 +10,7 @@ export interface Globo {
 }
 
 export interface AgentPlan {
-  /** For the button's label: "QA: escribiendo casos de prueba, abrir panel". */
+  /** For the agent row: "QA · escribiendo casos de prueba". */
   actividad: string;
   /** The place it must stand on, such as its work or the board; null leaves it to its routine. */
   lugar: string | null;

@@ -41,7 +41,7 @@ describe('OfficeView', () => {
     render(<OfficeView state={working} onOpenAgent={onOpenAgent} />);
 
     await userEvent.click(
-      screen.getByRole('button', { name: 'QA: escribiendo casos de prueba, abrir panel' }),
+      screen.getByRole('button', { name: 'QA · escribiendo casos de prueba, abrir panel' }),
     );
 
     expect(onOpenAgent).toHaveBeenCalledWith('qa');
@@ -139,5 +139,20 @@ describe('OfficeView', () => {
     const analyst = document.querySelector<HTMLElement>('[data-agent="analista"]')!;
     expect(analyst.textContent).toContain('necesito tu ayuda');
     expect(analyst.querySelector('[data-testid="ficha-papers"]')).not.toBeNull();
+  });
+
+  it('keeps the scene out of the accessibility tree; its agents still open the panel with the mouse', async () => {
+    const onOpenAgent = vi.fn();
+    render(<OfficeView state={initialRunState()} onOpenAgent={onOpenAgent} />);
+
+    const scene = document.querySelector<HTMLButtonElement>('[data-scene-agent="revisor"]')!;
+    expect(scene).toHaveAttribute('tabindex', '-1');
+    expect(scene.closest('[aria-hidden="true"]')).not.toBeNull();
+    expect(screen.getAllByRole('button', { name: /^Revisor/ })).toHaveLength(1);
+
+    await userEvent.click(scene);
+    expect(onOpenAgent).toHaveBeenCalledWith('revisor');
+    const row = screen.getByRole('list', { name: 'Agentes' });
+    expect(within(row).getAllByRole('button')).toHaveLength(4);
   });
 });

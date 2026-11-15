@@ -313,7 +313,7 @@ describe('RunWorkspace', () => {
     expect(screen.queryByRole('region', { name: 'Flujo de agentes' })).not.toBeInTheDocument();
     expect(screen.getByRole('radio', { name: 'Oficina' })).toBeChecked();
     expect(
-      screen.getByRole('button', { name: 'QA: trabajando en su escritorio, abrir panel' }),
+      screen.getByRole('button', { name: 'QA · trabajando en su escritorio, abrir panel' }),
     ).toBeInTheDocument();
   });
 

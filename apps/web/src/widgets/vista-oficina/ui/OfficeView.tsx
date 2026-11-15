@@ -175,10 +175,14 @@ function OfficeAgent({
     >
       <div className={styles.agent}>
         {bubble && <Bubble key={bubble.texto} globo={bubble} />}
+        {/* For the mouse only: the row of agents below is the accessible control. */}
         <button
           type="button"
           className={styles.figure}
-          aria-label={`${info.nombre}: ${actividad}, abrir panel`}
+          tabIndex={-1}
+          title={`${info.nombre}: ${actividad}`}
+          data-scene-agent={id}
+          onMouseDown={(event) => event.preventDefault()}
           onClick={() => onOpen?.(id)}
         >
           <span className={styles.feet}>
@@ -240,6 +244,13 @@ export function OfficeView({
     { fixed, celebrate: office.celebrar },
     { seed, active: visible && !reduced },
   );
+  const actividades = Object.fromEntries(
+    AGENT_IDS.map((id) => {
+      const plan = office.agentes[id];
+      const routine = life[id].activity;
+      return [id, plan.libre && !reduced && routine !== 'fijo' ? ROUTINE[routine] : plan.actividad];
+    }),
+  ) as Record<AgentId, string>;
   const [reviewing, setReviewing] = useState(false);
   const turn = office.momento === 'tu_turno' && approval;
   const { contadores } = office;
@@ -271,7 +282,11 @@ export function OfficeView({
       )}
 
       <div className={styles.body}>
-        <div className={styles.stage} style={{ aspectRatio: `${VIEW.width} / ${VIEW.height}` }}>
+        <div
+          className={styles.stage}
+          style={{ aspectRatio: `${VIEW.width} / ${VIEW.height}` }}
+          aria-hidden="true"
+        >
           <OfficeScene />
           {AGENT_IDS.map((id, index) => {
             const plan = office.agentes[id];
@@ -292,11 +307,7 @@ export function OfficeView({
                 id={id}
                 index={index}
                 plan={plan}
-                actividad={
-                  plan.libre && !reduced && own.activity !== 'fijo'
-                    ? ROUTINE[own.activity]
-                    : plan.actividad
-                }
+                actividad={actividades[id]}
                 route={route}
                 walk={reduced ? 0 : own.walk}
                 facing={reduced ? 'derecha' : own.facing}
@@ -309,6 +320,19 @@ export function OfficeView({
             );
           })}
         </div>
+        <ul className={styles.roster} aria-label="Agentes">
+          {AGENT_IDS.map((id) => (
+            <li key={id}>
+              <button type="button" className={styles.member} onClick={() => onOpenAgent?.(id)}>
+                <span className={styles.swatch} data-agent={id} />
+                <span>
+                  <strong>{AGENTS[id].nombre}</strong> · {actividades[id]}
+                  <span className="sr-only">, abrir panel</span>
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
         <ul className={styles.counters} aria-label="Contadores">
           <li>
             <span className={styles.swatch} data-agent="analista" />
@@ -333,7 +357,8 @@ export function OfficeView({
         <strong>Registro:</strong> {office.ultimoEvento}
       </p>
       <p className={styles.hint}>
-        Toca un agente para ver su panel. La vista clásica muestra lo mismo sin animación.
+        Toca un agente, en la escena o en la lista, para ver su panel. La vista clásica muestra lo
+        mismo sin animación.
       </p>
       <p className="sr-only" aria-live="polite">
         {office.anuncio}
