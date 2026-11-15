@@ -71,3 +71,15 @@ async def test_the_events_go_with_the_saved_analysis_and_the_account(api: Api) -
     api.sql("""DELETE FROM auth."user" WHERE id = 'user-1'""")
 
     assert api.sql("SELECT count(*) FROM app.saved_run")[0][0] == 0
+
+
+async def test_one_saved_analysis_can_be_deleted_by_its_owner_only(api: Api) -> None:
+    run_id = await _finished(api)
+    other = await _finished(api, "someone-else")
+
+    stranger = await api.client.delete(f"/me/runs/{run_id}", headers=api.headers("someone-else"))
+    mine = await api.client.delete(f"/me/runs/{run_id}", headers=api.headers())
+    again = await api.client.delete(f"/me/runs/{run_id}", headers=api.headers())
+
+    assert (stranger.status_code, mine.status_code, again.status_code) == (404, 204, 404)
+    assert api.sql("SELECT id::text FROM app.saved_run") == [(other,)]

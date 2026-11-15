@@ -188,3 +188,9 @@ class MemoryHistory:
 
     async def delete_all(self, user_id: str) -> int:
         return len(self.runs.pop(user_id, []))
+
+    async def delete(self, user_id: str, run_id: UUID) -> bool:
+        kept = [r for r in self.runs.get(user_id, []) if r.id != run_id]
+        found = len(kept) != len(self.runs.get(user_id, []))
+        self.runs[user_id] = kept
+        return found

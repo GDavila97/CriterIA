@@ -204,6 +204,13 @@ class TestAccountService:
         assert await service.history_item(USER, saved.id) == saved
         with pytest.raises(NotFoundError):
             await service.history_item("other", saved.id)
+        with pytest.raises(NotFoundError):
+            await service.delete_history_item("other", saved.id)
+        await service.delete_history_item(USER, saved.id)
+        assert await service.history(USER) == []
+        with pytest.raises(NotFoundError):
+            await service.delete_history_item(USER, saved.id)
+        await history.save(USER, saved)
         assert await service.clear_history(USER) == 1
         assert await service.history(USER) == []
 

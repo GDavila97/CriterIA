@@ -218,6 +218,11 @@ async def history_item(run_id: UUID, user: CurrentUser, request: Request) -> His
     )
 
 
+@router.delete("/me/runs/{run_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["historial"])
+async def delete_history_item(user: CurrentUser, run_id: UUID, request: Request) -> None:
+    await _services(request).accounts.delete_history_item(user.user_id, run_id)
+
+
 @router.delete("/me/runs", response_model=HistoryDeletedBody, tags=["historial"])
 async def clear_history(user: CurrentUser, request: Request) -> HistoryDeletedBody:
     return HistoryDeletedBody(deleted=await _services(request).accounts.clear_history(user.user_id))

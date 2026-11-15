@@ -151,6 +151,10 @@ class AccountService:
     async def clear_history(self, user_id: str) -> int:
         return await self._history.delete_all(user_id)
 
+    async def delete_history_item(self, user_id: str, run_id: UUID) -> None:
+        if not await self._history.delete(user_id, run_id):
+            raise NotFoundError("run not found")
+
     async def catalog(self, user_id: str) -> Catalog:
         user_keys = await self._credentials.providers(user_id)
         preferences = await self._settings.get(user_id)

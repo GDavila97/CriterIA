@@ -576,6 +576,14 @@ class PostgresHistoryStore:
             )
         return int(result.rowcount)
 
+    async def delete(self, user_id: str, run_id: UUID) -> bool:
+        c = t.saved_run.c
+        async with self._engine.begin() as conn:
+            result = await conn.execute(
+                sa.delete(t.saved_run).where(c.user_id == user_id, c.id == run_id)
+            )
+        return bool(result.rowcount)
+
 
 def _common_by_version(
     rows: Sequence[sa.RowMapping], scores: Mapping[Any, Mapping[Any, float]]
