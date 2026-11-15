@@ -191,7 +191,7 @@ test('vista oficina: durante, tu turno y al terminar', async ({
   await check(page, testInfo, '16-oficina-inactiva');
 
   await startRun(page, { vista: 'oficina' });
-  await expect(office.getByText('Redactando historias')).toBeVisible();
+  await expect(office.getByText('Redactando historias', { exact: true })).toBeVisible();
   await check(page, testInfo, '17-oficina-durante');
   await expect(office.getByRole('button', { name: 'Revisar historias' })).toBeVisible();
   await check(page, testInfo, '18-oficina-tu-turno');
@@ -200,6 +200,8 @@ test('vista oficina: durante, tu turno y al terminar', async ({
   await check(page, testInfo, '19-oficina-revisar-historias', false);
   await page.getByRole('button', { name: /^Aprobar/ }).click();
   await expect(office.getByText('Análisis listo')).toBeVisible();
+  // The team walks to the break room first; the screenshot shows them gathered.
+  await expect(page.locator('[data-walking]')).toHaveCount(0);
   await check(page, testInfo, '20-oficina-al-terminar');
 });
 

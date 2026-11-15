@@ -34,7 +34,7 @@ test('un análisis completo en la oficina, con la aprobación desde Revisar hist
   await expect(page.getByRole('region', { name: 'Artefactos' })).toBeVisible();
   await expect(page.getByRole('region', { name: /Rúbrica/ })).toContainText('/5');
 
-  await office.getByRole('button', { name: /^Revisor: .*, abrir panel$/ }).click();
+  await office.getByRole('button', { name: /^Revisor · .*, abrir panel$/ }).click();
   await expect(page.getByRole('dialog', { name: 'Agente' })).toBeVisible();
 });
 

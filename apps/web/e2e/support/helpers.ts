@@ -104,11 +104,25 @@ export async function latestLink(
   return link as string;
 }
 
+/**
+ * The office's walking agents may overlap; the agent row below the scene is their equivalent
+ * control (WCAG 2.5.8, "Equivalent"). Only those two rules and only those buttons are skipped;
+ * see docs/audit-exceptions.md.
+ */
+const SPACING_RULES = new Set(['target-size', 'target-offset']);
+const isSceneAgent = (html: string) => html.includes('data-scene-agent=');
+
 export async function expectNoAxeViolations(page: Page): Promise<void> {
   const results = await new AxeBuilder({ page })
     .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa', 'best-practice'])
     .analyze();
+  const violations = results.violations
+    .map((v) => ({
+      ...v,
+      nodes: SPACING_RULES.has(v.id) ? v.nodes.filter((n) => !isSceneAgent(n.html)) : v.nodes,
+    }))
+    .filter((v) => v.nodes.length > 0);
   expect(
-    results.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`),
+    violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`),
   ).toEqual([]);
 }
