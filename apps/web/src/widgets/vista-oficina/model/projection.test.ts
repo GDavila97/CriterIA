@@ -1,4 +1,4 @@
-import { initialRunState, runReducer, type RunState } from '@/entities/corrida';
+import { initialRunState, runReducer, teamMessages, type RunState } from '@/entities/corrida';
 import type { Evento } from '@/shared/api';
 import { delivers, eventsFrom, fullRun, historia, inicia } from '@/shared/lib/testing';
 
@@ -49,7 +49,6 @@ describe('projectOffice', () => {
       globo: { texto: 'Redactando historias', tono: 'normal' },
     });
     expect(office.agentes.qa).toMatchObject({ lugar: null, libre: true, actividad: 'en espera' });
-    expect(office.ultimoEvento).toBe('Analista empezó');
   });
 
   it('names the case being corrected and has the Reviewer ask for it from the meeting room', () => {
@@ -81,6 +80,12 @@ describe('projectOffice', () => {
       trabajando: false,
       globo: { texto: 'Pide corrección a QA' },
     });
+    const said = projectOffice(
+      reduce(eventsFrom(...base)),
+      null,
+      teamMessages(eventsFrom(...base)),
+    );
+    expect(said.agentes.revisor.globo?.texto).toBe('QA: corrige CP-09');
 
     const fixing = projectOffice(
       reduce(eventsFrom(...base, { type: 'agente_inicia', agent: 'qa', ronda: 1 })),

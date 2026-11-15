@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import {
   AGENT_IDS,
@@ -13,6 +13,8 @@ import {
   promedio,
   REF_TAB,
   runHeadline,
+  TeamConversation,
+  teamMessages,
   type AgentId,
   type ArtifactRef,
   type RunState,
@@ -42,8 +44,13 @@ export interface ClassicViewProps {
   saved?: boolean;
   /** Starts over from a finished result; absent when viewing a saved analysis. */
   onNewAnalysis?: () => void;
-  /** Takes the place of the agent flow and the event log, as the office view does. */
-  stage?: ReactNode;
+  /**
+   * Takes the place of the agent flow and the event log, as the office view does. As a function
+   * it gets the way to open a story, case or observation from the stage.
+   */
+  stage?: ReactNode | ((openRef: (target: ArtifactRef) => void) => ReactNode);
+  /** How a finished analysis shows how the team worked: only its corrections, or everything. */
+  conversation?: 'collapsed' | 'full';
   /** Off where the page already offers the download, as the saved analysis does. */
   actions?: boolean;
 }
@@ -285,6 +292,7 @@ export function ClassicView({
   onNewAnalysis,
   stage,
   actions = true,
+  conversation = 'collapsed',
 }: ClassicViewProps) {
   const waiting = state.fase === 'esperando_aprobacion' && approval;
   const finished = state.fase === 'completada' || state.fase === 'error';
@@ -320,13 +328,27 @@ export function ClassicView({
   }, [reveal]);
 
   const revealFor = (kind: ArtifactRef['kind']) => (reveal?.ref.kind === kind ? reveal : null);
+  const messages = useMemo(() => teamMessages(state.eventos), [state.eventos]);
+  const shownStage = typeof stage === 'function' ? stage(openRef) : stage;
+  const team =
+    finished && !shownStage && messages.length > 0 ? (
+      <div className={motion.enter}>
+        <TeamConversation
+          messages={messages}
+          start={state.inicio}
+          onOpen={openRef}
+          mode={conversation}
+        />
+      </div>
+    ) : null;
+  const flow = (
+    <div className={motion.fade}>
+      <AgentFlow state={state} connection={connection} onOpenAgent={onOpenAgent} />
+    </div>
+  );
   return (
     <div className={styles.view}>
-      {stage ?? (
-        <div className={motion.fade}>
-          <AgentFlow state={state} connection={connection} onOpenAgent={onOpenAgent} />
-        </div>
-      )}
+      {shownStage ?? (team && conversation === 'full' ? team : flow)}
       {state.error?.respaldoSugerido && onUseFree && (
         <Fallback state={state} onUseFree={onUseFree} />
       )}
@@ -342,6 +364,7 @@ export function ClassicView({
           <p className={styles.itemText}>{state.error.mensaje}</p>
         </section>
       )}
+      {conversation === 'collapsed' && team}
       <div className={styles.main}>
         {waiting ? (
           <section className={styles.card} aria-label="Pausa humana">
@@ -397,7 +420,7 @@ export function ClassicView({
         )}
         <div className={styles.aside}>
           <Rubric state={state} judgeLabel={judgeLabel} />
-          {!stage && <EventLog state={state} />}
+          {!shownStage && <EventLog state={state} />}
         </div>
       </div>
     </div>

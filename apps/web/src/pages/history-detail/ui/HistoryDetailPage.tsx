@@ -181,6 +181,7 @@ export function HistoryDetailPage({
               requerimiento={saved.item.requirement}
               judgeLabel={saved.judgeLabel}
               actions={false}
+              conversation="full"
             />
           </>
         )}

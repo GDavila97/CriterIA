@@ -1,4 +1,11 @@
-import { AGENT_IDS, AGENTS, promedio, type AgentId, type RunState } from '@/entities/corrida';
+import {
+  AGENT_IDS,
+  AGENTS,
+  promedio,
+  type AgentId,
+  type RunState,
+  type TeamMessage,
+} from '@/entities/corrida';
 
 import { BOARD, WORK } from './places';
 
@@ -32,7 +39,6 @@ export interface OfficeSnapshot {
   momento: Momento;
   agentes: Record<AgentId, AgentPlan>;
   contadores: Counters;
-  ultimoEvento: string;
   /** What the live region says; only the moments that need the person. */
   anuncio: string | null;
   /** The analysis just ended: the team gathers in the break room before going back to routine. */
@@ -112,7 +118,7 @@ function pendingCorrections(state: RunState): string | null {
   return destinos.size ? [...destinos].join(' y ') : null;
 }
 
-function during(state: RunState, id: AgentId): AgentPlan {
+function during(state: RunState, id: AgentId, messages: readonly TeamMessage[]): AgentPlan {
   const agente = state.agentes[id];
   if (agente.estado === 'error') {
     return {
@@ -129,8 +135,10 @@ function during(state: RunState, id: AgentId): AgentPlan {
   ) {
     const destinos = pendingCorrections(state);
     if (destinos) {
+      // The same short line the conversation gives this correction.
+      const said = messages.findLast((m) => m.kind === 'correccion')?.short;
       return {
-        ...atWork(id, `pidió correcciones a ${destinos}`, `Pide corrección a ${destinos}`),
+        ...atWork(id, `pidió correcciones a ${destinos}`, said ?? `Pide corrección a ${destinos}`),
         trabajando: false,
       };
     }
@@ -183,7 +191,11 @@ const ANNOUNCEMENTS: Partial<Record<Momento, string>> = {
  * The office as a pure projection of the same run state the classic view reads: where each
  * agent is, what it does and what its bubble says. No event or endpoint of its own.
  */
-export function projectOffice(state: RunState, name: string | null = null): OfficeSnapshot {
+export function projectOffice(
+  state: RunState,
+  name: string | null = null,
+  messages: readonly TeamMessage[] = [],
+): OfficeSnapshot {
   const momento = momentOf(state);
   const nombre = firstName(name);
   const agentes = Object.fromEntries(
@@ -219,7 +231,7 @@ export function projectOffice(state: RunState, name: string | null = null): Offi
           ];
         case 'detenido':
         case 'durante':
-          return [id, during(state, id)];
+          return [id, during(state, id, messages)];
       }
     }),
   ) as Record<AgentId, AgentPlan>;
@@ -228,7 +240,6 @@ export function projectOffice(state: RunState, name: string | null = null): Offi
     momento,
     agentes,
     contadores: counters(state, momento),
-    ultimoEvento: state.registro.at(-1)?.texto ?? 'Escribe un requerimiento y ejecuta el análisis.',
     anuncio: ANNOUNCEMENTS[momento] ?? null,
     celebrar: momento === 'terminado',
   };

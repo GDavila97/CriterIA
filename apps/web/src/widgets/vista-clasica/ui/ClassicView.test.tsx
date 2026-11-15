@@ -239,6 +239,57 @@ describe('ClassicView', () => {
       'aria-selected',
       'true',
     );
-    expect(screen.getByText('O-1').closest('li')).toHaveFocus();
+    expect(within(screen.getByRole('tabpanel')).getByText('O-1').closest('li')).toHaveFocus();
+  });
+
+  it('shows the corrections of a finished analysis and the whole conversation on request', async () => {
+    render(<ClassicView state={reduce(fullRun())} requerimiento={REQ} />);
+
+    const team = screen.getByRole('region', { name: 'Así trabajó el equipo' });
+    expect(within(team).getAllByRole('listitem')).toHaveLength(1);
+    expect(within(team).getByText('Corrección')).toBeInTheDocument();
+    expect(within(team).queryByRole('group', { name: 'Filtrar mensajes' })).not.toBeInTheDocument();
+
+    await userEvent.click(
+      within(team).getByRole('button', { name: 'Ver toda la conversación (7)' }),
+    );
+    expect(within(team).getAllByRole('listitem')).toHaveLength(7);
+    await userEvent.click(within(team).getByRole('button', { name: 'Tu aprobación' }));
+    expect(within(team).getByRole('button', { name: 'Tu aprobación' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    expect(within(team).getAllByRole('listitem')).toHaveLength(1);
+    await userEvent.click(within(team).getByRole('button', { name: 'Entregas' }));
+    await userEvent.click(within(team).getAllByRole('button', { name: 'Ver CP-90' })[0]!);
+
+    expect(screen.getByRole('tab', { name: 'Casos de prueba' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    expect(document.getElementById('ref-caso-CP-90')).toHaveFocus();
+  });
+
+  it('leaves the conversation out while the analysis runs and in the office stage', () => {
+    const { rerender } = render(
+      <ClassicView state={reduce(fullRun().slice(0, 9))} requerimiento={REQ} />,
+    );
+    expect(screen.queryByRole('region', { name: 'Así trabajó el equipo' })).not.toBeInTheDocument();
+
+    rerender(
+      <ClassicView
+        state={reduce(fullRun())}
+        requerimiento={REQ}
+        stage={(openRef) => (
+          <button
+            type="button"
+            onClick={() => openRef({ kind: 'historia', id: 'HU-2', label: 'HU-2' })}
+          >
+            escena
+          </button>
+        )}
+      />,
+    );
+    expect(screen.queryByRole('region', { name: 'Así trabajó el equipo' })).not.toBeInTheDocument();
   });
 });

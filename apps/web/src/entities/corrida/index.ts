@@ -72,3 +72,10 @@ export {
   type Speaker,
   type TeamMessage,
 } from './model/conversation';
+export {
+  LIVE_MESSAGES,
+  SpeakerMark,
+  speakerName,
+  TeamConversation,
+  type TeamConversationProps,
+} from './ui/TeamConversation';

@@ -1,8 +1,17 @@
 'use client';
 
-import { memo, useState, type CSSProperties } from 'react';
+import { memo, useMemo, useState, type CSSProperties } from 'react';
 
-import { AGENT_IDS, AGENTS, runHeadline, type AgentId, type RunState } from '@/entities/corrida';
+import {
+  AGENT_IDS,
+  AGENTS,
+  runHeadline,
+  TeamConversation,
+  teamMessages,
+  type AgentId,
+  type ArtifactRef,
+  type RunState,
+} from '@/entities/corrida';
 import { ApprovalPanel } from '@/features/aprobar-historias';
 import type { RespuestaHumana } from '@/shared/api';
 import { usePageVisible, useReducedMotion } from '@/shared/lib/react';
@@ -24,6 +33,8 @@ export interface OfficeViewProps {
   approval?: { busy: boolean; onAnswer: (respuesta: RespuestaHumana) => void };
   /** Fixes the agents' routine, for tests and screenshots. */
   seed?: number;
+  /** Opens a story, case or observation a message mentions. */
+  onOpenRef?: (target: ArtifactRef) => void;
 }
 
 /** The room itself: drawn once and hidden from assistive technology. */
@@ -230,8 +241,10 @@ export function OfficeView({
   onOpenAgent,
   approval,
   seed = 2026,
+  onOpenRef = () => {},
 }: OfficeViewProps) {
-  const office = projectOffice(state, userName);
+  const messages = useMemo(() => teamMessages(state.eventos), [state.eventos]);
+  const office = projectOffice(state, userName, messages);
   const reduced = useReducedMotion();
   const visible = usePageVisible();
   const fixed = Object.fromEntries(
@@ -353,9 +366,9 @@ export function OfficeView({
         </ul>
       </div>
 
-      <p className={styles.log}>
-        <strong>Registro:</strong> {office.ultimoEvento}
-      </p>
+      <div className={styles.log}>
+        <TeamConversation messages={messages} start={state.inicio} onOpen={onOpenRef} mode="live" />
+      </div>
       <p className={styles.hint}>
         Toca un agente, en la escena o en la lista, para ver su panel. La vista clásica muestra lo
         mismo sin animación.

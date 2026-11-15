@@ -47,7 +47,9 @@ describe('OfficeView', () => {
     expect(onOpenAgent).toHaveBeenCalledWith('qa');
     expect(screen.getByText('Escribiendo casos')).toBeInTheDocument();
     expect(screen.getByRole('list', { name: 'Contadores' })).toBeInTheDocument();
-    expect(screen.getByText(/Registro:/).parentElement).toHaveTextContent('QA empezó');
+    expect(screen.getByRole('region', { name: 'Así trabajó el equipo' })).toHaveTextContent(
+      'Los mensajes del equipo aparecen aquí en cuanto empiezan.',
+    );
     expect(document.querySelector('svg[aria-hidden="true"] polygon')).not.toBeNull();
   });
 
@@ -154,5 +156,23 @@ describe('OfficeView', () => {
     expect(onOpenAgent).toHaveBeenCalledWith('revisor');
     const row = screen.getByRole('list', { name: 'Agentes' });
     expect(within(row).getAllByRole('button')).toHaveLength(4);
+  });
+
+  it('shows the latest team messages live and opens what they mention', async () => {
+    const onOpenRef = vi.fn();
+    render(<OfficeView state={reduce(fullRun())} onOpenRef={onOpenRef} />);
+
+    const team = screen.getByRole('region', { name: 'Así trabajó el equipo' });
+    expect(within(within(team).getByRole('log')).getAllByRole('listitem')).toHaveLength(4);
+    expect(team).toHaveTextContent('7 mensajes · 1 corrección');
+    await userEvent.click(within(team).getByRole('button', { name: 'Ver CP-90' }));
+    expect(onOpenRef).toHaveBeenCalledWith({ kind: 'caso', id: 'CP-90', label: 'CP-90' });
+
+    await userEvent.click(
+      within(team).getByRole('button', { name: 'Ver toda la conversación (7)' }),
+    );
+    expect(within(team).getAllByRole('listitem')).toHaveLength(7);
+    await userEvent.click(within(team).getByRole('button', { name: 'Correcciones' }));
+    expect(within(team).getAllByRole('listitem')).toHaveLength(1);
   });
 });

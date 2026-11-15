@@ -308,10 +308,6 @@
 
 .log {
   margin: var(--space-16) 0 0;
-  padding: var(--space-12) var(--space-16);
-  border: 1px solid var(--color-line);
-  border-radius: 12px;
-  font-size: 0.875rem;
 }
 
 .hint {

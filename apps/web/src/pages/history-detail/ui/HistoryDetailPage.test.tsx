@@ -78,6 +78,17 @@ describe('HistoryDetailPage', () => {
     const summary = within(await screen.findByRole('list', { name: 'Resumen del análisis' }));
     expect(summary.getByText('Casos').nextSibling).toHaveTextContent('3');
     expect(summary.getByText('Observaciones').nextSibling).toHaveTextContent('1');
+    const team = screen.getByRole('region', { name: 'Así trabajó el equipo' });
+    expect(within(team).getAllByRole('listitem')).toHaveLength(7);
+    expect(within(team).getByRole('group', { name: 'Filtrar mensajes' })).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Flujo de agentes' })).not.toBeInTheDocument();
+  });
+
+  it('hides how the team worked when the analysis was saved without its events', async () => {
+    render(<HistoryDetailPage user={user} runId="r1" client={clientFor(savedItem())} />);
+
+    expect(await screen.findByRole('region', { name: 'Flujo de agentes' })).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Así trabajó el equipo' })).not.toBeInTheDocument();
   });
 
   it('deletes the analysis after asking, then goes back to the history', async () => {

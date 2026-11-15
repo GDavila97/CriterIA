@@ -45,6 +45,11 @@
   --color-agent-revisor-shadow: #5a3da3;
   --color-agent-evaluador: #178c78;
   --color-agent-evaluador-shadow: #0f6656;
+  /* Agent names as text, readable on the surface in each theme. */
+  --color-agent-analista-ink: #1f4fa8;
+  --color-agent-qa-ink: #934814;
+  --color-agent-revisor-ink: #5a3da3;
+  --color-agent-evaluador-ink: #0f6656;
 
   --font-sans: var(--font-plus-jakarta-sans), system-ui, sans-serif;
   --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
@@ -114,6 +119,10 @@
     --color-warning-ink: #f2c66d;
     --color-qa-soft: #3a2414;
     --color-qa-soft-ink: #f5b98a;
+    --color-agent-analista-ink: #8fb2f5;
+    --color-agent-qa-ink: #f0a56b;
+    --color-agent-revisor-ink: #b9a3f0;
+    --color-agent-evaluador-ink: #5cc9a7;
     --color-badge-revisor: #2c2445;
     --color-badge-revisor-ink: #c4b2f5;
     --color-card-border: #2c313b;

@@ -212,16 +212,19 @@ export function RunWorkspace({
                 onOpenAgent={setAgent}
                 approval={view.vista === 'clasica' ? approval : undefined}
                 stage={
-                  view.vista === 'oficina' ? (
-                    <div className={motion.fade}>
-                      <OfficeView
-                        state={run.state}
-                        userName={user.name}
-                        onOpenAgent={setAgent}
-                        approval={approval}
-                      />
-                    </div>
-                  ) : undefined
+                  view.vista === 'oficina'
+                    ? (openRef) => (
+                        <div className={motion.fade}>
+                          <OfficeView
+                            state={run.state}
+                            userName={user.name}
+                            onOpenAgent={setAgent}
+                            approval={approval}
+                            onOpenRef={openRef}
+                          />
+                        </div>
+                      )
+                    : undefined
                 }
                 onUseFree={useFree}
                 judgeLabel={
