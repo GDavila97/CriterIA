@@ -8,17 +8,17 @@ requires-python = ">=3.13,<3.14"
 dependencies = [
     "alembic>=1.20.1",
     "cryptography>=50.0.2",
-    "fastapi>=0.162.0",
+    "fastapi>=0.163.1",
     "httpcore2>=2.16.0",
     "httpx>=0.28.1",
     "httpx2>=2.16.0",
-    "langgraph>=1.2.19",
-    "langgraph-checkpoint-postgres>=3.2.0",
-    "psycopg[binary,pool]>=3.3.8",
-    "pydantic-ai-slim[anthropic,groq,openai]>=2.66.0",
-    "pydantic-settings>=2.16.2",
+    "langgraph>=1.2.22",
+    "langgraph-checkpoint-postgres>=3.2.1",
+    "psycopg[binary,pool]>=3.3.9",
+    "pydantic-ai-slim[anthropic,groq,openai]>=2.68.0",
+    "pydantic-settings>=2.16.3",
     "pyjwt[crypto]>=2.15.1",
-    "sentry-sdk>=2.73.0",
+    "sentry-sdk>=2.75.0",
     "sqlalchemy[asyncio]>=2.1.8",
     "uvicorn[standard]>=0.54.0",
 ]
@@ -29,7 +29,7 @@ criteria-api = "criteria.main:run"
 criteria-contract = "criteria.adapters.http.contract:run"
 
 [build-system]
-requires = ["uv_build>=0.13.6,<0.14.0"]
+requires = ["uv_build>=0.13.8,<0.14.0"]
 build-backend = "uv_build"
 
 [dependency-groups]
@@ -37,9 +37,9 @@ dev = [
     "mypy>=2.4.1",
     "pip-audit>=2.10.1",
     "pytest>=9.2.0",
-    "pytest-asyncio>=1.4.1.post1",
+    "pytest-asyncio>=1.5.0",
     "pytest-cov>=7.1.0",
-    "ruff>=0.17.3",
+    "ruff>=0.17.5",
 ]
 
 [tool.uv]
