@@ -80,7 +80,7 @@ jobs:
           BETTER_AUTH_URL: https://migrations.invalid
         # The CLI only compares and creates tables; the real secret stays in Vercel.
         run: BETTER_AUTH_SECRET="$(openssl rand -base64 48)" pnpm auth:migrate
-      - uses: astral-sh/setup-uv@v10.3.3
+      - uses: astral-sh/setup-uv@v10.4.0
         with:
           version-file: services/api/pyproject.toml
           enable-cache: false
